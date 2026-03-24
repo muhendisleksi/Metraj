@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Metraj</RootNamespace>
+    <AssemblyName>Metraj</AssemblyName>
+    <Platforms>AnyCPU;x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Title>Metraj</Title>
+    <Description>AutoCAD ve Civil 3D icin Metraj Araci</Description>
+    <Product>Metraj Asistani</Product>
+    <Copyright>Copyright (c) 2026</Copyright>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="Serilog" Version="4.0.0" />
+    <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="accoremgd">
+      <HintPath>C:\Program Files\Autodesk\AutoCAD 2025\accoremgd.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="acdbmgd">
+      <HintPath>C:\Program Files\Autodesk\AutoCAD 2025\acdbmgd.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="acmgd">
+      <HintPath>C:\Program Files\Autodesk\AutoCAD 2025\acmgd.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="AecBaseMgd">
+      <HintPath>C:\Program Files\Autodesk\AutoCAD 2025\ACA\AecBaseMgd.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="AeccDbMgd">
+      <HintPath>C:\Program Files\Autodesk\AutoCAD 2025\C3D\AeccDbMgd.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="AdWindows">
+      <HintPath>C:\Program Files\Autodesk\AutoCAD 2025\AdWindows.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Autodesk.AutoCAD.ApplicationServices" />
+    <Using Include="Autodesk.AutoCAD.DatabaseServices" />
+    <Using Include="Autodesk.AutoCAD.EditorInput" />
+    <Using Include="Autodesk.AutoCAD.Runtime" />
+    <Using Include="Autodesk.AutoCAD.Geometry" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Metraj.Tests\**\*" />
+    <None Remove="Metraj.Tests\**\*" />
+    <Content Remove="Metraj.Tests\**\*" />
+    <EmbeddedResource Remove="Metraj.Tests\**\*" />
+  </ItemGroup>
+</Project>

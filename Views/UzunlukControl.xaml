@@ -1,0 +1,78 @@
+<UserControl x:Class="Metraj.Views.UzunlukControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="400" d:DesignWidth="300"
+             Background="#FF1E1E2E">
+    <Grid Margin="5">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Top: Selection button -->
+        <Button Grid.Row="0" Content="Sec ve Hesapla" Command="{Binding NesneSecVeHesaplaCommand}"
+                Margin="0,0,0,5" Padding="10,6" Background="#FF0078D4" Foreground="White"
+                FontFamily="Segoe UI" FontSize="12" BorderThickness="0" Cursor="Hand"/>
+
+        <!-- Middle: Results DataGrid -->
+        <DataGrid Grid.Row="1" ItemsSource="{Binding Sonuclar}" AutoGenerateColumns="False"
+                  IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False"
+                  Background="#FF2D2D44" Foreground="#FFDCDCDC" BorderBrush="#FF3D3D5C"
+                  GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#FF3D3D5C"
+                  RowBackground="#FF2D2D44" AlternatingRowBackground="#FF252540"
+                  FontFamily="Segoe UI" FontSize="11" HeadersVisibility="Column"
+                  ColumnHeaderHeight="28" RowHeight="24">
+            <DataGrid.ColumnHeaderStyle>
+                <Style TargetType="DataGridColumnHeader">
+                    <Setter Property="Background" Value="#FF3D3D5C"/>
+                    <Setter Property="Foreground" Value="#FFDCDCDC"/>
+                    <Setter Property="Padding" Value="5,3"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="BorderBrush" Value="#FF4D4D6C"/>
+                    <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                </Style>
+            </DataGrid.ColumnHeaderStyle>
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Nesne Tipi" Binding="{Binding NesneTipi}" Width="80"/>
+                <DataGridTextColumn Header="Katman" Binding="{Binding KatmanAdi}" Width="*"/>
+                <DataGridTextColumn Header="Uzunluk (m)" Binding="{Binding Uzunluk, StringFormat=F2}" Width="90">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                            <Setter Property="Padding" Value="0,0,5,0"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Bottom: Total -->
+        <Border Grid.Row="2" Background="#FF3D3D5C" CornerRadius="3" Margin="0,5,0,0" Padding="8,5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Toplam Uzunluk:" Foreground="#FFDCDCDC"
+                           FontFamily="Segoe UI" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Text="{Binding ToplamUzunluk, StringFormat={}{0:F2} m}"
+                           Foreground="#FF4EC9B0" FontFamily="Segoe UI" FontSize="14" FontWeight="Bold"
+                           VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- Status + Clear -->
+        <DockPanel Grid.Row="3" Margin="0,5,0,0">
+            <Button DockPanel.Dock="Right" Content="Temizle" Command="{Binding TemizleCommand}"
+                    Padding="10,4" Background="#FF4D4D6C" Foreground="#FFDCDCDC"
+                    FontFamily="Segoe UI" FontSize="11" BorderThickness="0" Cursor="Hand"/>
+            <TextBlock Text="{Binding DurumMesaji}" Foreground="#FF8888AA" FontFamily="Segoe UI"
+                       FontSize="10" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+        </DockPanel>
+    </Grid>
+</UserControl>

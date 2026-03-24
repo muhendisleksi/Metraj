@@ -1,0 +1,108 @@
+<UserControl x:Class="Metraj.Views.ToplamaControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#FF1E1E2E">
+    <Grid Margin="5">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Filters -->
+        <Grid Grid.Row="0" Margin="0,0,0,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Ön Ek:" Foreground="#FFDCDCDC" FontFamily="Segoe UI"
+                       FontSize="11" VerticalAlignment="Center" Margin="0,0,5,0"/>
+            <TextBox Grid.Column="1" Text="{Binding OnEkFiltre, UpdateSourceTrigger=PropertyChanged}"
+                     FontFamily="Segoe UI" FontSize="11" Padding="4,2"/>
+            <TextBlock Grid.Column="3" Text="Son Ek:" Foreground="#FFDCDCDC" FontFamily="Segoe UI"
+                       FontSize="11" VerticalAlignment="Center" Margin="0,0,5,0"/>
+            <TextBox Grid.Column="4" Text="{Binding SonEkFiltre, UpdateSourceTrigger=PropertyChanged}"
+                     FontFamily="Segoe UI" FontSize="11" Padding="4,2"/>
+        </Grid>
+
+        <!-- Select and sum button -->
+        <Button Grid.Row="1" Content="Seç ve Topla" Command="{Binding MetinSecVeToplaCommand}"
+                Margin="0,0,0,5" Padding="10,6" Background="#FF0078D4" Foreground="White"
+                FontFamily="Segoe UI" FontSize="12" BorderThickness="0" Cursor="Hand"/>
+
+        <!-- Results DataGrid -->
+        <DataGrid Grid.Row="2" ItemsSource="{Binding Ogeler}" AutoGenerateColumns="False"
+                  IsReadOnly="True" CanUserAddRows="False"
+                  Background="#FF2D2D44" Foreground="#FFDCDCDC" BorderBrush="#FF3D3D5C"
+                  GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#FF3D3D5C"
+                  RowBackground="#FF2D2D44" AlternatingRowBackground="#FF252540"
+                  FontFamily="Segoe UI" FontSize="11" HeadersVisibility="Column"
+                  ColumnHeaderHeight="28" RowHeight="24">
+            <DataGrid.ColumnHeaderStyle>
+                <Style TargetType="DataGridColumnHeader">
+                    <Setter Property="Background" Value="#FF3D3D5C"/>
+                    <Setter Property="Foreground" Value="#FFDCDCDC"/>
+                    <Setter Property="Padding" Value="5,3"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="BorderBrush" Value="#FF4D4D6C"/>
+                    <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                </Style>
+            </DataGrid.ColumnHeaderStyle>
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Metin" Binding="{Binding MetinDegeri}" Width="*"/>
+                <DataGridTextColumn Header="Değer" Binding="{Binding SayisalDeger, StringFormat=F2}" Width="90">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                            <Setter Property="Padding" Value="0,0,5,0"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Katman" Binding="{Binding KatmanAdi}" Width="80"/>
+            </DataGrid.Columns>
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding GecerliSayi}" Value="False">
+                            <Setter Property="Foreground" Value="#FFFF6B6B"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+        </DataGrid>
+
+        <!-- Total -->
+        <Border Grid.Row="3" Background="#FF3D3D5C" CornerRadius="3" Margin="0,5,0,0" Padding="8,5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock Text="Toplam:" Foreground="#FFDCDCDC"
+                               FontFamily="Segoe UI" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding GecerliSayisi, StringFormat=' ({0} geçerli)'}"
+                               Foreground="#FF8888AA" FontFamily="Segoe UI" FontSize="10"
+                               VerticalAlignment="Center" Margin="5,0,0,0"/>
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="{Binding Toplam, StringFormat={}{0:F2}}"
+                           Foreground="#FF4EC9B0" FontFamily="Segoe UI" FontSize="14" FontWeight="Bold"
+                           VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- Status + Clear -->
+        <DockPanel Grid.Row="4" Margin="0,5,0,0">
+            <Button DockPanel.Dock="Right" Content="Temizle" Command="{Binding TemizleCommand}"
+                    Padding="10,4" Background="#FF4D4D6C" Foreground="#FFDCDCDC"
+                    FontFamily="Segoe UI" FontSize="11" BorderThickness="0" Cursor="Hand"/>
+            <TextBlock Text="{Binding DurumMesaji}" Foreground="#FF8888AA" FontFamily="Segoe UI"
+                       FontSize="10" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+        </DockPanel>
+    </Grid>
+</UserControl>
