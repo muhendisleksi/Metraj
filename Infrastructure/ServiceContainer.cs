@@ -51,12 +51,18 @@ namespace Metraj.Infrastructure
             services.AddTransient<IHacimHesapService, HacimHesapService>();
             services.AddTransient<IToplamaService, ToplamaService>();
 
+            // Annotation & Export services
+            services.AddTransient<IAnnotationService, AnnotationService>();
+            services.AddTransient<IExcelExportService, ExcelExportService>();
+            services.AddSingleton<ICivil3dService, Civil3dService>();
+
             // ViewModels - singleton (UI state persists)
             services.AddSingleton<MainViewModel>();
             services.AddSingleton<UzunlukViewModel>();
             services.AddSingleton<AlanViewModel>();
             services.AddSingleton<HacimViewModel>();
             services.AddSingleton<ToplamaViewModel>();
+            services.AddSingleton<AyarlarViewModel>();
         }
 
         public static T GetService<T>() where T : class

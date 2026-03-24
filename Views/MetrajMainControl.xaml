@@ -48,6 +48,9 @@
             <TabItem Header="Toplama">
                 <local:ToplamaControl x:Name="ToplamaTab"/>
             </TabItem>
+            <TabItem Header="Ayarlar">
+                <local:AyarlarControl x:Name="AyarlarTab"/>
+            </TabItem>
         </TabControl>
 
         <!-- Bottom status bar -->

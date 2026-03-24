@@ -1,0 +1,58 @@
+<UserControl x:Class="Metraj.Views.AyarlarControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#FF1E1E2E">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="10">
+            <TextBlock Text="Annotasyon Ayarlari" Foreground="#FF4EC9B0"
+                       FontFamily="Segoe UI" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10"/>
+
+            <!-- Text Height -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <TextBlock Text="Yazi Yuksekligi:" Foreground="#FFDCDCDC" FontFamily="Segoe UI"
+                           FontSize="11" VerticalAlignment="Center" Width="120"/>
+                <TextBox Text="{Binding TextYuksekligi, UpdateSourceTrigger=PropertyChanged}"
+                         Width="80" FontFamily="Segoe UI" FontSize="11" Padding="4,2"/>
+            </StackPanel>
+
+            <!-- Decimal Places -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <TextBlock Text="Ondalik Sayisi:" Foreground="#FFDCDCDC" FontFamily="Segoe UI"
+                           FontSize="11" VerticalAlignment="Center" Width="120"/>
+                <TextBox Text="{Binding OndalikSayisi, UpdateSourceTrigger=PropertyChanged}"
+                         Width="80" FontFamily="Segoe UI" FontSize="11" Padding="4,2"/>
+            </StackPanel>
+
+            <!-- Leader -->
+            <CheckBox Content="Leader (kilavuz cizgi) goster" IsChecked="{Binding LeaderGoster}"
+                      Foreground="#FFDCDCDC" FontFamily="Segoe UI" FontSize="11"
+                      Margin="0,0,0,15" Background="Transparent"/>
+
+            <!-- Buttons -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <Button Content="Kaydet" Command="{Binding KaydetCommand}"
+                        Padding="12,5" Margin="0,0,10,0" Background="#FF107C10" Foreground="White"
+                        FontFamily="Segoe UI" FontSize="11" BorderThickness="0" Cursor="Hand"/>
+                <Button Content="Varsayilanlara Don" Command="{Binding VarsayilanlarCommand}"
+                        Padding="12,5" Background="#FF4D4D6C" Foreground="#FFDCDCDC"
+                        FontFamily="Segoe UI" FontSize="11" BorderThickness="0" Cursor="Hand"/>
+            </StackPanel>
+
+            <!-- Status -->
+            <TextBlock Text="{Binding DurumMesaji}" Foreground="#FF8888AA"
+                       FontFamily="Segoe UI" FontSize="10" Margin="0,5,0,0"/>
+
+            <!-- Info -->
+            <Border Background="#FF2D2D44" CornerRadius="3" Padding="10" Margin="0,20,0,0">
+                <StackPanel>
+                    <TextBlock Text="Bilgi" Foreground="#FF4EC9B0" FontFamily="Segoe UI" FontSize="12"
+                               FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <TextBlock Foreground="#FF8888AA" FontFamily="Segoe UI" FontSize="10" TextWrapping="Wrap">
+                        Ayarlar %APPDATA%\Metraj\ayarlar.json dosyasinda saklanir.
+                        Annotasyon yazma komutlari bu ayarlari kullanir.
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
