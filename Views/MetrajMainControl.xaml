@@ -45,6 +45,9 @@
             <TabItem Header="Kübaj">
                 <local:HacimControl x:Name="HacimTab"/>
             </TabItem>
+            <TabItem Header="En Kesit">
+                <local:EnKesitAlanControl x:Name="EnKesitTab"/>
+            </TabItem>
             <TabItem Header="Toplama">
                 <local:ToplamaControl x:Name="ToplamaTab"/>
             </TabItem>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ApplicationPackage
+  SchemaVersion="1.0"
+  AppVersion="1.0.0"
+  ProductCode="{E8A3F1B2-4C5D-6E7F-8A9B-0C1D2E3F4A5B}"
+  Name="Metraj Asistani"
+  Description="AutoCAD/Civil 3D Metraj Asistani"
+  Author="Abdulbaki Atakan">
+  <CompanyDetails Name="AltyapiCode" />
+  <Components>
+    <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R25.0" />
+    <ComponentEntry
+      AppName="MetrajAsistani"
+      Version="1.0.0"
+      ModuleName="C:\Users\abdulbaki atakan\Desktop\C#\Kod Çalışmaları\8) Metraj\bin\Debug\net8.0-windows\Metraj.dll"
+      AppDescription="Metraj Asistani"
+      LoadOnAutoCADStartup="True" />
+  </Components>
+</ApplicationPackage>

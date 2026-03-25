@@ -50,6 +50,7 @@ namespace Metraj.Infrastructure
             services.AddTransient<IAlanHesapService, AlanHesapService>();
             services.AddTransient<IHacimHesapService, HacimHesapService>();
             services.AddTransient<IToplamaService, ToplamaService>();
+            services.AddTransient<IEnKesitAlanService, EnKesitAlanService>();
 
             // Annotation & Export services
             services.AddTransient<IAnnotationService, AnnotationService>();
@@ -63,6 +64,7 @@ namespace Metraj.Infrastructure
             services.AddSingleton<HacimViewModel>();
             services.AddSingleton<ToplamaViewModel>();
             services.AddSingleton<AyarlarViewModel>();
+            services.AddSingleton<EnKesitAlanViewModel>();
         }
 
         public static T GetService<T>() where T : class

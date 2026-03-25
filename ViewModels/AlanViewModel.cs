@@ -14,7 +14,7 @@ namespace Metraj.ViewModels
     {
         private double _toplamAlan;
         private BirimTipi _seciliBirim = BirimTipi.Metrekare;
-        private string _durumMesaji = "Kapalı nesne seçin ve Hesapla'ya tıklayın.";
+        private string _durumMesaji = "Nesne seçin ve Hesapla'ya tıklayın.";
 
         public ObservableCollection<AlanOlcumu> Sonuclar { get; } = new ObservableCollection<AlanOlcumu>();
 
@@ -78,15 +78,14 @@ namespace Metraj.ViewModels
                 var alanService = ServiceContainer.GetRequiredService<IAlanHesapService>();
                 var sonuclar = alanService.Hesapla(selResult.Value);
 
-                Sonuclar.Clear();
                 foreach (var s in sonuclar)
                 {
                     s.BirimAlan = alanService.BirimDonustur(s.Alan, SeciliBirim);
                     Sonuclar.Add(s);
                 }
 
-                ToplamAlan = sonuclar.Sum(s => alanService.BirimDonustur(s.Alan, SeciliBirim));
-                DurumMesaji = $"{sonuclar.Count} nesne ölçüldü. Toplam: {ToplamAlan:F2} {BirimEtiketi}";
+                ToplamAlan = Sonuclar.Sum(s => alanService.BirimDonustur(s.Alan, SeciliBirim));
+                DurumMesaji = $"{Sonuclar.Count} nesne ölçüldü. Toplam: {ToplamAlan:F2} {BirimEtiketi}";
 
                 LoggingService.Info("Alan hesaplandı: {Count} nesne, toplam {Toplam:F2} m\u00B2", sonuclar.Count, sonuclar.Sum(s => s.Alan));
             }
@@ -114,7 +113,7 @@ namespace Metraj.ViewModels
         {
             Sonuclar.Clear();
             ToplamAlan = 0;
-            DurumMesaji = "Kapalı nesne seçin ve Hesapla'ya tıklayın.";
+            DurumMesaji = "Nesne seçin ve Hesapla'ya tıklayın.";
         }
     }
 }

@@ -18,6 +18,7 @@ namespace Metraj.Commands
     public class MetrajCommands : IExtensionApplication
     {
         private static bool _initialized;
+        private static ModuleWindowManager _windowManager;
 
         public void Initialize()
         {
@@ -33,6 +34,11 @@ namespace Metraj.Commands
                 // DI container başlat
                 ServiceContainer.Initialize();
 
+                _windowManager = new ModuleWindowManager();
+
+                // Ribbon menü oluştur
+                RibbonManager.CreateRibbon();
+
                 _initialized = true;
                 LoggingService.Info("Metraj eklentisi başarıyla yüklendi.");
             }
@@ -46,6 +52,7 @@ namespace Metraj.Commands
         {
             try
             {
+                _windowManager?.Dispose();
                 ServiceContainer.Dispose();
                 LoggingService.Close();
                 AppDomain.CurrentDomain.AssemblyResolve -= OnAssemblyResolve;
@@ -67,9 +74,7 @@ namespace Metraj.Commands
 
             try
             {
-                var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
-                ed?.WriteMessage("\nMetraj Asistanı v1.0 - Panel hazırlanıyor...\n");
-                // ModuleWindowManager entegrasyonu Faz 2'de eklenecek
+                _windowManager.Toggle();
             }
             catch (System.Exception ex)
             {
@@ -80,7 +85,7 @@ namespace Metraj.Commands
         [CommandMethod("METRAJKAPAT")]
         public static void ClosePanel()
         {
-            // Faz 2'de implement edilecek
+            _windowManager?.Close();
         }
 
         [CommandMethod("METRAJUZUNLUK")]
@@ -216,6 +221,22 @@ namespace Metraj.Commands
             catch (System.Exception ex)
             {
                 LoggingService.Error("METRAJTEMIZLE hatasi", ex);
+            }
+        }
+
+        [CommandMethod("METRAJENKESIT")]
+        public static void QuickEnKesit()
+        {
+            if (!_initialized) return;
+            try
+            {
+                _windowManager.Toggle();
+                var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+                ed?.WriteMessage("\nEn Kesit Alan sekmesini kullanın.\n");
+            }
+            catch (System.Exception ex)
+            {
+                LoggingService.Error("METRAJENKESIT hatası", ex);
             }
         }
 
