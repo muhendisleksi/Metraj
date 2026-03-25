@@ -214,6 +214,7 @@ namespace Metraj.Commands
                 annotationService.AnnotasyonlariTemizle(Constants.LayerHacim);
                 annotationService.AnnotasyonlariTemizle(Constants.LayerToplama);
                 annotationService.AnnotasyonlariTemizle(Constants.LayerEtiket);
+                annotationService.AnnotasyonlariTemizle(Constants.LayerYolMetraj);
 
                 var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
                 ed?.WriteMessage("\nMetraj annotasyonlari temizlendi.\n");
@@ -237,6 +238,22 @@ namespace Metraj.Commands
             catch (System.Exception ex)
             {
                 LoggingService.Error("METRAJENKESIT hatası", ex);
+            }
+        }
+
+        [CommandMethod("YOLMETRAJ")]
+        public static void ToggleYolMetraj()
+        {
+            if (!_initialized) return;
+            try
+            {
+                _windowManager.Toggle();
+                var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+                ed?.WriteMessage("\nYol Metraj sekmesini kullan\u0131n.\n");
+            }
+            catch (System.Exception ex)
+            {
+                LoggingService.Error("YOLMETRAJ komutu hatas\u0131", ex);
             }
         }
 

@@ -25,5 +25,10 @@ namespace Metraj.Models
 
         // Varsayılan ondalık sayısı
         public const int VarsayilanOndalikSayisi = 2;
+
+        // Yol Metraj
+        public const string LayerYolMetraj = "METRAJ-YOL";
+        public const short RenkYolMetraj = 5;       // Blue
+        public const string KatmanEslestirmeDosyaAdi = "MetrajKatmanEslestirme.json";
     }
 }

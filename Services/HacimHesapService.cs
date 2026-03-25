@@ -29,18 +29,7 @@ namespace Metraj.Services
 
                 if (mesafe <= 0) continue;
 
-                switch (metot)
-                {
-                    case HacimMetodu.Prismoidal:
-                        double am = (e1.ToplamAlan + e2.ToplamAlan) / 2.0;
-                        hacim = mesafe / 6.0 * (e1.ToplamAlan + 4.0 * am + e2.ToplamAlan);
-                        break;
-
-                    case HacimMetodu.OrtalamaAlan:
-                    default:
-                        hacim = (e1.ToplamAlan + e2.ToplamAlan) / 2.0 * mesafe;
-                        break;
-                }
+                hacim = HacimFormulleri.Hesapla(e1.ToplamAlan, e2.ToplamAlan, mesafe, metot);
 
                 sonuc.Segmentler.Add(new HacimSegmenti
                 {

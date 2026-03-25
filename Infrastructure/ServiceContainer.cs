@@ -57,6 +57,11 @@ namespace Metraj.Infrastructure
             services.AddTransient<IExcelExportService, ExcelExportService>();
             services.AddSingleton<ICivil3dService, Civil3dService>();
 
+            // Yol Metraj services
+            services.AddTransient<IKatmanEslestirmeService, KatmanEslestirmeService>();
+            services.AddTransient<IYolKesitService, YolKesitService>();
+            services.AddTransient<IYolKubajService, YolKubajService>();
+
             // ViewModels - singleton (UI state persists)
             services.AddSingleton<MainViewModel>();
             services.AddSingleton<UzunlukViewModel>();
@@ -65,6 +70,7 @@ namespace Metraj.Infrastructure
             services.AddSingleton<ToplamaViewModel>();
             services.AddSingleton<AyarlarViewModel>();
             services.AddSingleton<EnKesitAlanViewModel>();
+            services.AddSingleton<YolMetrajViewModel>();
         }
 
         public static T GetService<T>() where T : class

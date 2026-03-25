@@ -37,4 +37,12 @@ namespace Metraj.Models
         Virgul,
         Otomatik
     }
+
+    public enum MalzemeKategorisi
+    {
+        Ustyapi,        // Aşınma, Binder, Bitümlü Temel
+        Alttemel,       // Plentmiks, Kırmataş, Stabilize
+        ToprakIsleri,   // Kazı, Dolgu, Şev
+        Ozel            // Kullanıcı tanımlı (Banket, Hendek vb.)
+    }
 }

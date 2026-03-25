@@ -17,6 +17,11 @@
   <ItemGroup>
     <Compile Include="..\Models\Enums.cs" Link="LinkedModels\Enums.cs" />
     <Compile Include="..\Models\BrucknerNoktasi.cs" Link="LinkedModels\BrucknerNoktasi.cs" />
+    <Compile Include="..\Models\KatmanAlanBilgisi.cs" Link="LinkedModels\KatmanAlanBilgisi.cs" />
+    <Compile Include="..\Models\KatmanEslestirme.cs" Link="LinkedModels\KatmanEslestirme.cs" />
+    <Compile Include="..\Models\YolKesitVerisi.cs" Link="LinkedModels\YolKesitVerisi.cs" />
+    <Compile Include="..\Models\YolKubajSonucu.cs" Link="LinkedModels\YolKubajSonucu.cs" />
     <Compile Include="..\Services\NumberParserHelper.cs" Link="LinkedServices\NumberParserHelper.cs" />
+    <Compile Include="..\Services\HacimFormulleri.cs" Link="LinkedServices\HacimFormulleri.cs" />
   </ItemGroup>
 </Project>

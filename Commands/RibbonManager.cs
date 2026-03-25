@@ -54,6 +54,7 @@ namespace Metraj.Commands
 
             AddOlcumPanel(tab);
             AddHesaplamaPanel(tab);
+            AddYolMetrajPanel(tab);
             AddAraclarPanel(tab);
 
             tab.IsActive = true;
@@ -86,6 +87,16 @@ namespace Metraj.Commands
                 "Kübaj Hesabı", "Hacim hesaplama panelini açar"));
             source.Items.Add(CreateButton("Topla", "T", Color.FromRgb(0xFF, 0xA7, 0x26), "METRAJTOPLA",
                 "Metin Toplama", "Seçili text nesnelerindeki sayıları toplar"));
+        }
+
+        private static void AddYolMetrajPanel(RibbonTab tab)
+        {
+            var source = new RibbonPanelSource { Title = "Yol Metraj" };
+            var panel = new RibbonPanel { Source = source };
+            tab.Panels.Add(panel);
+
+            source.Items.Add(CreateButton("Yol\nMetraj", "YM", Color.FromRgb(0xE8, 0x59, 0x3C), "YOLMETRAJ",
+                "Yol Metraj", "Yol en kesitlerinden kaz\u0131-dolgu k\u00FCbaj hesab\u0131"));
         }
 
         private static void AddAraclarPanel(RibbonTab tab)

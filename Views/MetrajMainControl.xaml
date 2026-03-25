@@ -51,6 +51,9 @@
             <TabItem Header="Toplama">
                 <local:ToplamaControl x:Name="ToplamaTab"/>
             </TabItem>
+            <TabItem Header="Yol Metraj">
+                <local:YolMetrajControl x:Name="YolMetrajTab"/>
+            </TabItem>
             <TabItem Header="Ayarlar">
                 <local:AyarlarControl x:Name="AyarlarTab"/>
             </TabItem>

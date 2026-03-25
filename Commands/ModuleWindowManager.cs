@@ -43,6 +43,7 @@ namespace Metraj.Commands
             _mainControl.ToplamaTab.DataContext = ServiceContainer.GetRequiredService<ToplamaViewModel>();
             _mainControl.EnKesitTab.DataContext = ServiceContainer.GetRequiredService<EnKesitAlanViewModel>();
             _mainControl.AyarlarTab.DataContext = ServiceContainer.GetRequiredService<AyarlarViewModel>();
+            _mainControl.YolMetrajTab.DataContext = ServiceContainer.GetRequiredService<YolMetrajViewModel>();
 
             _mainWindow = new Window
             {
