@@ -23,9 +23,9 @@
                 <Style TargetType="TabItem">
                     <Setter Property="Background" Value="#FF2D2D44"/>
                     <Setter Property="Foreground" Value="#FF8888AA"/>
-                    <Setter Property="Padding" Value="12,5"/>
+                    <Setter Property="Padding" Value="6,4"/>
                     <Setter Property="FontFamily" Value="Segoe UI"/>
-                    <Setter Property="FontSize" Value="11"/>
+                    <Setter Property="FontSize" Value="10"/>
                     <Style.Triggers>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter Property="Background" Value="#FF3D3D5C"/>
@@ -35,6 +35,11 @@
                     </Style.Triggers>
                 </Style>
             </TabControl.Resources>
+            <TabControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <UniformGrid Rows="1"/>
+                </ItemsPanelTemplate>
+            </TabControl.ItemsPanel>
 
             <TabItem Header="Uzunluk">
                 <local:UzunlukControl x:Name="UzunlukTab"/>

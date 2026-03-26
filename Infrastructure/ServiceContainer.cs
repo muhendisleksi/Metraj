@@ -59,6 +59,8 @@ namespace Metraj.Infrastructure
 
             // Yol Metraj services
             services.AddTransient<IKatmanEslestirmeService, KatmanEslestirmeService>();
+            services.AddSingleton<IMalzemeHatchAyarService, MalzemeHatchAyarService>();
+            services.AddTransient<IHatchOlusturmaService, HatchOlusturmaService>();
             services.AddTransient<IYolKesitService, YolKesitService>();
             services.AddTransient<IYolKubajService, YolKubajService>();
 

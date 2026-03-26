@@ -18,5 +18,6 @@ namespace Metraj.Infrastructure.AutoCAD
         void WriteMessage(string message);
         void WriteMessage(string format, params object[] args);
         void SetWorldUCS();
+        PromptPointResult GetPointWithKeywords(string message, string[] keywords);
     }
 }

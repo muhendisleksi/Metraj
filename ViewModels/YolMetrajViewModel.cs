@@ -2,154 +2,296 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Windows.Input;
 using Metraj.Infrastructure;
 using Metraj.Models;
 using Metraj.Services;
 using Metraj.Services.Interfaces;
+using Newtonsoft.Json;
 
 namespace Metraj.ViewModels
 {
     public class YolMetrajViewModel : ViewModelBase
     {
         private HacimMetodu _seciliMetot = HacimMetodu.OrtalamaAlan;
-        private string _durumMesaji = "Kesit eklemek i\u00E7in 'Kesit Ekle' butonuna t\u0131klay\u0131n.";
-        private YolKubajSonucu _kubajSonucu;
-        private YolKesitVerisi _seciliKesit;
+        private string _durumMesaji = "Kolon ekleyip istasyonlar\u0131 girin.";
+        private YolKolonu _seciliKolon;
+        private YolKesitVerisi _seciliIstasyon;
+        private int _kolonSayaci = 0;
 
-        public ObservableCollection<YolKesitVerisi> Kesitler { get; }
-            = new ObservableCollection<YolKesitVerisi>();
+        public ObservableCollection<YolKolonu> Kolonlar { get; } = new ObservableCollection<YolKolonu>();
+        public ObservableCollection<YolKesitVerisi> SeciliKolonIstasyonlari { get; } = new ObservableCollection<YolKesitVerisi>();
+        public ObservableCollection<KatmanAlanBilgisi> SeciliIstasyonKatmanlari { get; } = new ObservableCollection<KatmanAlanBilgisi>();
+        public ObservableCollection<MalzemeHacimOzeti> MalzemeOzetleri { get; } = new ObservableCollection<MalzemeHacimOzeti>();
 
-        public ObservableCollection<KatmanAlanBilgisi> SeciliKesitKatmanlari { get; }
-            = new ObservableCollection<KatmanAlanBilgisi>();
+        public HacimMetodu SeciliMetot { get => _seciliMetot; set => SetProperty(ref _seciliMetot, value); }
+        public string DurumMesaji { get => _durumMesaji; set => SetProperty(ref _durumMesaji, value); }
 
-        public ObservableCollection<MalzemeHacimOzeti> MalzemeOzetleri { get; }
-            = new ObservableCollection<MalzemeHacimOzeti>();
-
-        public HacimMetodu SeciliMetot
+        public YolKolonu SeciliKolon
         {
-            get => _seciliMetot;
-            set => SetProperty(ref _seciliMetot, value);
+            get => _seciliKolon;
+            set { if (SetProperty(ref _seciliKolon, value)) SeciliKolonDegisti(); }
         }
 
-        public string DurumMesaji
+        public YolKesitVerisi SeciliIstasyon
         {
-            get => _durumMesaji;
-            set => SetProperty(ref _durumMesaji, value);
+            get => _seciliIstasyon;
+            set { if (SetProperty(ref _seciliIstasyon, value)) SeciliIstasyonDegisti(); }
         }
 
-        public YolKubajSonucu KubajSonucu
-        {
-            get => _kubajSonucu;
-            set
-            {
-                if (SetProperty(ref _kubajSonucu, value))
-                    OnPropertiesChanged("ToplamKaziHacmi", "ToplamDolguHacmi", "NetHacim");
-            }
-        }
+        public double ToplamKaziHacmi => _seciliKolon?.KubajSonucu?.ToplamKaziHacmi ?? 0;
+        public double ToplamDolguHacmi => _seciliKolon?.KubajSonucu?.ToplamDolguHacmi ?? 0;
+        public double NetHacim => _seciliKolon?.KubajSonucu?.NetHacim ?? 0;
 
-        public YolKesitVerisi SeciliKesit
-        {
-            get => _seciliKesit;
-            set
-            {
-                if (SetProperty(ref _seciliKesit, value))
-                    SeciliKesitDegisti();
-            }
-        }
-
-        public double ToplamKaziHacmi => _kubajSonucu?.ToplamKaziHacmi ?? 0;
-        public double ToplamDolguHacmi => _kubajSonucu?.ToplamDolguHacmi ?? 0;
-        public double NetHacim => _kubajSonucu?.NetHacim ?? 0;
-
-        public ICommand KesitEkleCommand { get; }
-        public ICommand KesitSilCommand { get; }
+        public ICommand KolonEkleCommand { get; }
+        public ICommand KolonSilCommand { get; }
+        public ICommand IstasyonEkleCommand { get; }
+        public ICommand IstasyonSilCommand { get; }
+        public ICommand KalemEkleCommand { get; }
         public ICommand HesaplaCommand { get; }
         public ICommand TemizleCommand { get; }
         public ICommand ExcelAktarCommand { get; }
+        public ICommand TumHatchTemizleCommand { get; }
+        public ICommand KaydetCommand { get; }
+        public ICommand YukleCommand { get; }
 
         public YolMetrajViewModel()
         {
-            KesitEkleCommand = new RelayCommand(KesitEkle);
-            KesitSilCommand = new RelayCommand(KesitSil, () => SeciliKesit != null);
-            HesaplaCommand = new RelayCommand(Hesapla, () => Kesitler.Count >= 2);
+            KolonEkleCommand = new RelayCommand(KolonEkle);
+            KolonSilCommand = new RelayCommand(KolonSil, () => SeciliKolon != null);
+            IstasyonEkleCommand = new RelayCommand(IstasyonEkle, () => SeciliKolon != null);
+            IstasyonSilCommand = new RelayCommand(IstasyonSil, () => SeciliIstasyon != null);
+            KalemEkleCommand = new RelayCommand(KalemEkle, () => SeciliIstasyon != null);
+            HesaplaCommand = new RelayCommand(Hesapla, () => SeciliKolon != null && SeciliKolon.Istasyonlar.Count >= 2);
             TemizleCommand = new RelayCommand(Temizle);
-            ExcelAktarCommand = new RelayCommand(ExcelAktar, () => Kesitler.Count > 0);
+            ExcelAktarCommand = new RelayCommand(ExcelAktar, () => Kolonlar.Count > 0);
+            TumHatchTemizleCommand = new RelayCommand(TumHatchTemizle);
+            KaydetCommand = new RelayCommand(Kaydet, () => Kolonlar.Count > 0);
+            YukleCommand = new RelayCommand(Yukle);
         }
 
-        private void KesitEkle()
+        private void KolonEkle()
         {
+            var kesitService = ServiceContainer.GetRequiredService<IYolKesitService>();
+            string kolonHarfi = kesitService.KolonHarfiUret(_kolonSayaci);
+            var kolon = new YolKolonu { KolonHarfi = kolonHarfi, Aciklama = $"G\u00FCzergah {kolonHarfi}" };
+            Kolonlar.Add(kolon);
+            SeciliKolon = kolon;
+            _kolonSayaci++;
+            DurumMesaji = $"Kolon {kolonHarfi} eklendi. '\u0130stasyon Ekle' ile istasyon girin.";
+        }
+
+        private void KolonSil()
+        {
+            if (SeciliKolon == null) return;
+            Kolonlar.Remove(SeciliKolon);
+            SeciliKolon = Kolonlar.Count > 0 ? Kolonlar[Kolonlar.Count - 1] : null;
+            DurumMesaji = $"{Kolonlar.Count} kolon mevcut.";
+        }
+
+        private void IstasyonEkle()
+        {
+            if (SeciliKolon == null) { DurumMesaji = "\u00D6nce kolon ekleyin."; return; }
+
             try
             {
                 var kesitService = ServiceContainer.GetRequiredService<IYolKesitService>();
-                var kesit = kesitService.TekKesitOku();
+                var kesit = kesitService.TiklaIsaretleKesitOku(SeciliKolon.KolonHarfi);
+                if (kesit == null) { DurumMesaji = "\u0130ptal edildi."; return; }
+                if (kesit.KatmanAlanlari.Count == 0) { DurumMesaji = "Alan i\u015Faretlenmedi."; return; }
 
-                if (kesit == null)
+                var mevcut = SeciliKolon.Istasyonlar.FirstOrDefault(i => Math.Abs(i.Istasyon - kesit.Istasyon) < 0.01);
+                if (mevcut != null)
                 {
-                    DurumMesaji = "\u0130\u015Flem iptal edildi.";
-                    return;
+                    BirlesimYap(mevcut, kesit.KatmanAlanlari);
+                    SeciliKolonDegisti();
+                    SeciliIstasyon = mevcut;
+                }
+                else
+                {
+                    SeciliKolon.Istasyonlar.Add(kesit);
+                    SeciliKolonDegisti();
+                    SeciliIstasyon = kesit;
                 }
 
-                if (kesit.KatmanAlanlari.Count == 0)
-                {
-                    DurumMesaji = "Kesitte hi\u00E7bir katman alan\u0131 bulunamad\u0131.";
-                    return;
-                }
-
-                Kesitler.Add(kesit);
-                DurumMesaji = $"Kesit eklendi: Km {kesit.IstasyonMetni}, {kesit.KatmanAlanlari.Count} katman";
+                var sonIst = mevcut ?? kesit;
+                DurumMesaji = $"Km {sonIst.IstasyonMetni}: {sonIst.KatmanAlanlari.Count} kalem";
             }
             catch (System.Exception ex)
             {
                 DurumMesaji = "Hata: " + ex.Message;
-                LoggingService.Error("Kesit ekleme hatas\u0131", ex);
+                LoggingService.Error("\u0130stasyon ekleme hatas\u0131", ex);
             }
         }
 
-        private void KesitSil()
+        private void KalemEkle()
         {
-            if (SeciliKesit == null) return;
-            Kesitler.Remove(SeciliKesit);
-            SeciliKesit = null;
-            DurumMesaji = $"{Kesitler.Count} kesit mevcut.";
+            if (SeciliKolon == null || SeciliIstasyon == null)
+            {
+                DurumMesaji = "\u00D6nce istasyon se\u00E7in.";
+                return;
+            }
+
+            try
+            {
+                var kesitService = ServiceContainer.GetRequiredService<IYolKesitService>();
+                var yeniKalemler = kesitService.KalemEkle(SeciliKolon.KolonHarfi);
+                if (yeniKalemler == null || yeniKalemler.Count == 0)
+                {
+                    DurumMesaji = "Kalem eklenmedi.";
+                    return;
+                }
+
+                BirlesimYap(SeciliIstasyon, yeniKalemler);
+                SeciliKolonDegisti();
+                SeciliIstasyon = SeciliIstasyon; // detay\u0131 yenile
+                SeciliIstasyonDegisti();
+                DurumMesaji = $"Km {SeciliIstasyon.IstasyonMetni}: {SeciliIstasyon.KatmanAlanlari.Count} kalem";
+            }
+            catch (System.Exception ex)
+            {
+                DurumMesaji = "Hata: " + ex.Message;
+                LoggingService.Error("Kalem ekleme hatas\u0131", ex);
+            }
+        }
+
+        private void BirlesimYap(YolKesitVerisi hedef, List<KatmanAlanBilgisi> yeniKalemler)
+        {
+            foreach (var yeni in yeniKalemler)
+            {
+                var mevcut = hedef.KatmanAlanlari.FirstOrDefault(k =>
+                    k.MalzemeAdi.Equals(yeni.MalzemeAdi, StringComparison.OrdinalIgnoreCase));
+                if (mevcut != null)
+                    mevcut.Alan += yeni.Alan;
+                else
+                    hedef.KatmanAlanlari.Add(yeni);
+            }
+            hedef.ToplamKaziAlani = hedef.KatmanAlanlari
+                .Where(k => k.MalzemeAdi.Equals("Yarma", StringComparison.OrdinalIgnoreCase)).Sum(k => k.Alan);
+            hedef.ToplamDolguAlani = hedef.KatmanAlanlari
+                .Where(k => k.MalzemeAdi.Equals("Dolgu", StringComparison.OrdinalIgnoreCase)).Sum(k => k.Alan);
+        }
+
+        private void IstasyonSil()
+        {
+            if (SeciliKolon == null || SeciliIstasyon == null) return;
+            SeciliKolon.Istasyonlar.Remove(SeciliIstasyon);
+            SeciliIstasyon = null;
+            SeciliKolonDegisti();
         }
 
         private void Hesapla()
         {
+            if (SeciliKolon == null || SeciliKolon.Istasyonlar.Count < 2)
+            { DurumMesaji = "En az 2 istasyon gerekli."; return; }
+
             try
             {
-                if (Kesitler.Count < 2)
-                {
-                    DurumMesaji = "En az 2 kesit gerekli.";
-                    return;
-                }
-
                 var kubajService = ServiceContainer.GetRequiredService<IYolKubajService>();
-                KubajSonucu = kubajService.KubajHesapla(
-                    new System.Collections.Generic.List<YolKesitVerisi>(Kesitler), SeciliMetot);
-
+                SeciliKolon.KubajSonucu = kubajService.KubajHesapla(SeciliKolon.Istasyonlar, SeciliMetot);
                 MalzemeOzetleri.Clear();
-                foreach (var ozet in KubajSonucu.MalzemeOzetleri)
+                foreach (var ozet in SeciliKolon.KubajSonucu.MalzemeOzetleri)
                     MalzemeOzetleri.Add(ozet);
-
-                DurumMesaji = $"K\u00FCbaj hesapland\u0131: {Kesitler.Count} kesit, {MalzemeOzetleri.Count} malzeme, " +
-                              $"kaz\u0131: {ToplamKaziHacmi:F2} m\u00B3, dolgu: {ToplamDolguHacmi:F2} m\u00B3";
+                OnPropertiesChanged("ToplamKaziHacmi", "ToplamDolguHacmi", "NetHacim");
+                DurumMesaji = $"K\u00FCbaj: kaz\u0131={ToplamKaziHacmi:F2} m\u00B3, dolgu={ToplamDolguHacmi:F2} m\u00B3";
             }
             catch (System.Exception ex)
             {
                 DurumMesaji = "Hesaplama hatas\u0131: " + ex.Message;
-                LoggingService.Error("Yol k\u00FCbaj hesaplama hatas\u0131", ex);
+                LoggingService.Error("K\u00FCbaj hatas\u0131", ex);
             }
         }
 
         private void Temizle()
         {
-            Kesitler.Clear();
-            SeciliKesitKatmanlari.Clear();
+            try { ServiceContainer.GetRequiredService<IHatchOlusturmaService>().TumHatchTemizle(); } catch { }
+            Kolonlar.Clear();
+            SeciliKolonIstasyonlari.Clear();
+            SeciliIstasyonKatmanlari.Clear();
             MalzemeOzetleri.Clear();
-            KubajSonucu = null;
-            SeciliKesit = null;
-            DurumMesaji = "Kesit eklemek i\u00E7in 'Kesit Ekle' butonuna t\u0131klay\u0131n.";
+            SeciliKolon = null;
+            SeciliIstasyon = null;
+            _kolonSayaci = 0;
+            OnPropertiesChanged("ToplamKaziHacmi", "ToplamDolguHacmi", "NetHacim");
+            DurumMesaji = "Temizlendi.";
+        }
+
+        private void TumHatchTemizle()
+        {
+            try
+            {
+                ServiceContainer.GetRequiredService<IHatchOlusturmaService>().TumHatchTemizle();
+                DurumMesaji = "Hatch ve etiketler silindi.";
+            }
+            catch (System.Exception ex) { DurumMesaji = "Hata: " + ex.Message; }
+        }
+
+        // === KAYDET / Y\u00DCKLE ===
+
+        private void Kaydet()
+        {
+            try
+            {
+                var veri = new YolMetrajKayitVerisi
+                {
+                    Kolonlar = Kolonlar.ToList(),
+                    KolonSayaci = _kolonSayaci,
+                    KayitTarihi = DateTime.Now
+                };
+
+                var dosyaYolu = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                    "YolMetraj_Kayit.json");
+
+                string json = JsonConvert.SerializeObject(veri, Formatting.Indented);
+                File.WriteAllText(dosyaYolu, json);
+                DurumMesaji = "Kaydedildi: " + dosyaYolu;
+                LoggingService.Info("Yol metraj kaydedildi: {Dosya}", dosyaYolu);
+            }
+            catch (System.Exception ex)
+            {
+                DurumMesaji = "Kaydetme hatas\u0131: " + ex.Message;
+                LoggingService.Error("Kaydetme hatas\u0131", ex);
+            }
+        }
+
+        private void Yukle()
+        {
+            try
+            {
+                var dosyaYolu = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                    "YolMetraj_Kayit.json");
+
+                if (!File.Exists(dosyaYolu))
+                {
+                    DurumMesaji = "Kay\u0131t dosyas\u0131 bulunamad\u0131: " + dosyaYolu;
+                    return;
+                }
+
+                string json = File.ReadAllText(dosyaYolu);
+                var veri = JsonConvert.DeserializeObject<YolMetrajKayitVerisi>(json);
+                if (veri == null || veri.Kolonlar == null)
+                {
+                    DurumMesaji = "Ge\u00E7ersiz kay\u0131t dosyas\u0131.";
+                    return;
+                }
+
+                Kolonlar.Clear();
+                foreach (var kolon in veri.Kolonlar)
+                    Kolonlar.Add(kolon);
+
+                _kolonSayaci = veri.KolonSayaci;
+                SeciliKolon = Kolonlar.Count > 0 ? Kolonlar[0] : null;
+                DurumMesaji = $"Y\u00FCklendi: {Kolonlar.Count} kolon, {Kolonlar.Sum(k => k.Istasyonlar.Count)} istasyon";
+                LoggingService.Info("Yol metraj y\u00FCklendi: {Dosya}", dosyaYolu);
+            }
+            catch (System.Exception ex)
+            {
+                DurumMesaji = "Y\u00FCkleme hatas\u0131: " + ex.Message;
+                LoggingService.Error("Y\u00FCkleme hatas\u0131", ex);
+            }
         }
 
         private void ExcelAktar()
@@ -157,16 +299,12 @@ namespace Metraj.ViewModels
             try
             {
                 var excelService = ServiceContainer.GetRequiredService<IExcelExportService>() as ExcelExportService;
-                if (excelService == null)
-                {
-                    DurumMesaji = "Excel servis hatas\u0131.";
-                    return;
-                }
+                if (excelService == null) { DurumMesaji = "Excel servis hatas\u0131."; return; }
 
                 var rapor = new YolMetrajRaporu
                 {
-                    Kesitler = new List<YolKesitVerisi>(Kesitler),
-                    KubajSonucu = _kubajSonucu,
+                    Kesitler = Kolonlar.SelectMany(k => k.Istasyonlar).ToList(),
+                    KubajSonucu = SeciliKolon?.KubajSonucu,
                     ProjeAdi = "Yol Metraj",
                     OlusturmaTarihi = DateTime.Now
                 };
@@ -176,26 +314,44 @@ namespace Metraj.ViewModels
                     "YolMetraj_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".xlsx");
 
                 var result = excelService.YolMetrajExport(rapor, dosyaYolu);
-
-                if (result.Basarili)
-                    DurumMesaji = "Excel olu\u015Fturuldu: " + result.DosyaYolu;
-                else
-                    DurumMesaji = "Excel hatas\u0131: " + result.HataMesaji;
+                DurumMesaji = result.Basarili ? "Excel: " + result.DosyaYolu : "Excel hatas\u0131: " + result.HataMesaji;
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "Excel export hatas\u0131: " + ex.Message;
-                LoggingService.Error("Yol metraj Excel export hatas\u0131", ex);
+                DurumMesaji = "Excel hatas\u0131: " + ex.Message;
+                LoggingService.Error("Excel hatas\u0131", ex);
             }
         }
 
-        private void SeciliKesitDegisti()
+        private void SeciliKolonDegisti()
         {
-            SeciliKesitKatmanlari.Clear();
-            if (_seciliKesit == null) return;
-
-            foreach (var katman in _seciliKesit.KatmanAlanlari)
-                SeciliKesitKatmanlari.Add(katman);
+            SeciliKolonIstasyonlari.Clear();
+            MalzemeOzetleri.Clear();
+            if (_seciliKolon != null)
+            {
+                foreach (var ist in _seciliKolon.Istasyonlar)
+                    SeciliKolonIstasyonlari.Add(ist);
+                if (_seciliKolon.KubajSonucu != null)
+                    foreach (var ozet in _seciliKolon.KubajSonucu.MalzemeOzetleri)
+                        MalzemeOzetleri.Add(ozet);
+            }
+            OnPropertiesChanged("ToplamKaziHacmi", "ToplamDolguHacmi", "NetHacim");
+            SeciliIstasyon = null;
         }
+
+        private void SeciliIstasyonDegisti()
+        {
+            SeciliIstasyonKatmanlari.Clear();
+            if (_seciliIstasyon == null) return;
+            foreach (var katman in _seciliIstasyon.KatmanAlanlari)
+                SeciliIstasyonKatmanlari.Add(katman);
+        }
+    }
+
+    public class YolMetrajKayitVerisi
+    {
+        public List<YolKolonu> Kolonlar { get; set; } = new List<YolKolonu>();
+        public int KolonSayaci { get; set; }
+        public DateTime KayitTarihi { get; set; }
     }
 }

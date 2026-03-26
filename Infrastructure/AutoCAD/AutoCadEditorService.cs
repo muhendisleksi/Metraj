@@ -165,5 +165,18 @@ namespace Metraj.Infrastructure.AutoCAD
             var ed = GetEditor();
             ed.CurrentUserCoordinateSystem = Matrix3d.Identity;
         }
+
+        public PromptPointResult GetPointWithKeywords(string message, string[] keywords)
+        {
+            var ed = GetEditor();
+            var ppo = new PromptPointOptions(message);
+            ppo.AllowNone = true;
+            ppo.AppendKeywordsToMessage = true;
+
+            foreach (var kw in keywords)
+                ppo.Keywords.Add(kw);
+
+            return ed.GetPoint(ppo);
+        }
     }
 }

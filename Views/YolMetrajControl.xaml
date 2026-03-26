@@ -2,38 +2,81 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="#FF1E1E2E">
+    <UserControl.Resources>
+        <Style x:Key="MetrajButton" TargetType="Button">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Padding" Value="6,3"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="2"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
     <Grid Margin="5">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*" MinHeight="80"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="120"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*" MinHeight="60"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="100"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*" MinHeight="50"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Row 0: Buton çubuğu -->
-        <WrapPanel Grid.Row="0" Margin="0,0,0,5">
-            <Button Content="Kesit Ekle" Command="{Binding KesitEkleCommand}"
-                    Padding="8,4" Margin="0,0,5,0" Background="#FF0078D4" Foreground="White"
-                    FontFamily="Segoe UI" FontSize="11" BorderThickness="0" Cursor="Hand"/>
-            <Button Content="Kesit Sil" Command="{Binding KesitSilCommand}"
-                    Padding="8,4" Margin="0,0,5,0" Background="#FF4D4D6C" Foreground="White"
-                    FontFamily="Segoe UI" FontSize="11" BorderThickness="0" Cursor="Hand"/>
+        <!-- Row 0: Butonlar -->
+        <WrapPanel Grid.Row="0" Margin="0,0,0,3">
+            <Button Content="Kolon Ekle" Command="{Binding KolonEkleCommand}"
+                    Style="{StaticResource MetrajButton}" Margin="0,0,3,2" Background="#FF0078D4"/>
+            <Button Content="Kolon Sil" Command="{Binding KolonSilCommand}"
+                    Style="{StaticResource MetrajButton}" Margin="0,0,3,2" Background="#FF4D4D6C"/>
+            <Button Content="&#x0130;st. Ekle" Command="{Binding IstasyonEkleCommand}"
+                    Style="{StaticResource MetrajButton}" Margin="0,0,3,2" Background="#FF107C10"/>
+            <Button Content="&#x0130;st. Sil" Command="{Binding IstasyonSilCommand}"
+                    Style="{StaticResource MetrajButton}" Margin="0,0,3,2" Background="#FF4D4D6C"/>
+            <Button Content="Kalem Ekle" Command="{Binding KalemEkleCommand}"
+                    Style="{StaticResource MetrajButton}" Margin="0,0,3,2" Background="#FF6A1B9A"
+                    ToolTip="Se&#x00E7;ili istasyona yeni kalem ekle (istasyon sormadan)"/>
+            <Button Content="Hatch Temizle" Command="{Binding TumHatchTemizleCommand}"
+                    Style="{StaticResource MetrajButton}" Margin="0,0,3,2" Background="#FFEF5350"/>
+            <Button Content="Kaydet" Command="{Binding KaydetCommand}"
+                    Style="{StaticResource MetrajButton}" Margin="0,0,3,2" Background="#FF455A64"/>
+            <Button Content="Y&#x00FC;kle" Command="{Binding YukleCommand}"
+                    Style="{StaticResource MetrajButton}" Margin="0,0,0,2" Background="#FF455A64"/>
         </WrapPanel>
 
-        <!-- Row 1: Metot seçimi + Hesapla -->
-        <DockPanel Grid.Row="1" Margin="0,0,0,5">
+        <!-- Row 1: Kolon seçimi + Metot + Hesapla -->
+        <DockPanel Grid.Row="1" Margin="0,0,0,3">
             <Button DockPanel.Dock="Right" Content="Hesapla" Command="{Binding HesaplaCommand}"
-                    Padding="12,4" Background="#FF107C10" Foreground="White"
-                    FontFamily="Segoe UI" FontSize="11" FontWeight="SemiBold" BorderThickness="0" Cursor="Hand"/>
+                    Style="{StaticResource MetrajButton}" Padding="10,3" Background="#FF107C10" FontWeight="SemiBold"/>
             <StackPanel Orientation="Horizontal">
-                <TextBlock Text="Metot:" Foreground="#FFDCDCDC" FontFamily="Segoe UI" FontSize="11"
-                           VerticalAlignment="Center" Margin="0,0,5,0"/>
-                <ComboBox Width="130" FontSize="11" SelectedIndex="0" x:Name="MetotCombo"
+                <TextBlock Text="Kolon:" Foreground="#FFDCDCDC" FontFamily="Segoe UI" FontSize="10"
+                           VerticalAlignment="Center" Margin="0,0,3,0"/>
+                <ComboBox ItemsSource="{Binding Kolonlar}" SelectedItem="{Binding SeciliKolon}"
+                          DisplayMemberPath="KolonHarfi" Width="50" FontSize="10" Margin="0,0,8,0"/>
+                <TextBlock Text="Metot:" Foreground="#FFDCDCDC" FontFamily="Segoe UI" FontSize="10"
+                           VerticalAlignment="Center" Margin="0,0,3,0"/>
+                <ComboBox Width="110" FontSize="10" SelectedIndex="0" x:Name="MetotCombo"
                           SelectionChanged="MetotCombo_SelectionChanged">
                     <ComboBoxItem Content="Ortalama Alan" Tag="OrtalamaAlan"/>
                     <ComboBoxItem Content="Prismoidal" Tag="Prismoidal"/>
@@ -41,67 +84,47 @@
             </StackPanel>
         </DockPanel>
 
-        <!-- Row 2: Kesit listesi DataGrid -->
-        <DataGrid Grid.Row="2" ItemsSource="{Binding Kesitler}" SelectedItem="{Binding SeciliKesit}"
+        <!-- Row 2: İstasyonlar başlık -->
+        <TextBlock Grid.Row="2" Text="&#x0130;stasyonlar" Foreground="#FF4EC9B0"
+                   FontFamily="Segoe UI" FontSize="10" FontWeight="SemiBold" Margin="0,2,0,2"/>
+
+        <!-- Row 3: İstasyon listesi (sütunlar code-behind'da dinamik oluşturulur) -->
+        <DataGrid Grid.Row="3" x:Name="IstasyonlarGrid"
+                  ItemsSource="{Binding SeciliKolonIstasyonlari}"
+                  SelectedItem="{Binding SeciliIstasyon}"
                   AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
                   Background="#FF2D2D44" Foreground="#FFDCDCDC" BorderBrush="#FF3D3D5C"
                   GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#FF3D3D5C"
                   RowBackground="#FF2D2D44" AlternatingRowBackground="#FF252540"
-                  FontSize="11" HeadersVisibility="Column" ColumnHeaderHeight="26" RowHeight="22">
+                  FontSize="10" HeadersVisibility="Column" ColumnHeaderHeight="24" RowHeight="20">
             <DataGrid.ColumnHeaderStyle>
                 <Style TargetType="DataGridColumnHeader">
                     <Setter Property="Background" Value="#FF3D3D5C"/>
                     <Setter Property="Foreground" Value="#FFDCDCDC"/>
-                    <Setter Property="Padding" Value="5,2"/>
+                    <Setter Property="Padding" Value="4,2"/>
                     <Setter Property="FontWeight" Value="SemiBold"/>
                     <Setter Property="BorderBrush" Value="#FF4D4D6C"/>
                     <Setter Property="BorderThickness" Value="0,0,1,1"/>
                 </Style>
             </DataGrid.ColumnHeaderStyle>
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="&#x0130;stasyon" Binding="{Binding IstasyonMetni}" Width="80"/>
-                <DataGridTextColumn Header="Kaz&#x0131; (m&#x00B2;)" Binding="{Binding ToplamKaziAlani, StringFormat=F2}" Width="75">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                            <Setter Property="Padding" Value="0,0,5,0"/>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-                <DataGridTextColumn Header="Dolgu (m&#x00B2;)" Binding="{Binding ToplamDolguAlani, StringFormat=F2}" Width="75">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                            <Setter Property="Padding" Value="0,0,5,0"/>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-                <DataGridTextColumn Header="Katman" Binding="{Binding KatmanAlanlari.Count}" Width="*">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="HorizontalAlignment" Value="Center"/>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-            </DataGrid.Columns>
         </DataGrid>
 
-        <!-- Row 3: Seçili kesit detay başlık -->
-        <TextBlock Grid.Row="3" Text="Se&#x00E7;ili Kesit Detay&#x0131;" Foreground="#FF4EC9B0"
-                   FontFamily="Segoe UI" FontSize="11" FontWeight="SemiBold" Margin="0,5,0,3"/>
+        <!-- Row 4: Seçili istasyon detay başlık -->
+        <TextBlock Grid.Row="4" Text="Se&#x00E7;ili &#x0130;stasyon Detay&#x0131;" Foreground="#FF4EC9B0"
+                   FontFamily="Segoe UI" FontSize="10" FontWeight="SemiBold" Margin="0,3,0,2"/>
 
-        <!-- Row 4: Katman detay DataGrid -->
-        <DataGrid Grid.Row="4" ItemsSource="{Binding SeciliKesitKatmanlari}"
+        <!-- Row 5: Katman detay -->
+        <DataGrid Grid.Row="5" ItemsSource="{Binding SeciliIstasyonKatmanlari}"
                   AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
                   Background="#FF2D2D44" Foreground="#FFDCDCDC" BorderBrush="#FF3D3D5C"
                   GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#FF3D3D5C"
                   RowBackground="#FF2D2D44" AlternatingRowBackground="#FF252540"
-                  FontSize="11" HeadersVisibility="Column" ColumnHeaderHeight="26" RowHeight="22">
+                  FontSize="10" HeadersVisibility="Column" ColumnHeaderHeight="24" RowHeight="20">
             <DataGrid.ColumnHeaderStyle>
                 <Style TargetType="DataGridColumnHeader">
                     <Setter Property="Background" Value="#FF3D3D5C"/>
                     <Setter Property="Foreground" Value="#FFDCDCDC"/>
-                    <Setter Property="Padding" Value="5,2"/>
+                    <Setter Property="Padding" Value="4,2"/>
                     <Setter Property="FontWeight" Value="SemiBold"/>
                     <Setter Property="BorderBrush" Value="#FF4D4D6C"/>
                     <Setter Property="BorderThickness" Value="0,0,1,1"/>
@@ -109,34 +132,33 @@
             </DataGrid.ColumnHeaderStyle>
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Malzeme" Binding="{Binding MalzemeAdi}" Width="*"/>
-                <DataGridTextColumn Header="Kategori" Binding="{Binding Kategori}" Width="80"/>
                 <DataGridTextColumn Header="Alan (m&#x00B2;)" Binding="{Binding Alan, StringFormat=F2}" Width="80">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="HorizontalAlignment" Value="Right"/>
-                            <Setter Property="Padding" Value="0,0,5,0"/>
+                            <Setter Property="Padding" Value="0,0,4,0"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
             </DataGrid.Columns>
         </DataGrid>
 
-        <!-- Row 5: Kübaj sonuçları başlık -->
-        <TextBlock Grid.Row="5" Text="K&#x00FC;baj Sonu&#x00E7;lar&#x0131;" Foreground="#FF4EC9B0"
-                   FontFamily="Segoe UI" FontSize="11" FontWeight="SemiBold" Margin="0,5,0,3"/>
+        <!-- Row 6: Kübaj başlık -->
+        <TextBlock Grid.Row="6" Text="K&#x00FC;baj Sonu&#x00E7;lar&#x0131;" Foreground="#FF4EC9B0"
+                   FontFamily="Segoe UI" FontSize="10" FontWeight="SemiBold" Margin="0,3,0,2"/>
 
-        <!-- Row 6: Malzeme özet DataGrid -->
-        <DataGrid Grid.Row="6" ItemsSource="{Binding MalzemeOzetleri}"
+        <!-- Row 7: Kübaj sonuçları -->
+        <DataGrid Grid.Row="7" ItemsSource="{Binding MalzemeOzetleri}"
                   AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
                   Background="#FF2D2D44" Foreground="#FFDCDCDC" BorderBrush="#FF3D3D5C"
                   GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#FF3D3D5C"
                   RowBackground="#FF2D2D44" AlternatingRowBackground="#FF252540"
-                  FontSize="11" HeadersVisibility="Column" ColumnHeaderHeight="26" RowHeight="22">
+                  FontSize="10" HeadersVisibility="Column" ColumnHeaderHeight="24" RowHeight="20">
             <DataGrid.ColumnHeaderStyle>
                 <Style TargetType="DataGridColumnHeader">
                     <Setter Property="Background" Value="#FF3D3D5C"/>
                     <Setter Property="Foreground" Value="#FFDCDCDC"/>
-                    <Setter Property="Padding" Value="5,2"/>
+                    <Setter Property="Padding" Value="4,2"/>
                     <Setter Property="FontWeight" Value="SemiBold"/>
                     <Setter Property="BorderBrush" Value="#FF4D4D6C"/>
                     <Setter Property="BorderThickness" Value="0,0,1,1"/>
@@ -144,12 +166,11 @@
             </DataGrid.ColumnHeaderStyle>
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Malzeme" Binding="{Binding MalzemeAdi}" Width="*"/>
-                <DataGridTextColumn Header="Kategori" Binding="{Binding Kategori}" Width="80"/>
                 <DataGridTextColumn Header="Hacim (m&#x00B3;)" Binding="{Binding ToplamHacim, StringFormat=F2}" Width="90">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="HorizontalAlignment" Value="Right"/>
-                            <Setter Property="Padding" Value="0,0,5,0"/>
+                            <Setter Property="Padding" Value="0,0,4,0"/>
                             <Setter Property="FontWeight" Value="SemiBold"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
@@ -157,8 +178,8 @@
             </DataGrid.Columns>
         </DataGrid>
 
-        <!-- Row 7: Özet border -->
-        <Border Grid.Row="7" Background="#FF3D3D5C" CornerRadius="3" Margin="0,5,0,0" Padding="8,5">
+        <!-- Row 8: Özet -->
+        <Border Grid.Row="8" Background="#FF3D3D5C" CornerRadius="3" Margin="0,3,0,0" Padding="6,4">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -166,33 +187,31 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="Kaz&#x0131;:" Foreground="#FF8888AA" FontFamily="Segoe UI" FontSize="10"/>
+                    <TextBlock Text="Kaz&#x0131;:" Foreground="#FF8888AA" FontFamily="Segoe UI" FontSize="9"/>
                     <TextBlock Text="{Binding ToplamKaziHacmi, StringFormat={}{0:F2} m&#x00B3;}"
-                               Foreground="#FFDCDCDC" FontFamily="Segoe UI" FontSize="12" FontWeight="SemiBold"/>
+                               Foreground="#FFDCDCDC" FontFamily="Segoe UI" FontSize="11" FontWeight="SemiBold"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1">
-                    <TextBlock Text="Dolgu:" Foreground="#FF8888AA" FontFamily="Segoe UI" FontSize="10"/>
+                    <TextBlock Text="Dolgu:" Foreground="#FF8888AA" FontFamily="Segoe UI" FontSize="9"/>
                     <TextBlock Text="{Binding ToplamDolguHacmi, StringFormat={}{0:F2} m&#x00B3;}"
-                               Foreground="#FFDCDCDC" FontFamily="Segoe UI" FontSize="12" FontWeight="SemiBold"/>
+                               Foreground="#FFDCDCDC" FontFamily="Segoe UI" FontSize="11" FontWeight="SemiBold"/>
                 </StackPanel>
                 <StackPanel Grid.Column="2">
-                    <TextBlock Text="Net:" Foreground="#FF8888AA" FontFamily="Segoe UI" FontSize="10"/>
+                    <TextBlock Text="Net:" Foreground="#FF8888AA" FontFamily="Segoe UI" FontSize="9"/>
                     <TextBlock Text="{Binding NetHacim, StringFormat={}{0:F2} m&#x00B3;}"
-                               Foreground="#FF4EC9B0" FontFamily="Segoe UI" FontSize="12" FontWeight="Bold"/>
+                               Foreground="#FF4EC9B0" FontFamily="Segoe UI" FontSize="11" FontWeight="Bold"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Row 8: Excel Aktar + Temizle + durum mesajı -->
-        <DockPanel Grid.Row="8" Margin="0,5,0,0">
+        <!-- Row 9: Alt butonlar + durum -->
+        <DockPanel Grid.Row="9" Margin="0,3,0,0">
             <Button DockPanel.Dock="Right" Content="Temizle" Command="{Binding TemizleCommand}"
-                    Padding="8,4" Margin="5,0,0,0" Background="#FF4D4D6C" Foreground="#FFDCDCDC"
-                    FontFamily="Segoe UI" FontSize="11" BorderThickness="0" Cursor="Hand"/>
+                    Style="{StaticResource MetrajButton}" Margin="4,0,0,0" Background="#FF4D4D6C"/>
             <Button DockPanel.Dock="Right" Content="Excel Aktar" Command="{Binding ExcelAktarCommand}"
-                    Padding="8,4" Background="#FF217A46" Foreground="White"
-                    FontFamily="Segoe UI" FontSize="11" BorderThickness="0" Cursor="Hand"/>
+                    Style="{StaticResource MetrajButton}" Background="#FF217A46"/>
             <TextBlock Text="{Binding DurumMesaji}" Foreground="#FF8888AA" FontFamily="Segoe UI"
-                       FontSize="10" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                       FontSize="9" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
         </DockPanel>
     </Grid>
 </UserControl>

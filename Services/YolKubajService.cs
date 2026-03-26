@@ -73,7 +73,8 @@ namespace Metraj.Services
             // Toplam kazı/dolgu hacmi
             sonuc.ToplamKaziHacmi = sonuc.MalzemeOzetleri
                 .Where(m => m.Kategori == MalzemeKategorisi.ToprakIsleri &&
-                            m.MalzemeAdi.Equals("Kaz\u0131", StringComparison.OrdinalIgnoreCase))
+                            (m.MalzemeAdi.Equals("Kaz\u0131", StringComparison.OrdinalIgnoreCase) ||
+                             m.MalzemeAdi.Equals("Yarma", StringComparison.OrdinalIgnoreCase)))
                 .Sum(m => m.ToplamHacim);
 
             sonuc.ToplamDolguHacmi = sonuc.MalzemeOzetleri

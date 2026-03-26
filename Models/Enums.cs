@@ -38,6 +38,13 @@ namespace Metraj.Models
         Otomatik
     }
 
+    [System.Obsolete("MalzemeAdi string kullan\u0131n. \u00C7oklu malzeme sistemine ge\u00E7ildi.")]
+    public enum AlanTipi
+    {
+        Yarma,
+        Dolgu
+    }
+
     public enum MalzemeKategorisi
     {
         Ustyapi,        // Aşınma, Binder, Bitümlü Temel

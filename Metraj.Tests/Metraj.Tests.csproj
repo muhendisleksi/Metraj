@@ -21,6 +21,8 @@
     <Compile Include="..\Models\KatmanEslestirme.cs" Link="LinkedModels\KatmanEslestirme.cs" />
     <Compile Include="..\Models\YolKesitVerisi.cs" Link="LinkedModels\YolKesitVerisi.cs" />
     <Compile Include="..\Models\YolKubajSonucu.cs" Link="LinkedModels\YolKubajSonucu.cs" />
+    <Compile Include="..\Models\YolKolonu.cs" Link="LinkedModels\YolKolonu.cs" />
+    <Compile Include="..\Models\MalzemeHatchAyari.cs" Link="LinkedModels\MalzemeHatchAyari.cs" />
     <Compile Include="..\Services\NumberParserHelper.cs" Link="LinkedServices\NumberParserHelper.cs" />
     <Compile Include="..\Services\HacimFormulleri.cs" Link="LinkedServices\HacimFormulleri.cs" />
   </ItemGroup>
