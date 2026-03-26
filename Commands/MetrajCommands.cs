@@ -9,6 +9,7 @@ using Metraj.Models;
 using Metraj.Services;
 using Metraj.Services.Interfaces;
 using Metraj.ViewModels;
+using Metraj.Views;
 
 [assembly: CommandClass(typeof(Metraj.Commands.MetrajCommands))]
 [assembly: ExtensionApplication(typeof(Metraj.Commands.MetrajCommands))]
@@ -257,12 +258,164 @@ namespace Metraj.Commands
             }
         }
 
+        [CommandMethod("YOLTABLO")]
+        public static void YolTablo()
+        {
+            if (!_initialized) return;
+            try { _windowManager.Toggle(); }
+            catch (System.Exception ex) { LoggingService.Error("YOLTABLO hatas\u0131", ex); }
+        }
+
+        [CommandMethod("YOLKOLONEKLE")]
+        public static void YolKolonEkle()
+        {
+            if (!_initialized) return;
+            try
+            {
+                var vm = ServiceContainer.GetRequiredService<YolMetrajViewModel>();
+                vm.KolonEkleCommand.Execute(null);
+                var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+                ed?.WriteMessage($"\nKolon eklendi. '\u0130stasyon Ekle' ile devam edin.\n");
+            }
+            catch (System.Exception ex) { LoggingService.Error("YOLKOLONEKLE hatas\u0131", ex); }
+        }
+
+        [CommandMethod("YOLISTASYONEKLE")]
+        public static void YolIstasyonEkle()
+        {
+            if (!_initialized) return;
+            try
+            {
+                var vm = ServiceContainer.GetRequiredService<YolMetrajViewModel>();
+                vm.IstasyonEkleCommand.Execute(null);
+            }
+            catch (System.Exception ex) { LoggingService.Error("YOLISTASYONEKLE hatas\u0131", ex); }
+        }
+
+        [CommandMethod("YOLKALEMEKLE")]
+        public static void YolKalemEkle()
+        {
+            if (!_initialized) return;
+            try
+            {
+                var vm = ServiceContainer.GetRequiredService<YolMetrajViewModel>();
+                vm.KalemEkleCommand.Execute(null);
+            }
+            catch (System.Exception ex) { LoggingService.Error("YOLKALEMEKLE hatas\u0131", ex); }
+        }
+
+        [CommandMethod("YOLHESAPLA")]
+        public static void YolHesapla()
+        {
+            if (!_initialized) return;
+            try
+            {
+                var vm = ServiceContainer.GetRequiredService<YolMetrajViewModel>();
+                vm.HesaplaCommand.Execute(null);
+                var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+                if (vm.SeciliKolon?.KubajSonucu != null)
+                    ed?.WriteMessage($"\nKaz\u0131: {vm.ToplamKaziHacmi:F2} m\u00B3, Dolgu: {vm.ToplamDolguHacmi:F2} m\u00B3, Net: {vm.NetHacim:F2} m\u00B3\n");
+            }
+            catch (System.Exception ex) { LoggingService.Error("YOLHESAPLA hatas\u0131", ex); }
+        }
+
+        [CommandMethod("YOLEXCEL")]
+        public static void YolExcel()
+        {
+            if (!_initialized) return;
+            try
+            {
+                var vm = ServiceContainer.GetRequiredService<YolMetrajViewModel>();
+                vm.ExcelAktarCommand.Execute(null);
+            }
+            catch (System.Exception ex) { LoggingService.Error("YOLEXCEL hatas\u0131", ex); }
+        }
+
+        [CommandMethod("YOLKAYDET")]
+        public static void YolKaydet()
+        {
+            if (!_initialized) return;
+            try
+            {
+                var vm = ServiceContainer.GetRequiredService<YolMetrajViewModel>();
+                vm.KaydetCommand.Execute(null);
+            }
+            catch (System.Exception ex) { LoggingService.Error("YOLKAYDET hatas\u0131", ex); }
+        }
+
+        [CommandMethod("YOLYUKLE")]
+        public static void YolYukle()
+        {
+            if (!_initialized) return;
+            try
+            {
+                var vm = ServiceContainer.GetRequiredService<YolMetrajViewModel>();
+                vm.YukleCommand.Execute(null);
+            }
+            catch (System.Exception ex) { LoggingService.Error("YOLYUKLE hatas\u0131", ex); }
+        }
+
         [CommandMethod("METRAJAYARLAR")]
         public static void ToggleAyarlar()
         {
-            // Panel aciksa Ayarlar sekmesine gec
             var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
             ed?.WriteMessage("\nAyarlar sekmesine gecin.\n");
+        }
+
+        // === Modul Pencere Komutlari ===
+
+        [CommandMethod("METRAJUZUNLUKPANEL")]
+        public static void UzunlukPanel()
+        {
+            if (!_initialized) return;
+            _windowManager.ToggleModul("Uzunluk",
+                new UzunlukControl(),
+                ServiceContainer.GetRequiredService<UzunlukViewModel>());
+        }
+
+        [CommandMethod("METRAJALPANEL")]
+        public static void AlanPanel()
+        {
+            if (!_initialized) return;
+            _windowManager.ToggleModul("Alan",
+                new AlanControl(),
+                ServiceContainer.GetRequiredService<AlanViewModel>());
+        }
+
+        [CommandMethod("METRAJKUBAJPANEL")]
+        public static void KubajPanel()
+        {
+            if (!_initialized) return;
+            _windowManager.ToggleModul("K\u00FCbaj",
+                new HacimControl(),
+                ServiceContainer.GetRequiredService<HacimViewModel>());
+        }
+
+        [CommandMethod("METRAJENKESITPANEL")]
+        public static void EnKesitPanel()
+        {
+            if (!_initialized) return;
+            _windowManager.ToggleModul("En Kesit",
+                new EnKesitAlanControl(),
+                ServiceContainer.GetRequiredService<EnKesitAlanViewModel>());
+        }
+
+        [CommandMethod("METRAJTOPLAMAPANEL")]
+        public static void ToplamaPanel()
+        {
+            if (!_initialized) return;
+            _windowManager.ToggleModul("Toplama",
+                new ToplamaControl(),
+                ServiceContainer.GetRequiredService<ToplamaViewModel>());
+        }
+
+        [CommandMethod("YOLMETRAJPANEL")]
+        public static void YolMetrajPanel()
+        {
+            if (!_initialized) return;
+            _windowManager.ToggleModul("Yol Metraj",
+                new YolMetrajControl(),
+                ServiceContainer.GetRequiredService<YolMetrajViewModel>());
         }
 
         private static Assembly OnAssemblyResolve(object sender, ResolveEventArgs args)

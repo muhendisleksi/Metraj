@@ -52,9 +52,8 @@ namespace Metraj.Commands
 
             ribbon.Tabs.Add(tab);
 
-            AddOlcumPanel(tab);
-            AddHesaplamaPanel(tab);
-            AddYolMetrajPanel(tab);
+            AddAnaPanelGrubu(tab);
+            AddModulPanel(tab);
             AddAraclarPanel(tab);
 
             tab.IsActive = true;
@@ -63,40 +62,58 @@ namespace Metraj.Commands
             LoggingService.Info("Ribbon tab 'Metraj' oluşturuldu");
         }
 
-        private static void AddOlcumPanel(RibbonTab tab)
+        private static void AddAnaPanelGrubu(RibbonTab tab)
         {
-            var source = new RibbonPanelSource { Title = "Ölçüm" };
+            var source = new RibbonPanelSource { Title = "Panel" };
             var panel = new RibbonPanel { Source = source };
             tab.Panels.Add(panel);
 
             source.Items.Add(CreateButton("Metraj\nPaneli", "M", Color.FromRgb(0x00, 0x78, 0xD4), "METRAJ",
-                "Metraj Paneli", "Ana metraj panelini açar/kapatır"));
-            source.Items.Add(CreateButton("Uzunluk", "U", Color.FromRgb(0x00, 0xBC, 0xD4), "METRAJUZUNLUK",
-                "Hızlı Uzunluk", "Seçili nesnelerin toplam uzunluğunu hesaplar"));
-            source.Items.Add(CreateButton("Alan", "A", Color.FromRgb(0x4C, 0xAF, 0x50), "METRAJALAN",
-                "Hızlı Alan", "Seçili kapalı nesnelerin alanını hesaplar"));
+                "Metraj Paneli", "T\u00FCm mod\u00FClleri i\u00E7eren ana paneli a\u00E7ar/kapat\u0131r"));
         }
 
-        private static void AddHesaplamaPanel(RibbonTab tab)
+        private static RibbonButton CreateSmallButton(string text, string iconLetter, Color iconColor,
+            string command, string tooltipDesc)
         {
-            var source = new RibbonPanelSource { Title = "Hesaplama" };
+            var btn = new RibbonButton
+            {
+                Text = text,
+                ShowText = true,
+                Size = RibbonItemSize.Standard,
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                LargeImage = CreateSimpleIcon(iconLetter, iconColor, 32),
+                Image = CreateSimpleIcon(iconLetter, iconColor, 16),
+                CommandParameter = command,
+                CommandHandler = new RibbonCommandHandler(),
+                ToolTip = new RibbonToolTip
+                {
+                    Title = text,
+                    Content = tooltipDesc,
+                    Command = command,
+                    IsHelpEnabled = false
+                }
+            };
+            return btn;
+        }
+
+        private static void AddModulPanel(RibbonTab tab)
+        {
+            var source = new RibbonPanelSource { Title = "Mod\u00FCller" };
             var panel = new RibbonPanel { Source = source };
             tab.Panels.Add(panel);
 
-            source.Items.Add(CreateButton("Kübaj", "K", Color.FromRgb(0xAB, 0x47, 0xBC), "METRAJ",
-                "Kübaj Hesabı", "Hacim hesaplama panelini açar"));
-            source.Items.Add(CreateButton("Topla", "T", Color.FromRgb(0xFF, 0xA7, 0x26), "METRAJTOPLA",
-                "Metin Toplama", "Seçili text nesnelerindeki sayıları toplar"));
-        }
-
-        private static void AddYolMetrajPanel(RibbonTab tab)
-        {
-            var source = new RibbonPanelSource { Title = "Yol Metraj" };
-            var panel = new RibbonPanel { Source = source };
-            tab.Panels.Add(panel);
-
-            source.Items.Add(CreateButton("Yol\nMetraj", "YM", Color.FromRgb(0xE8, 0x59, 0x3C), "YOLMETRAJ",
-                "Yol Metraj", "Yol en kesitlerinden kaz\u0131-dolgu k\u00FCbaj hesab\u0131"));
+            source.Items.Add(CreateButton("Uzunluk", "U", Color.FromRgb(0x00, 0xBC, 0xD4), "METRAJUZUNLUKPANEL",
+                "Uzunluk", "Uzunluk mod\u00FCl\u00FCn\u00FC ayr\u0131 pencerede a\u00E7"));
+            source.Items.Add(CreateButton("Alan", "A", Color.FromRgb(0x4C, 0xAF, 0x50), "METRAJALPANEL",
+                "Alan", "Alan mod\u00FCl\u00FCn\u00FC ayr\u0131 pencerede a\u00E7"));
+            source.Items.Add(CreateButton("K\u00FCbaj", "K", Color.FromRgb(0xAB, 0x47, 0xBC), "METRAJKUBAJPANEL",
+                "K\u00FCbaj", "K\u00FCbaj mod\u00FCl\u00FCn\u00FC ayr\u0131 pencerede a\u00E7"));
+            source.Items.Add(CreateButton("En Kesit", "EK", Color.FromRgb(0xFF, 0x98, 0x00), "METRAJENKESITPANEL",
+                "En Kesit", "En Kesit mod\u00FCl\u00FCn\u00FC ayr\u0131 pencerede a\u00E7"));
+            source.Items.Add(CreateButton("Toplama", "T", Color.FromRgb(0xFF, 0xA7, 0x26), "METRAJTOPLAMAPANEL",
+                "Toplama", "Toplama mod\u00FCl\u00FCn\u00FC ayr\u0131 pencerede a\u00E7"));
+            source.Items.Add(CreateButton("Yol\nMetraj", "YM", Color.FromRgb(0xE8, 0x59, 0x3C), "YOLMETRAJPANEL",
+                "Yol Metraj", "Yol Metraj mod\u00FCl\u00FCn\u00FC ayr\u0131 pencerede a\u00E7"));
         }
 
         private static void AddAraclarPanel(RibbonTab tab)

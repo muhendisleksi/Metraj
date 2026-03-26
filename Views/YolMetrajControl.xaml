@@ -55,8 +55,7 @@
             <Button Content="&#x0130;st. Sil" Command="{Binding IstasyonSilCommand}"
                     Style="{StaticResource MetrajButton}" Margin="0,0,3,2" Background="#FF4D4D6C"/>
             <Button Content="Kalem Ekle" Command="{Binding KalemEkleCommand}"
-                    Style="{StaticResource MetrajButton}" Margin="0,0,3,2" Background="#FF6A1B9A"
-                    ToolTip="Se&#x00E7;ili istasyona yeni kalem ekle (istasyon sormadan)"/>
+                    Style="{StaticResource MetrajButton}" Margin="0,0,3,2" Background="#FF6A1B9A"/>
             <Button Content="Hatch Temizle" Command="{Binding TumHatchTemizleCommand}"
                     Style="{StaticResource MetrajButton}" Margin="0,0,3,2" Background="#FFEF5350"/>
             <Button Content="Kaydet" Command="{Binding KaydetCommand}"
@@ -65,7 +64,7 @@
                     Style="{StaticResource MetrajButton}" Margin="0,0,0,2" Background="#FF455A64"/>
         </WrapPanel>
 
-        <!-- Row 1: Kolon seçimi + Metot + Hesapla -->
+        <!-- Row 1: Kolon secimi + Metot + Hesapla -->
         <DockPanel Grid.Row="1" Margin="0,0,0,3">
             <Button DockPanel.Dock="Right" Content="Hesapla" Command="{Binding HesaplaCommand}"
                     Style="{StaticResource MetrajButton}" Padding="10,3" Background="#FF107C10" FontWeight="SemiBold"/>

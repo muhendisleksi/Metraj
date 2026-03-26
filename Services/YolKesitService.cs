@@ -106,7 +106,8 @@ namespace Metraj.Services
 
                 if (result.Status == PromptStatus.OK)
                 {
-                    var (hatchId, alan) = _hatchService.HatchOlustur(result.Value, aktifAyar);
+                    var tiklaNoktasi = result.Value;
+                    var (hatchId, alan) = _hatchService.HatchOlustur(tiklaNoktasi, aktifAyar);
 
                     if (hatchId.IsNull || alan <= Constants.AlanToleransi)
                     {
@@ -119,7 +120,9 @@ namespace Metraj.Services
                         MalzemeAdi = aktifMalzeme,
                         Kategori = KategoriBelirleMalzeme(aktifMalzeme),
                         Alan = alan,
-                        KaynakLayerAdi = aktifAyar.LayerAdi
+                        KaynakLayerAdi = aktifAyar.LayerAdi,
+                        TiklamaNoktalari = new System.Collections.Generic.List<double[]>
+                            { new[] { tiklaNoktasi.X, tiklaNoktasi.Y } }
                     };
 
                     isaretler.Add((hatchId, bilgi));
@@ -135,13 +138,16 @@ namespace Metraj.Services
                 .GroupBy(x => x.bilgi.MalzemeAdi, StringComparer.OrdinalIgnoreCase);
             foreach (var grup in gruplu)
             {
-                kesit.KatmanAlanlari.Add(new KatmanAlanBilgisi
+                var birlesik = new KatmanAlanBilgisi
                 {
                     MalzemeAdi = grup.First().bilgi.MalzemeAdi,
                     Kategori = grup.First().bilgi.Kategori,
                     Alan = grup.Sum(x => x.bilgi.Alan),
                     KaynakLayerAdi = grup.First().bilgi.KaynakLayerAdi
-                });
+                };
+                foreach (var item in grup)
+                    birlesik.TiklamaNoktalari.AddRange(item.bilgi.TiklamaNoktalari);
+                kesit.KatmanAlanlari.Add(birlesik);
             }
 
             kesit.ToplamKaziAlani = kesit.KatmanAlanlari
@@ -196,7 +202,8 @@ namespace Metraj.Services
 
                 if (result.Status == PromptStatus.OK)
                 {
-                    var (hatchId, alan) = _hatchService.HatchOlustur(result.Value, aktifAyar);
+                    var tikPt = result.Value;
+                    var (hatchId, alan) = _hatchService.HatchOlustur(tikPt, aktifAyar);
                     if (hatchId.IsNull || alan <= Constants.AlanToleransi)
                     { _editorService.WriteMessage("\nAlan bulunamad\u0131. 'NesneSec' deneyin.\n"); continue; }
 
@@ -205,7 +212,9 @@ namespace Metraj.Services
                         MalzemeAdi = aktifMalzeme,
                         Kategori = KategoriBelirleMalzeme(aktifMalzeme),
                         Alan = alan,
-                        KaynakLayerAdi = aktifAyar.LayerAdi
+                        KaynakLayerAdi = aktifAyar.LayerAdi,
+                        TiklamaNoktalari = new System.Collections.Generic.List<double[]>
+                            { new[] { tikPt.X, tikPt.Y } }
                     }));
                     _editorService.WriteMessage($"\n  {aktifMalzeme}: {alan:F2} m\u00B2\n");
                 }
@@ -218,13 +227,16 @@ namespace Metraj.Services
             var gruplu = isaretler.GroupBy(x => x.bilgi.MalzemeAdi, StringComparer.OrdinalIgnoreCase);
             foreach (var grup in gruplu)
             {
-                sonuc.Add(new KatmanAlanBilgisi
+                var birlesik = new KatmanAlanBilgisi
                 {
                     MalzemeAdi = grup.First().bilgi.MalzemeAdi,
                     Kategori = grup.First().bilgi.Kategori,
                     Alan = grup.Sum(x => x.bilgi.Alan),
                     KaynakLayerAdi = grup.First().bilgi.KaynakLayerAdi
-                });
+                };
+                foreach (var item in grup)
+                    birlesik.TiklamaNoktalari.AddRange(item.bilgi.TiklamaNoktalari);
+                sonuc.Add(birlesik);
             }
             return sonuc;
         }

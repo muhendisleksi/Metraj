@@ -161,17 +161,17 @@ namespace Metraj.Services
                     if (hatch == null || hatch.Bounds == null) { tr.Commit(); return ObjectId.Null; }
 
                     var bounds = hatch.Bounds.Value;
-                    var merkez = new Point3d(
+
+                    // Etiket \u00FCst kenara, yatayda ortaya
+                    double boundsHeight = bounds.MaxPoint.Y - bounds.MinPoint.Y;
+                    double textHeight = Math.Max(0.3, boundsHeight * 0.12);
+                    var ustMerkez = new Point3d(
                         (bounds.MinPoint.X + bounds.MaxPoint.X) / 2.0,
-                        (bounds.MinPoint.Y + bounds.MaxPoint.Y) / 2.0, 0);
+                        bounds.MaxPoint.Y + textHeight * 0.3, 0);
 
                     _entityService.EnsureLayer(tr, db, ayar.EtiketLayerAdi, ayar.RenkIndex);
 
                     string etiketMetin = kolonHarfi + ayar.KisaKod;
-
-                    // Etiket boyutunu hatch bounds'a oranla
-                    double boundsHeight = bounds.MaxPoint.Y - bounds.MinPoint.Y;
-                    double textHeight = Math.Max(0.3, boundsHeight * 0.15);
 
                     var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
                     var btr = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
@@ -183,8 +183,8 @@ namespace Metraj.Services
                     text.Layer = ayar.EtiketLayerAdi;
                     text.ColorIndex = ayar.RenkIndex;
                     text.HorizontalMode = TextHorizontalMode.TextCenter;
-                    text.VerticalMode = TextVerticalMode.TextVerticalMid;
-                    text.AlignmentPoint = merkez;
+                    text.VerticalMode = TextVerticalMode.TextBottom;
+                    text.AlignmentPoint = ustMerkez;
 
                     btr.AppendEntity(text);
                     tr.AddNewlyCreatedDBObject(text, true);

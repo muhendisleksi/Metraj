@@ -163,7 +163,10 @@ namespace Metraj.ViewModels
                 var mevcut = hedef.KatmanAlanlari.FirstOrDefault(k =>
                     k.MalzemeAdi.Equals(yeni.MalzemeAdi, StringComparison.OrdinalIgnoreCase));
                 if (mevcut != null)
+                {
                     mevcut.Alan += yeni.Alan;
+                    mevcut.TiklamaNoktalari.AddRange(yeni.TiklamaNoktalari);
+                }
                 else
                     hedef.KatmanAlanlari.Add(yeni);
             }
@@ -284,7 +287,11 @@ namespace Metraj.ViewModels
 
                 _kolonSayaci = veri.KolonSayaci;
                 SeciliKolon = Kolonlar.Count > 0 ? Kolonlar[0] : null;
-                DurumMesaji = $"Y\u00FCklendi: {Kolonlar.Count} kolon, {Kolonlar.Sum(k => k.Istasyonlar.Count)} istasyon";
+
+                // Hatch'leri yeniden olu\u015Ftur
+                int hatchSayisi = HatchleriYenidenOlustur();
+
+                DurumMesaji = $"Y\u00FCklendi: {Kolonlar.Count} kolon, {Kolonlar.Sum(k => k.Istasyonlar.Count)} istasyon, {hatchSayisi} hatch";
                 LoggingService.Info("Yol metraj y\u00FCklendi: {Dosya}", dosyaYolu);
             }
             catch (System.Exception ex)
@@ -321,6 +328,52 @@ namespace Metraj.ViewModels
                 DurumMesaji = "Excel hatas\u0131: " + ex.Message;
                 LoggingService.Error("Excel hatas\u0131", ex);
             }
+        }
+
+        private int HatchleriYenidenOlustur()
+        {
+            int sayac = 0;
+            try
+            {
+                var hatchService = ServiceContainer.GetRequiredService<IHatchOlusturmaService>();
+                var ayarService = ServiceContainer.GetRequiredService<IMalzemeHatchAyarService>();
+
+                foreach (var kolon in Kolonlar)
+                {
+                    foreach (var ist in kolon.Istasyonlar)
+                    {
+                        foreach (var katman in ist.KatmanAlanlari)
+                        {
+                            if (katman.TiklamaNoktalari == null || katman.TiklamaNoktalari.Count == 0)
+                                continue;
+
+                            var ayar = ayarService.MalzemeAyariGetir(katman.MalzemeAdi);
+                            ObjectId sonHatchId = ObjectId.Null;
+
+                            foreach (var nokta in katman.TiklamaNoktalari)
+                            {
+                                if (nokta.Length < 2) continue;
+                                var pt = new Autodesk.AutoCAD.Geometry.Point3d(nokta[0], nokta[1], 0);
+                                var (hatchId, _) = hatchService.HatchOlustur(pt, ayar);
+                                if (!hatchId.IsNull)
+                                {
+                                    sonHatchId = hatchId;
+                                    sayac++;
+                                }
+                            }
+
+                            // En son hatch'e etiket at
+                            if (!sonHatchId.IsNull)
+                                hatchService.EtiketYaz(sonHatchId, kolon.KolonHarfi, ayar);
+                        }
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                LoggingService.Warning("Hatch yeniden olu\u015Fturma hatas\u0131", ex);
+            }
+            return sayac;
         }
 
         private void SeciliKolonDegisti()
