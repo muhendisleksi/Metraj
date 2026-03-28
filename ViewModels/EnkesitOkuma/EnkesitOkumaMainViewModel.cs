@@ -172,11 +172,18 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 {
                     string ilk = YolKesitService.IstasyonFormatla(Anchorlar.First().Istasyon);
                     string son = YolKesitService.IstasyonFormatla(Anchorlar.Last().Istasyon);
-                    DurumMesaji = $"{Anchorlar.Count} istasyon bulundu ({ilk} ... {son})";
+
+                    // CL bazli otomatik pencere tespiti
+                    double platformYariGenislik = _anchorService.PlatformGenisligiTespit(Anchorlar, _secilenEntityler);
+                    var ilkAnchor = Anchorlar[0];
+                    Pencere = KesitPenceresi.CL_Bazli(ilkAnchor.CL_MinY, ilkAnchor.CL_MaxY, platformYariGenislik);
+
+                    DurumMesaji = $"{Anchorlar.Count} kesit bulundu ({ilk} ... {son})";
+                    OnPropertiesChanged(nameof(AnchorSayisi), nameof(PencereBilgisi));
                 }
                 else
                 {
-                    DurumMesaji = "Istasyon text'i bulunamadi";
+                    DurumMesaji = "CL+Km eslesmesi bulunamadi";
                 }
                 OnPropertyChanged(nameof(AnchorSayisi));
             }
@@ -235,18 +242,26 @@ namespace Metraj.ViewModels.EnkesitOkuma
                     return;
                 }
 
-                var ilkKesitler = _gruplamaService.KesitGrupla(
-                    new List<AnchorNokta> { _anchorlar[0] }, _pencere, _secilenEntityler);
+                // Kesit secim dialogu
+                int? secilenIdx = KesitSecimDialoguGoster();
+                if (!secilenIdx.HasValue) return;
 
-                if (ilkKesitler.Count == 0)
+                var secilenAnchor = _anchorlar[secilenIdx.Value];
+                var secilenKesitler = _gruplamaService.KesitGrupla(
+                    new List<AnchorNokta> { secilenAnchor }, _pencere, _secilenEntityler);
+
+                if (secilenKesitler.Count == 0)
                 {
-                    DurumMesaji = "Referans kesitte cizgi bulunamadi";
+                    DurumMesaji = "Secilen kesitte cizgi bulunamadi";
                     return;
                 }
 
-                var refKesit = ilkKesitler[0];
+                var refKesit = secilenKesitler[0];
                 var vm = ServiceContainer.GetRequiredService<ReferansKesitViewModel>();
                 vm.Yukle(refKesit);
+
+                // Kesit navigasyonu: tum anchor listesini ver, kalibrasyon ekraninda kesit degistirebilsin
+                vm.NavigasyonYukle(_anchorlar, _pencere, _secilenEntityler, _gruplamaService, secilenIdx.Value);
 
                 var window = new Views.EnkesitOkuma.ReferansKesitWindow();
                 window.DataContext = vm;
@@ -389,6 +404,18 @@ namespace Metraj.ViewModels.EnkesitOkuma
                     SorunluKesit = sorunlu
                 };
 
+                // Tanilama raporu yaz (5 orneklem kesit, dosyaya)
+                try
+                {
+                    string raporYolu = _alanHesapService.TanilamaRaporuYaz(Kesitler);
+                    if (raporYolu != null)
+                        LoggingService.Info($"Tanilama raporu: {raporYolu}");
+                }
+                catch (System.Exception ex)
+                {
+                    LoggingService.Warning($"Tanilama raporu yazilamadi: {ex.Message}");
+                }
+
                 TaramaBitir($"{toplam} kesit tarandi -- {uyumlu} uyumlu, {uyari} uyari, {sorunlu} sorunlu");
                 OnPropertiesChanged(nameof(KesitSayisi), nameof(SonucBilgisi));
                 AktifAdim = 3;
@@ -499,6 +526,36 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 DurumMesaji = "JSON kayit hatasi: " + ex.Message;
                 LoggingService.Error("JSON kayit hatasi", ex);
             }
+        }
+
+        private int? KesitSecimDialoguGoster()
+        {
+            var ogeler = _anchorlar.Select((a, i) => new Models.YolEnkesit.KesitSecimOgesi
+            {
+                Index = i,
+                IstasyonMetni = YolKesitService.IstasyonFormatla(a.Istasyon),
+                Aciklama = i == 0 ? " (ilk)" : i == _anchorlar.Count - 1 ? " (son)" : ""
+            }).ToList();
+
+            int varsayilanIndex = _anchorlar.Count / 3;
+
+            var window = new Views.EnkesitOkuma.KesitSecimWindow();
+            window.Yukle(ogeler, varsayilanIndex);
+
+            try
+            {
+                var acadWin = AcadApp.MainWindow;
+                if (acadWin != null)
+                {
+                    var helper = new System.Windows.Interop.WindowInteropHelper(window);
+                    helper.Owner = acadWin.Handle;
+                }
+            }
+            catch { }
+
+            if (window.ShowDialog() == true)
+                return window.SecilenIndex;
+            return null;
         }
 
         private void AdimIleri()

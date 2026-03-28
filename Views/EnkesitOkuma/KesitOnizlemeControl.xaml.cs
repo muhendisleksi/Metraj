@@ -18,6 +18,8 @@ namespace Metraj.Views.EnkesitOkuma
         private Point _sonMousePoz;
         private bool _panAktif;
         private CizgiTanimi _secilenCizgi;
+        private DateTime _sonOrtaTiklama = DateTime.MinValue;
+        private double _icerikW, _icerikH; // Son cizimde icerik boyutu (canvas px)
 
         public event EventHandler<CizgiTanimi> CizgiSecildi;
 
@@ -52,6 +54,14 @@ namespace Metraj.Views.EnkesitOkuma
         public void CizgileriYukle(List<CizgiTanimi> cizgiler)
         {
             _cizgiler = cizgiler;
+            _zoom = 1.0;
+            _pan = new Point(0, 0);
+            Ciz();
+        }
+
+        /// <summary>Zoom ve pan sifirla, tum cizgileri ekrana sigdir (AutoCAD zoom extents).</summary>
+        public void Sigdir()
+        {
             _zoom = 1.0;
             _pan = new Point(0, 0);
             Ciz();
@@ -122,8 +132,21 @@ namespace Metraj.Views.EnkesitOkuma
 
             double minX = fitNoktalar.Min(p => p.X);
             double maxX = fitNoktalar.Max(p => p.X);
-            double minY = fitNoktalar.Min(p => p.Y);
-            double maxY = fitNoktalar.Max(p => p.Y);
+
+            // Trimmed fit: Y ekseninde outlier'lari cikar (%5 alt, %5 ust)
+            // Hendek gibi asiri derin yapilar fit hesabini bozmasin
+            var yDegerleri = fitNoktalar.Select(p => p.Y).OrderBy(y => y).ToList();
+            int trimAlt = (int)(yDegerleri.Count * 0.05);
+            int trimUst = Math.Min((int)(yDegerleri.Count * 0.95), yDegerleri.Count - 1);
+            if (trimAlt >= trimUst) { trimAlt = 0; trimUst = yDegerleri.Count - 1; }
+
+            double minY = yDegerleri[trimAlt];
+            double maxY = yDegerleri[trimUst];
+
+            // Trim sonrasi biraz marj ekle (%10) - cizgiler kesilmesin
+            double yMarj = (maxY - minY) * 0.10;
+            minY -= yMarj;
+            maxY += yMarj;
 
             double rangeX = maxX - minX;
             double rangeY = maxY - minY;
@@ -134,6 +157,10 @@ namespace Metraj.Views.EnkesitOkuma
             double scaleX = (canvasW - padding * 2) / rangeX * _zoom;
             double scaleY = (canvasH - padding * 2) / rangeY * _zoom;
             double scale = Math.Min(scaleX, scaleY);
+
+            // Icerik boyutunu sakla — pan siniri icin
+            _icerikW = rangeX * scale;
+            _icerikH = rangeY * scale;
 
             // Cerceve/grid cizgilerini ONCE ciz (arkada kalsin)
             foreach (var cizgi in _cizgiler.Where(c => c.Rol == CizgiRolu.CerceveCizgisi || c.Rol == CizgiRolu.GridCizgisi))
@@ -259,9 +286,19 @@ namespace Metraj.Views.EnkesitOkuma
 
         private void Canvas_MouseWheel(object sender, MouseWheelEventArgs e)
         {
+            double eskiZoom = _zoom;
             double factor = e.Delta > 0 ? 1.15 : 0.87;
             _zoom *= factor;
             _zoom = Math.Max(0.1, Math.Min(50, _zoom));
+
+            // Mouse pozisyonuna gore zoom — imlec noktasi sabit kalsin
+            var mousePos = e.GetPosition(KesitCanvas);
+            double oranDeg = _zoom / eskiZoom;
+            _pan = new Point(
+                mousePos.X - (mousePos.X - _pan.X) * oranDeg,
+                mousePos.Y - (mousePos.Y - _pan.Y) * oranDeg);
+
+            PanSinirla();
             Ciz();
         }
 
@@ -269,6 +306,17 @@ namespace Metraj.Views.EnkesitOkuma
         {
             if (e.MiddleButton == MouseButtonState.Pressed)
             {
+                // Cift tiklama: fit-to-view (AutoCAD zoom extents)
+                var simdi = DateTime.Now;
+                if ((simdi - _sonOrtaTiklama).TotalMilliseconds < 400)
+                {
+                    Sigdir();
+                    _sonOrtaTiklama = DateTime.MinValue;
+                    e.Handled = true;
+                    return;
+                }
+                _sonOrtaTiklama = simdi;
+
                 _panAktif = true;
                 _sonMousePoz = e.GetPosition(KesitCanvas);
                 KesitCanvas.CaptureMouse();
@@ -290,7 +338,39 @@ namespace Metraj.Views.EnkesitOkuma
             var pos = e.GetPosition(KesitCanvas);
             _pan = new Point(_pan.X + pos.X - _sonMousePoz.X, _pan.Y + pos.Y - _sonMousePoz.Y);
             _sonMousePoz = pos;
+            PanSinirla();
             Ciz();
+        }
+
+        /// <summary>Pan degerini sinirla — cizim tamamen ekran disina kaymasin.</summary>
+        private void PanSinirla()
+        {
+            double canvasW = KesitCanvas.ActualWidth;
+            double canvasH = KesitCanvas.ActualHeight;
+            if (canvasW < 10 || canvasH < 10 || _icerikW < 1) return;
+
+            double padding = 30;
+            // Izin verilen aralik: icerik en az %20 gorunur kalsin
+            double marjX = _icerikW * 0.8;
+            double marjY = _icerikH * 0.8;
+
+            double minPanX = -(padding + marjX);
+            double maxPanX = canvasW - padding - _icerikW + marjX;
+            double minPanY = -(padding + marjY);
+            double maxPanY = canvasH - padding - _icerikH + marjY;
+
+            // min > max olabilir (icerik ekrandan buyukse), swap
+            if (minPanX > maxPanX) { double t = minPanX; minPanX = maxPanX; maxPanX = t; }
+            if (minPanY > maxPanY) { double t = minPanY; minPanY = maxPanY; maxPanY = t; }
+
+            _pan = new Point(
+                Math.Max(minPanX, Math.Min(maxPanX, _pan.X)),
+                Math.Max(minPanY, Math.Min(maxPanY, _pan.Y)));
+        }
+
+        private void BtnSigdir_Click(object sender, RoutedEventArgs e)
+        {
+            Sigdir();
         }
     }
 }

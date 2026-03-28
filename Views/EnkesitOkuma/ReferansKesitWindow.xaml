@@ -7,7 +7,12 @@
         WindowStartupLocation="CenterScreen" WindowStyle="ToolWindow"
         Background="#FF1E1E2E">
     <Window.Resources>
-        <Style x:Key="DarkBtn" TargetType="Button">
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Metraj;component/Views/Styles/DarkThemeStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
+            <Style x:Key="DarkBtn" TargetType="Button">
             <Setter Property="Background" Value="#FF2D2D44"/>
             <Setter Property="Foreground" Value="#FFCCCCDD"/>
             <Setter Property="BorderBrush" Value="#FF3D3D5C"/>
@@ -42,24 +47,62 @@
             <Setter Property="Foreground" Value="#FF1E1E2E"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Grid Margin="4">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="65*"/>
-            <ColumnDefinition Width="35*"/>
-        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-        <!-- Sol: Kesit Onizleme -->
-        <Border Grid.Column="0" Background="#FF0A0A14" CornerRadius="4" Margin="4"
-                BorderBrush="#FF3D3D5C" BorderThickness="1">
-            <local:KesitOnizlemeControl x:Name="OnizlemeControl"/>
+        <!-- Row 0: Kesit navigasyonu -->
+        <Border Grid.Row="0" Background="#FF2D2D44" CornerRadius="4" Margin="4,4,4,0" Padding="8,5"
+                BorderBrush="#FF3D3D5C" BorderThickness="1"
+                Visibility="{Binding NavigasyonAktif, Converter={StaticResource BoolToVisConverter}}">
+            <DockPanel>
+                <TextBlock Text="Kesit:" Foreground="#FF8888AA" FontSize="12"
+                           VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <Button Content="&#x25C0;" Command="{Binding OncekiKesitCommand}"
+                        Style="{StaticResource DarkBtn}" Width="30" Height="26" Padding="2"
+                        FontSize="11" ToolTip="Onceki kesit"/>
+                <Button Content="&#x25B6;" Command="{Binding SonrakiKesitCommand}"
+                        Style="{StaticResource DarkBtn}" Width="30" Height="26" Padding="2"
+                        FontSize="11" Margin="4,0,0,0" ToolTip="Sonraki kesit" DockPanel.Dock="Right"/>
+                <TextBlock Text="{Binding AktifKesitBilgi}" Foreground="#FF8888AA" FontSize="11"
+                           VerticalAlignment="Center" Margin="8,0,0,0" DockPanel.Dock="Right"/>
+                <ComboBox ItemsSource="{Binding KesitSecenekleri}"
+                          SelectedItem="{Binding SecilenKesitOgesi}"
+                          DisplayMemberPath="Gosterim"
+                          Height="26" FontSize="11" Margin="8,0,0,0"
+                          Background="#FF1E1E2E" Foreground="#FFCCCCDD" BorderBrush="#FF3D3D5C"/>
+            </DockPanel>
         </Border>
 
+        <!-- Row 1: Ana icerik -->
+        <Grid Grid.Row="1" Margin="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="65*" MinWidth="300"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="35*" MinWidth="250"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Sol: Kesit Onizleme -->
+            <Border Grid.Column="0" Background="#FF0A0A14" CornerRadius="4" Margin="4"
+                    BorderBrush="#FF3D3D5C" BorderThickness="1">
+                <local:KesitOnizlemeControl x:Name="OnizlemeControl"/>
+            </Border>
+
+            <!-- GridSplitter -->
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center"
+                          VerticalAlignment="Stretch" Background="#FF3D3D5C"
+                          Cursor="SizeWE" ResizeBehavior="PreviousAndNext"/>
+
         <!-- Sag: Cizgi Rolleri -->
-        <Border Grid.Column="1" Background="#FF2D2D44" Margin="4" CornerRadius="4" Padding="10">
+        <Border Grid.Column="2" Background="#FF2D2D44" Margin="4" CornerRadius="4" Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -68,19 +111,56 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Baslik -->
+                <!-- Row 0: Baslik -->
                 <TextBlock Grid.Row="0" Text="Cizgi rolleri" Foreground="#FFCCCCDD" FontWeight="Bold"
-                           FontSize="14" Margin="0,0,0,8"/>
+                           FontSize="14" Margin="0,0,0,4"/>
 
-                <!-- Secili cizgi bilgisi -->
-                <TextBlock Grid.Row="1" Text="{Binding SecilenCizgiBilgi}" Foreground="#FF8888AA"
-                           FontSize="10" Margin="0,0,0,6" TextWrapping="Wrap"/>
+                <!-- Row 1: Secili cizgi bilgisi + Cerceve toggle -->
+                <StackPanel Grid.Row="1" Margin="0,0,0,4">
+                    <TextBlock Text="{Binding SecilenCizgiBilgi}" Foreground="#FF8888AA"
+                               FontSize="10" TextWrapping="Wrap"/>
+                    <CheckBox Content="Cerceve / Grid cizgilerini goster"
+                              IsChecked="{Binding CerceveGoster}"
+                              Foreground="#FF8888AA" FontSize="10" Margin="0,4,0,0"/>
+                </StackPanel>
 
-                <!-- Cizgi Listesi -->
-                <ListBox Grid.Row="2" ItemsSource="{Binding Cizgiler}"
+                <!-- Row 2: Layer Filtresi -->
+                <Expander Grid.Row="2" Header="Layer Filtresi" IsExpanded="False"
+                          Foreground="#FFCCCCDD" FontSize="11" Margin="0,0,0,4">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,2,0,4">
+                            <Button Content="Tumu Ac" Command="{Binding TumLayerAc}"
+                                    Style="{StaticResource DarkBtn}" Height="20" Padding="6,1" FontSize="10"/>
+                            <Button Content="Tumu Kapat" Command="{Binding TumLayerKapat}"
+                                    Style="{StaticResource DarkBtn}" Height="20" Padding="6,1" FontSize="10" Margin="4,0,0,0"/>
+                        </StackPanel>
+                        <ScrollViewer MaxHeight="90" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding LayerFiltresi}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding Gorunur}" Margin="2,1"
+                                                  Foreground="#FFCCCCDD" FontSize="10">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding LayerAdi}"/>
+                                                <TextBlock Foreground="#FF8888AA" Margin="4,0,0,0">
+                                                    <Run Text="("/>
+                                                    <Run Text="{Binding CizgiSayisi, Mode=OneWay}"/>
+                                                    <Run Text=")"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </CheckBox>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Expander>
+
+                <!-- Row 3: Cizgi Listesi (filtrelenmis) -->
+                <ListBox Grid.Row="3" ItemsSource="{Binding GoruntulenenCizgiler}"
                          SelectedItem="{Binding SecilenCizgi}"
                          Background="#FF1E1E2E" BorderBrush="#FF3D3D5C" BorderThickness="1"
-                         Margin="0,0,0,8">
+                         Margin="0,0,0,6">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal" Margin="2,1">
@@ -93,41 +173,26 @@
                             </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
-                    <ListBox.ItemContainerStyle>
-                        <Style TargetType="ListBoxItem">
-                            <Setter Property="Background" Value="Transparent"/>
-                            <Setter Property="Padding" Value="4,2"/>
-                            <Style.Triggers>
-                                <Trigger Property="IsSelected" Value="True">
-                                    <Setter Property="Background" Value="#FF3D3D5C"/>
-                                </Trigger>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="#FF353550"/>
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ListBox.ItemContainerStyle>
                 </ListBox>
 
-                <!-- Rol Secimi -->
-                <StackPanel Grid.Row="3" Margin="0,0,0,6">
+                <!-- Row 4: Rol Secimi -->
+                <StackPanel Grid.Row="4" Margin="0,0,0,6">
                     <TextBlock Text="Rol Ata:" Foreground="#FFCCCCDD" Margin="0,0,0,3" FontSize="12"/>
                     <ComboBox ItemsSource="{Binding MevcutRoller}"
                               SelectedItem="{Binding SecilenRol}"
-                              Height="26" FontSize="11"
-                              Background="#FF2D2D44" Foreground="#FFCCCCDD" BorderBrush="#FF3D3D5C"/>
+                              Height="26" FontSize="11"/>
                     <Button Content="Rolu Ata" Command="{Binding RolAta}"
                             Style="{StaticResource PrimBtn}" Margin="0,4,0,0" Height="26" Padding="4"/>
                 </StackPanel>
 
-                <!-- Otomatik Ata -->
-                <Button Grid.Row="4" Content="Tumunu Otomatik Ata"
+                <!-- Row 5: Otomatik Ata -->
+                <Button Grid.Row="5" Content="Tumunu Otomatik Ata"
                         Command="{Binding TumunuOtomatikAta}"
-                        Style="{StaticResource DarkBtn}" Height="26" Margin="0,0,0,8" Padding="4"
+                        Style="{StaticResource DarkBtn}" Height="26" Margin="0,0,0,6" Padding="4"
                         Background="#FF2D5A4A" Foreground="#FF4EC9B0" BorderBrush="#FF4EC9B0"/>
 
-                <!-- Kaydet / Iptal -->
-                <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
+                <!-- Row 6: Kaydet / Iptal -->
+                <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Content="Kaydet" x:Name="BtnKaydet" Click="BtnKaydet_Click"
                             Style="{StaticResource PrimBtn}" Width="80" Height="28" Padding="4"/>
                     <Button Content="Iptal" x:Name="BtnIptal" Click="BtnIptal_Click"
@@ -135,5 +200,6 @@
                 </StackPanel>
             </Grid>
         </Border>
+        </Grid>
     </Grid>
 </Window>

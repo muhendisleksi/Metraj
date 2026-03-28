@@ -74,7 +74,38 @@ namespace Metraj.ViewModels.EnkesitOkuma
 
         public List<AlanHesapSonucu> AktifKesitAlanlar => AktifKesit?.HesaplananAlanlar;
         public List<CizgiTanimi> AktifKesitCizgiler => AktifKesit?.Cizgiler;
-        public List<TabloKiyasSonucu> AktifKesitKiyaslar => AktifKesit?.TabloKiyaslari;
+
+        /// <summary>
+        /// Kiyas sonuclari varsa onlari, yoksa hesaplanan alanlari TabloKiyasSonucu formatinda dondurur.
+        /// Boylece DataGrid her zaman dolu gorulur.
+        /// </summary>
+        public List<TabloKiyasSonucu> AktifKesitKiyaslar
+        {
+            get
+            {
+                if (AktifKesit == null) return null;
+
+                // Kiyas sonuclari varsa dogrudan dondur
+                if (AktifKesit.TabloKiyaslari != null && AktifKesit.TabloKiyaslari.Count > 0)
+                    return AktifKesit.TabloKiyaslari;
+
+                // Kiyas yoksa hesaplanan alanlari tablo formatina donustur
+                if (AktifKesit.HesaplananAlanlar != null && AktifKesit.HesaplananAlanlar.Count > 0)
+                {
+                    return AktifKesit.HesaplananAlanlar.Select(a => new TabloKiyasSonucu
+                    {
+                        MalzemeAdi = a.MalzemeAdi,
+                        HesaplananAlan = a.Alan,
+                        TabloAlani = 0,
+                        Fark = 0,
+                        FarkYuzde = 0,
+                        Uyumlu = false
+                    }).ToList();
+                }
+
+                return null;
+            }
+        }
 
         public string ToplamGosterilen => _filtrelenmisKesitler != null
             ? $"{AktifIndex + 1} / {_filtrelenmisKesitler.Count}"

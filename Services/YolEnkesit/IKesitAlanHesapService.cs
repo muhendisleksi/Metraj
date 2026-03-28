@@ -7,5 +7,8 @@ namespace Metraj.Services.YolEnkesit
     {
         List<AlanHesapSonucu> AlanHesapla(KesitGrubu kesit);
         void TopluAlanHesapla(List<KesitGrubu> kesitler);
+
+        /// <summary>5 orneklem kesit icin detayli tanilama raporu yazar (dosyaya).</summary>
+        string TanilamaRaporuYaz(List<KesitGrubu> kesitler);
     }
 }

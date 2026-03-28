@@ -3,7 +3,11 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="#FF1E1E2E">
     <UserControl.Resources>
-        <Style x:Key="MetrajButton" TargetType="Button">
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Metraj;component/Views/Styles/DarkThemeStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <Style x:Key="MetrajButton" TargetType="Button">
             <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="Padding" Value="10,5"/>
@@ -78,6 +82,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        </ResourceDictionary>
     </UserControl.Resources>
     <Grid Margin="5">
         <Grid.RowDefinitions>

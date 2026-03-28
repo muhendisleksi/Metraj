@@ -24,7 +24,8 @@ namespace Metraj.Services.YolEnkesit
         public List<KesitGrubu> KesitGrupla(List<AnchorNokta> anchorlar, KesitPenceresi pencere, IEnumerable<ObjectId> entityIds)
         {
             var tumEntityler = entityIds.ToList();
-            var atanmisEntityler = new HashSet<long>();
+            // NOT: atanmisEntityler KALDIRILDI — ayni entity (orn. zemin cizgisi)
+            // birden fazla kesitin penceresine dusebilir ve her kesit onu gormeli.
             var kesitler = new List<KesitGrubu>();
 
             using (var tr = _documentContext.BeginTransaction())
@@ -32,12 +33,27 @@ namespace Metraj.Services.YolEnkesit
                 foreach (var anchor in anchorlar)
                 {
                     var kesit = new KesitGrubu { Anchor = anchor };
-                    var minPt = new Point3d(anchor.X - pencere.OffsetSolX, anchor.Y - pencere.OffsetAltY, 0);
-                    var maxPt = new Point3d(anchor.X + pencere.OffsetSagX, anchor.Y + pencere.OffsetUstY, 0);
+
+                    Point3d minPt, maxPt;
+                    if (anchor.CL_Dogrulandi && pencere.OtomatikTespit)
+                    {
+                        double yMargin = 2.0;
+                        minPt = new Point3d(anchor.CL_X - pencere.PlatformYariGenislik, anchor.CL_MinY - yMargin, 0);
+                        maxPt = new Point3d(anchor.CL_X + pencere.PlatformYariGenislik, anchor.CL_MaxY + yMargin, 0);
+                        kesit.CL_X = anchor.CL_X;
+                    }
+                    else
+                    {
+                        minPt = new Point3d(anchor.X - pencere.OffsetSolX, anchor.Y - pencere.OffsetAltY, 0);
+                        maxPt = new Point3d(anchor.X + pencere.OffsetSagX, anchor.Y + pencere.OffsetUstY, 0);
+                    }
+
+                    // Ayni entity'nin tekrarini engelle (ayni kesitte)
+                    var kesitEntityler = new HashSet<long>();
 
                     foreach (var entId in tumEntityler)
                     {
-                        if (atanmisEntityler.Contains(entId.Handle.Value)) continue;
+                        if (kesitEntityler.Contains(entId.Handle.Value)) continue;
 
                         var obj = tr.GetObject(entId, OpenMode.ForRead);
                         if (obj is Entity ent)
@@ -48,19 +64,28 @@ namespace Metraj.Services.YolEnkesit
 
                             if (!PencereKesisimVar(bounds, minPt, maxPt)) continue;
 
-                            if (ent is Polyline || ent is Polyline2d || ent is Polyline3d || ent is Line)
-                            {
-                                var cizgi = CizgiTanimiOlustur(ent, entId, tr);
-                                if (cizgi != null && CizgiGecerliMi(cizgi))
-                                {
-                                    kesit.Cizgiler.Add(cizgi);
-                                    atanmisEntityler.Add(entId.Handle.Value);
-                                }
-                            }
-                            else if (ent is DBText || ent is MText)
+                            if (ent is DBText || ent is MText)
                             {
                                 kesit.TextObjeler.Add(entId);
-                                atanmisEntityler.Add(entId.Handle.Value);
+                                kesitEntityler.Add(entId.Handle.Value);
+                            }
+                            else if (CizgiOlabilecekEntity(ent))
+                            {
+                                var cizgi = CizgiTanimiOlustur(ent, entId, tr);
+                                if (cizgi != null)
+                                {
+                                    // Entity clipping: polyline noktalarini pencere X sinirlarinda kirp
+                                    cizgi.Noktalar = _enKesitAlanService.ClipToXRange(
+                                        cizgi.Noktalar, minPt.X, maxPt.X);
+                                    cizgi.OrtalamaY = cizgi.Noktalar.Count > 0
+                                        ? cizgi.Noktalar.Average(p => p.Y) : 0;
+
+                                    if (CizgiGecerliMi(cizgi))
+                                    {
+                                        kesit.Cizgiler.Add(cizgi);
+                                        kesitEntityler.Add(entId.Handle.Value);
+                                    }
+                                }
                             }
                         }
                     }
@@ -73,6 +98,58 @@ namespace Metraj.Services.YolEnkesit
                         LogLayerDagilimi(kesit);
                     }
                 }
+
+                // Ikinci pass: Malzeme tablosu text'leri genisletilmis pencerede ara
+                // Tablo, kesit cizim alaninin SAG tarafinda bulunur
+                int tabloTextToplam = 0;
+                foreach (var kesit in kesitler)
+                {
+                    int onceki = kesit.TextObjeler.Count;
+                    var mevcutTextler = new HashSet<long>(kesit.TextObjeler.Select(id => id.Handle.Value));
+                    var anchor = kesit.Anchor;
+
+                    Point3d tabloMinPt, tabloMaxPt;
+                    if (anchor.CL_Dogrulandi && pencere.OtomatikTespit)
+                    {
+                        // Tablo: kesitin sag disinda, +15 birim saga, +5 birim yukari
+                        double sagKenar = anchor.CL_X + pencere.PlatformYariGenislik;
+                        tabloMinPt = new Point3d(sagKenar, anchor.CL_MinY - 5, 0);
+                        tabloMaxPt = new Point3d(sagKenar + 15, anchor.CL_MaxY + 5, 0);
+                    }
+                    else
+                    {
+                        double sagKenar = anchor.X + pencere.OffsetSagX;
+                        tabloMinPt = new Point3d(sagKenar, anchor.Y - pencere.OffsetAltY - 5, 0);
+                        tabloMaxPt = new Point3d(sagKenar + 15, anchor.Y + pencere.OffsetUstY + 5, 0);
+                    }
+
+                    foreach (var entId in tumEntityler)
+                    {
+                        if (mevcutTextler.Contains(entId.Handle.Value)) continue;
+
+                        var obj = tr.GetObject(entId, OpenMode.ForRead);
+                        if (!(obj is DBText) && !(obj is MText)) continue;
+
+                        var ent = (Entity)obj;
+                        Extents3d bounds;
+                        try { bounds = ent.GeometricExtents; }
+                        catch { continue; }
+
+                        if (PencereKesisimVar(bounds, tabloMinPt, tabloMaxPt))
+                        {
+                            kesit.TextObjeler.Add(entId);
+                            mevcutTextler.Add(entId.Handle.Value);
+                        }
+                    }
+
+                    int eklenen = kesit.TextObjeler.Count - onceki;
+                    if (eklenen > 0) tabloTextToplam += eklenen;
+                }
+
+                if (tabloTextToplam > 0)
+                    LoggingService.Info($"Tablo text taramasi: {tabloTextToplam} ek text bulundu ({kesitler.Count} kesit)");
+                else
+                    LoggingService.Warning("Tablo text taramasi: Genisletilmis pencerede ek text bulunamadi");
 
                 tr.Commit();
             }
@@ -90,6 +167,25 @@ namespace Metraj.Services.YolEnkesit
         {
             return bounds.MaxPoint.X >= minPt.X && bounds.MinPoint.X <= maxPt.X &&
                    bounds.MaxPoint.Y >= minPt.Y && bounds.MinPoint.Y <= maxPt.Y;
+        }
+
+        /// <summary>
+        /// Vertex/nokta bilgisi cikarilabilecek entity tiplerini kabul et.
+        /// PolylineNoktalariniAl desteklemedigi tipler icin bos liste doner,
+        /// CizgiGecerliMi filtresiyle elenirler.
+        /// </summary>
+        private bool CizgiOlabilecekEntity(Entity ent)
+        {
+            return ent is Polyline
+                || ent is Polyline2d
+                || ent is Polyline3d
+                || ent is Line
+                || ent is Face          // 3dFace — ihale dosyalarinda ustyapi tabakalari
+                || ent is Solid         // 2D Solid (trace)
+                || ent is Solid3d       // 3D Solid
+                || ent is Spline
+                || ent is Arc
+                || ent is Ellipse;
         }
 
         private CizgiTanimi CizgiTanimiOlustur(Entity ent, ObjectId entId, Transaction tr)

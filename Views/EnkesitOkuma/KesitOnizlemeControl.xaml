@@ -15,5 +15,26 @@
                    VerticalAlignment="Top" HorizontalAlignment="Left"
                    Margin="8" Foreground="#FF8888AA" FontSize="11"
                    Text="Cizgi uzerine tiklayin"/>
+
+        <!-- Sigdir butonu — sag alt kose -->
+        <Button x:Name="BtnSigdir" Click="BtnSigdir_Click"
+                VerticalAlignment="Bottom" HorizontalAlignment="Right"
+                Margin="0,0,8,8" Cursor="Hand"
+                ToolTip="Tum cizgileri ekrana sigdir (orta tus cift tikla)">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd" Background="#CC2D2D44" BorderBrush="#FF3D3D5C"
+                            BorderThickness="1" CornerRadius="3" Padding="8,4">
+                        <TextBlock x:Name="Tx" Text="Sigdir" Foreground="#FF8888AA" FontSize="10"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="#FF3D3D5C"/>
+                            <Setter TargetName="Tx" Property="Foreground" Value="#FF4EC9B0"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Button.Template>
+        </Button>
     </Grid>
 </UserControl>

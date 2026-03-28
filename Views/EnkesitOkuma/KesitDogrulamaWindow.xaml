@@ -7,7 +7,11 @@
         WindowStartupLocation="CenterScreen" WindowStyle="ToolWindow"
         Background="#FF1E1E2E">
     <Window.Resources>
-        <Style x:Key="DarkButton" TargetType="Button">
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Metraj;component/Views/Styles/DarkThemeStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <Style x:Key="DarkButton" TargetType="Button">
             <Setter Property="Background" Value="#FF2D2D44"/>
             <Setter Property="Foreground" Value="#FFCCCCDD"/>
             <Setter Property="BorderBrush" Value="#FF3D3D5C"/>
@@ -52,6 +56,7 @@
             <Setter Property="BorderBrush" Value="#FFE24B4A"/>
             <Setter Property="FontWeight" Value="Bold"/>
         </Style>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Grid Margin="4">
@@ -105,8 +110,9 @@
         <!-- Alt: Kesit + Detay -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="2*" MinWidth="300"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*" MinWidth="250"/>
             </Grid.ColumnDefinitions>
 
             <!-- Sol: Kesit Onizleme -->
@@ -114,8 +120,13 @@
                 <local:KesitOnizlemeControl x:Name="OnizlemeControl"/>
             </Border>
 
+            <!-- GridSplitter -->
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center"
+                          VerticalAlignment="Stretch" Background="#FF3D3D5C"
+                          Cursor="SizeWE" ResizeBehavior="PreviousAndNext"/>
+
             <!-- Sag Panel -->
-            <Border Grid.Column="1" Background="#FF2D2D44" CornerRadius="4" Padding="8">
+            <Border Grid.Column="2" Background="#FF2D2D44" CornerRadius="4" Padding="8">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
@@ -145,7 +156,14 @@
                             <DataGridTextColumn Header="Hesap" Binding="{Binding HesaplananAlan, StringFormat=F2}" Width="55"/>
                             <DataGridTextColumn Header="Tablo" Binding="{Binding TabloAlani, StringFormat=F2}" Width="55"/>
                             <DataGridTextColumn Header="Fark" Binding="{Binding Fark, StringFormat=F2}" Width="45"/>
-                            <DataGridTextColumn Header="%" Binding="{Binding FarkYuzde, StringFormat=F1}" Width="38"/>
+                            <DataGridTemplateColumn Header="%" Width="45">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding FarkYuzde, StringFormat={}{0:F1}}"
+                                                   Foreground="{Binding DurumRengi}" FontWeight="SemiBold"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
 
@@ -153,8 +171,7 @@
                     <StackPanel Grid.Row="1" Margin="0,8,0,0">
                         <TextBlock Text="Cizgi Duzelt:" Foreground="#FFCCCCDD" Margin="0,0,0,4" FontSize="12"/>
                         <ComboBox ItemsSource="{Binding MevcutRoller}"
-                                  SelectedItem="{Binding YeniRol}" Height="26"
-                                  Background="#FF2D2D44" Foreground="#FFCCCCDD" BorderBrush="#FF3D3D5C"/>
+                                  SelectedItem="{Binding YeniRol}" Height="26"/>
                         <Button Content="Rolu Degistir" Command="{Binding CizgiDuzeltCommand}"
                                 Style="{StaticResource DarkButton}"
                                 Height="26" Margin="0,4,0,0" Padding="4"/>

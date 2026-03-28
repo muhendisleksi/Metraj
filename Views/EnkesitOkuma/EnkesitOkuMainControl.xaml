@@ -3,7 +3,11 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="#FF1E1E2E" MinWidth="340">
     <UserControl.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Metraj;component/Views/Styles/DarkThemeStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <Style x:Key="DarkBtn" TargetType="Button">
             <Setter Property="Background" Value="#FF2D2D44"/>
             <Setter Property="Foreground" Value="#FFCCCCDD"/>
@@ -61,6 +65,7 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+        </ResourceDictionary>
     </UserControl.Resources>
 
     <Grid Margin="8">
@@ -114,12 +119,14 @@
                     <TextBlock Text="{Binding EntitySayisi}" Foreground="#FF4EC9B0"
                                Margin="0,6,0,0" FontSize="12"/>
                     <TextBlock Text="{Binding AnchorSayisi}" Foreground="#FF4EC9B0"
-                               Margin="0,2,0,10" FontSize="12"/>
-
-                    <Button Content="Pencere Belirle (2 kose tikla)" Command="{Binding PencereBelirleCommand}"
-                            Style="{StaticResource PrimBtn}" Height="36"/>
+                               Margin="0,2,0,0" FontSize="12"/>
                     <TextBlock Text="{Binding PencereBilgisi}" Foreground="#FF4EC9B0"
-                               Margin="0,6,0,0" FontSize="12"/>
+                               Margin="0,2,0,8" FontSize="11"/>
+
+                    <!-- Fallback: CL bulunamazsa manuel pencere -->
+                    <Button Content="Manuel Pencere (yedek)" Command="{Binding PencereBelirleCommand}"
+                            Style="{StaticResource DarkBtn}" Height="28" FontSize="11" Padding="4"
+                            Foreground="#FF8888AA"/>
                 </StackPanel>
 
                 <!-- Adim 2: Kalibrasyon -->

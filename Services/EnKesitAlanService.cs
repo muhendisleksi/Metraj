@@ -156,6 +156,51 @@ namespace Metraj.Services
                         noktalar.Add(new Point2d(face.GetVertexAt(2).X, face.GetVertexAt(2).Y));
                         noktalar.Add(new Point2d(face.GetVertexAt(3).X, face.GetVertexAt(3).Y));
                         break;
+
+                    case Solid solid:
+                        // 2D Solid (trace) — 3 veya 4 vertex
+                        for (short vi = 0; vi < 4; vi++)
+                            noktalar.Add(new Point2d(solid.GetPointAt(vi).X, solid.GetPointAt(vi).Y));
+                        // 3. ve 4. vertex ayni olabilir (ucgen), tekrarlari cikar
+                        if (noktalar.Count == 4
+                            && Math.Abs(noktalar[2].X - noktalar[3].X) < 1e-6
+                            && Math.Abs(noktalar[2].Y - noktalar[3].Y) < 1e-6)
+                            noktalar.RemoveAt(3);
+                        break;
+
+                    case Spline spline:
+                        // Kontrol noktalari yerine nurblar uzerinde esit aralikli ornekle
+                        int ornekSayisi = Math.Max(spline.NumControlPoints * 3, 20);
+                        double startParam = spline.StartParam;
+                        double endParam = spline.EndParam;
+                        double step = (endParam - startParam) / ornekSayisi;
+                        for (int si = 0; si <= ornekSayisi; si++)
+                        {
+                            var pt = spline.GetPointAtParameter(startParam + si * step);
+                            noktalar.Add(new Point2d(pt.X, pt.Y));
+                        }
+                        break;
+
+                    case Arc arc:
+                        // Yay: baslangic, orta, bitis + ara noktalar
+                        int arcSamples = Math.Max((int)(arc.TotalAngle / (Math.PI / 18)), 4);
+                        double arcStep = (arc.EndParam - arc.StartParam) / arcSamples;
+                        for (int ai = 0; ai <= arcSamples; ai++)
+                        {
+                            var pt = arc.GetPointAtParameter(arc.StartParam + ai * arcStep);
+                            noktalar.Add(new Point2d(pt.X, pt.Y));
+                        }
+                        break;
+
+                    case Ellipse ellipse:
+                        int ellSamples = 36;
+                        double ellStep = (ellipse.EndParam - ellipse.StartParam) / ellSamples;
+                        for (int ei = 0; ei <= ellSamples; ei++)
+                        {
+                            var pt = ellipse.GetPointAtParameter(ellipse.StartParam + ei * ellStep);
+                            noktalar.Add(new Point2d(pt.X, pt.Y));
+                        }
+                        break;
                 }
 
                 tr.Commit();
