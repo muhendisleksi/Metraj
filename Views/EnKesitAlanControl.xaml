@@ -55,7 +55,7 @@
                 </Style>
             </DataGrid.ColumnHeaderStyle>
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Malzeme" Binding="{Binding MalzemeAdi}" Width="*"/>
+                <DataGridTextColumn Header="Katman" Binding="{Binding MalzemeAdi}" Width="*"/>
                 <DataGridTextColumn Header="Alan (m²)" Binding="{Binding Alan, StringFormat=F2}" Width="80">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">

@@ -78,8 +78,8 @@ namespace Metraj.ViewModels
                 if (tipResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK && !string.IsNullOrWhiteSpace(tipResult.StringResult))
                     tip = tipResult.StringResult;
 
-                // Malzeme adını sor
-                var adResult = editorService.GetString("\nMalzeme adını girin: ", tip);
+                // Katman adini sor
+                var adResult = editorService.GetString("\nKatman ad\u0131n\u0131 girin: ", tip);
                 string malzemeAdi = tip;
                 if (adResult.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK && !string.IsNullOrWhiteSpace(adResult.StringResult))
                     malzemeAdi = adResult.StringResult;

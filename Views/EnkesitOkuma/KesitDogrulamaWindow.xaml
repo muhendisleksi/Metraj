@@ -1,0 +1,107 @@
+<Window x:Class="Metraj.Views.EnkesitOkuma.KesitDogrulamaWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Metraj.Views.EnkesitOkuma"
+        Title="Kesit Doğrulama"
+        Width="1000" Height="650" MinWidth="800" MinHeight="500"
+        WindowStartupLocation="CenterOwner" WindowStyle="ToolWindow"
+        Background="#FF1E1E2E">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Üst Toolbar -->
+        <Border Grid.Row="0" Background="#FF252536" Padding="8" Margin="4,4,4,0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                    <Button Content="◀ Önceki" Command="{Binding OncekiCommand}"
+                            Width="80" Height="26" Margin="0,0,4,0"
+                            Background="#FF424242" Foreground="White" BorderThickness="0"/>
+                    <Button Content="Sonraki ▶" Command="{Binding SonrakiCommand}"
+                            Width="80" Height="26" Margin="0,0,12,0"
+                            Background="#FF424242" Foreground="White" BorderThickness="0"/>
+                    <TextBlock Text="{Binding ToplamGosterilen}" Foreground="#CCD6E0"
+                               VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,12,0"/>
+                    <TextBlock Text="{Binding AktifKesitBilgi}" Foreground="#AAB2C0"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <TextBlock VerticalAlignment="Center" Margin="0,0,8,0">
+                        <Run Text="{Binding OnayliSayisi, Mode=OneWay}" Foreground="#4CAF50"/>
+                        <Run Text=" onaylı | " Foreground="#AAB2C0"/>
+                        <Run Text="{Binding UyariSayisi, Mode=OneWay}" Foreground="#FFC107"/>
+                        <Run Text=" uyarı | " Foreground="#AAB2C0"/>
+                        <Run Text="{Binding SorunluSayisi, Mode=OneWay}" Foreground="#F44336"/>
+                        <Run Text=" sorunlu" Foreground="#AAB2C0"/>
+                    </TextBlock>
+                    <CheckBox Content="Sadece sorunlu" IsChecked="{Binding SadeceSorunluGoster}"
+                              Foreground="#CCD6E0" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    <Button Content="Tümünü Onayla" Command="{Binding TumunuOnaylaCommand}"
+                            Width="100" Height="26" Margin="8,0,0,0"
+                            Background="#FF43A047" Foreground="White" BorderThickness="0"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Alt: Kesit + Detay -->
+        <Grid Grid.Row="1" Margin="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Sol: Kesit Önizleme -->
+            <local:KesitOnizlemeControl x:Name="OnizlemeControl" Grid.Column="0"/>
+
+            <!-- Sağ Panel -->
+            <Border Grid.Column="1" Background="#FF252536" Margin="4,0,0,0" CornerRadius="4" Padding="8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Kıyas Tablosu -->
+                    <DataGrid Grid.Row="0" ItemsSource="{Binding AktifKesitKiyaslar}"
+                              AutoGenerateColumns="False" IsReadOnly="True"
+                              Background="#FF1A1A2A" Foreground="#CCD6E0"
+                              HeadersVisibility="Column" BorderThickness="0"
+                              GridLinesVisibility="Horizontal" RowBackground="#FF1A1A2A"
+                              AlternatingRowBackground="#FF222233">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Malzeme" Binding="{Binding MalzemeAdi}" Width="*"/>
+                            <DataGridTextColumn Header="Hesap" Binding="{Binding HesaplananAlan, StringFormat=F2}" Width="60"/>
+                            <DataGridTextColumn Header="Tablo" Binding="{Binding TabloAlani, StringFormat=F2}" Width="60"/>
+                            <DataGridTextColumn Header="Fark" Binding="{Binding Fark, StringFormat=F2}" Width="50"/>
+                            <DataGridTextColumn Header="%" Binding="{Binding FarkYuzde, StringFormat=F1}" Width="40"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Çizgi Düzelt -->
+                    <StackPanel Grid.Row="1" Margin="0,8,0,0">
+                        <TextBlock Text="Çizgi Düzelt:" Foreground="#CCD6E0" Margin="0,0,0,4"/>
+                        <ComboBox ItemsSource="{Binding MevcutRoller}"
+                                  SelectedItem="{Binding YeniRol}" Height="26"/>
+                        <Button Content="Rolü Değiştir" Command="{Binding CizgiDuzeltCommand}"
+                                Height="26" Margin="0,4,0,0"
+                                Background="#FF546E7A" Foreground="White" BorderThickness="0"/>
+                    </StackPanel>
+
+                    <!-- Onay Butonları -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,4">
+                        <Button Content="Onayla ✓" Command="{Binding OnaylaCommand}"
+                                Width="90" Height="32"
+                                Background="#FF43A047" Foreground="White" BorderThickness="0" FontWeight="Bold"/>
+                        <Button Content="Sorunlu ✗" Command="{Binding SorunluIsaretle}"
+                                Width="90" Height="32" Margin="8,0,0,0"
+                                Background="#FFF44336" Foreground="White" BorderThickness="0" FontWeight="Bold"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

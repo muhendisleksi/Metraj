@@ -6,9 +6,11 @@ namespace Metraj.Models
     {
         public string MalzemeAdi { get; set; }
         public MalzemeKategorisi Kategori { get; set; }
-        public double Alan { get; set; }              // m\u00B2
+        public double Alan { get; set; }              // m²
         public string KaynakLayerAdi { get; set; }
         public AlanTipi Tip { get; set; }
-        public List<double[]> TiklamaNoktalari { get; set; } = new List<double[]>(); // [x,y] koordinatlar\u0131
+        public List<double[]> TiklamaNoktalari { get; set; } = new List<double[]>();
+        public bool NesnedenSecildi { get; set; }
+        public long NesneHandle { get; set; }
     }
 }

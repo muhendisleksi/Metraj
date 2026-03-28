@@ -12,6 +12,7 @@ namespace Metraj.Infrastructure.AutoCAD
         PromptDoubleResult GetDouble(string message, double? defaultValue = null);
         PromptIntegerResult GetInteger(string message, int? defaultValue = null);
         PromptResult GetKeywords(string message, string[] keywords, string defaultKeyword = null);
+        PromptResult GetKeywords(string message, string[] keywords, string[] displayNames, string defaultKeyword = null);
         PromptSelectionResult GetSelection(string message = null);
         PromptEntityResult GetEntity(string message);
         PromptResult Drag(DrawJig jig);

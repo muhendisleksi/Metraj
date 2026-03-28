@@ -5,8 +5,8 @@
     <UserControl.Resources>
         <Style x:Key="MetrajButton" TargetType="Button">
             <Setter Property="FontFamily" Value="Segoe UI"/>
-            <Setter Property="FontSize" Value="10"/>
-            <Setter Property="Padding" Value="6,3"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Padding" Value="10,5"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Foreground" Value="White"/>
@@ -29,6 +29,55 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="ContextMenuStyle" TargetType="ContextMenu">
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="#FFDCDCDC"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContextMenu">
+                        <Border Background="#FF2D2D44" BorderBrush="#FF4D4D6C" BorderThickness="1"
+                                CornerRadius="3" Padding="0,4">
+                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="MenuItemStyle" TargetType="MenuItem">
+            <Setter Property="Foreground" Value="#FFDCDCDC"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border x:Name="Bd" Background="Transparent" Padding="10,6" SnapsToDevicePixels="True">
+                            <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#FF3D3D5C"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="MenuSeparatorStyle" TargetType="Separator">
+            <Setter Property="Height" Value="1"/>
+            <Setter Property="Margin" Value="6,4"/>
+            <Setter Property="Background" Value="#FF4D4D6C"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Separator">
+                        <Border Background="{TemplateBinding Background}" Height="{TemplateBinding Height}"
+                                Margin="{TemplateBinding Margin}"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
     <Grid Margin="5">
         <Grid.RowDefinitions>
@@ -44,27 +93,25 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Row 0: Butonlar -->
-        <WrapPanel Grid.Row="0" Margin="0,0,0,3">
-            <Button Content="Kolon Ekle" Command="{Binding KolonEkleCommand}"
-                    Style="{StaticResource MetrajButton}" Margin="0,0,3,2" Background="#FF0078D4"/>
-            <Button Content="Kolon Sil" Command="{Binding KolonSilCommand}"
-                    Style="{StaticResource MetrajButton}" Margin="0,0,3,2" Background="#FF4D4D6C"/>
-            <Button Content="&#x0130;st. Ekle" Command="{Binding IstasyonEkleCommand}"
-                    Style="{StaticResource MetrajButton}" Margin="0,0,3,2" Background="#FF107C10"/>
-            <Button Content="&#x0130;st. Sil" Command="{Binding IstasyonSilCommand}"
-                    Style="{StaticResource MetrajButton}" Margin="0,0,3,2" Background="#FF4D4D6C"/>
-            <Button Content="Kalem Ekle" Command="{Binding KalemEkleCommand}"
-                    Style="{StaticResource MetrajButton}" Margin="0,0,3,2" Background="#FF6A1B9A"/>
-            <Button Content="Hatch Temizle" Command="{Binding TumHatchTemizleCommand}"
-                    Style="{StaticResource MetrajButton}" Margin="0,0,3,2" Background="#FFEF5350"/>
-            <Button Content="Kaydet" Command="{Binding KaydetCommand}"
-                    Style="{StaticResource MetrajButton}" Margin="0,0,3,2" Background="#FF455A64"/>
-            <Button Content="Y&#x00FC;kle" Command="{Binding YukleCommand}"
-                    Style="{StaticResource MetrajButton}" Margin="0,0,0,2" Background="#FF455A64"/>
-        </WrapPanel>
+        <!-- Row 0: Sadece ekleme butonları + kaydet/yükle -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,4">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Content="Kaydet" Command="{Binding KaydetCommand}"
+                        Style="{StaticResource MetrajButton}" Margin="4,0,0,0" Background="#FF455A64"/>
+                <Button Content="Y&#x00FC;kle" Command="{Binding YukleCommand}"
+                        Style="{StaticResource MetrajButton}" Margin="4,0,0,0" Background="#FF455A64"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <Button Content="+ Kolon" Command="{Binding KolonEkleCommand}"
+                        Style="{StaticResource MetrajButton}" Margin="0,0,4,0" Background="#FF0078D4"/>
+                <Button Content="+ &#x0130;stasyon" Command="{Binding IstasyonEkleCommand}"
+                        Style="{StaticResource MetrajButton}" Margin="0,0,4,0" Background="#FF107C10"/>
+                <Button Content="+ Kalem" Command="{Binding KalemEkleCommand}"
+                        Style="{StaticResource MetrajButton}" Margin="0,0,0,0" Background="#FF6A1B9A"/>
+            </StackPanel>
+        </DockPanel>
 
-        <!-- Row 1: Kolon secimi + Metot + Hesapla -->
+        <!-- Row 1: Kolon seçimi + Metot + Hesapla -->
         <DockPanel Grid.Row="1" Margin="0,0,0,3">
             <Button DockPanel.Dock="Right" Content="Hesapla" Command="{Binding HesaplaCommand}"
                     Style="{StaticResource MetrajButton}" Padding="10,3" Background="#FF107C10" FontWeight="SemiBold"/>
@@ -83,11 +130,15 @@
             </StackPanel>
         </DockPanel>
 
-        <!-- Row 2: İstasyonlar başlık -->
-        <TextBlock Grid.Row="2" Text="&#x0130;stasyonlar" Foreground="#FF4EC9B0"
-                   FontFamily="Segoe UI" FontSize="10" FontWeight="SemiBold" Margin="0,2,0,2"/>
+        <!-- Row 2: İstasyonlar başlık + sağ tık ipucu -->
+        <DockPanel Grid.Row="2" Margin="0,2,0,2">
+            <TextBlock Text="&#x0130;stasyonlar" Foreground="#FF4EC9B0"
+                       FontFamily="Segoe UI" FontSize="10" FontWeight="SemiBold"/>
+            <TextBlock Text="(sa&#x011F; t&#x0131;k: sil / s&#x0131;f&#x0131;rla)" Foreground="#FF666688"
+                       FontFamily="Segoe UI" FontSize="9" Margin="6,0,0,0" VerticalAlignment="Center"/>
+        </DockPanel>
 
-        <!-- Row 3: İstasyon listesi (sütunlar code-behind'da dinamik oluşturulur) -->
+        <!-- Row 3: İstasyon listesi + sağ tık menüsü -->
         <DataGrid Grid.Row="3" x:Name="IstasyonlarGrid"
                   ItemsSource="{Binding SeciliKolonIstasyonlari}"
                   SelectedItem="{Binding SeciliIstasyon}"
@@ -95,7 +146,42 @@
                   Background="#FF2D2D44" Foreground="#FFDCDCDC" BorderBrush="#FF3D3D5C"
                   GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#FF3D3D5C"
                   RowBackground="#FF2D2D44" AlternatingRowBackground="#FF252540"
-                  FontSize="10" HeadersVisibility="Column" ColumnHeaderHeight="24" RowHeight="20">
+                  FontSize="10" HeadersVisibility="Column" ColumnHeaderHeight="24" RowHeight="20"
+                  PreviewMouseRightButtonDown="IstasyonlarGrid_PreviewMouseRightButtonDown">
+            <DataGrid.ContextMenu>
+                <ContextMenu Style="{StaticResource ContextMenuStyle}">
+                    <MenuItem Header="Alan Ekle" Style="{StaticResource MenuItemStyle}"
+                              Command="{Binding PlacementTarget.DataContext.AlanEkleCommand,
+                                        RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                    <MenuItem Header="Alan &#x00C7;&#x0131;kar" Style="{StaticResource MenuItemStyle}"
+                              Command="{Binding PlacementTarget.DataContext.AlanCikarCommand,
+                                        RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                    <Separator Style="{StaticResource MenuSeparatorStyle}"/>
+                    <MenuItem Header="{Binding PlacementTarget.DataContext.KalemSilBaslik,
+                                       RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                              Style="{StaticResource MenuItemStyle}"
+                              Command="{Binding PlacementTarget.DataContext.KalemSilCommand,
+                                        RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                    <MenuItem Header="&#x0130;stasyon Sil" Style="{StaticResource MenuItemStyle}"
+                              Command="{Binding PlacementTarget.DataContext.IstasyonSilCommand,
+                                        RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                    <Separator Style="{StaticResource MenuSeparatorStyle}"/>
+                    <MenuItem Header="T&#x00FC;m &#x0130;stasyonlar&#x0131; S&#x0131;f&#x0131;rla" Style="{StaticResource MenuItemStyle}"
+                              Command="{Binding PlacementTarget.DataContext.IstasyonlariSifirlaCommand,
+                                        RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                    <MenuItem Header="Kolonu Sil" Style="{StaticResource MenuItemStyle}"
+                              Command="{Binding PlacementTarget.DataContext.KolonSilCommand,
+                                        RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                    <Separator Style="{StaticResource MenuSeparatorStyle}"/>
+                    <MenuItem Header="Hatch Temizle" Style="{StaticResource MenuItemStyle}"
+                              Command="{Binding PlacementTarget.DataContext.TumHatchTemizleCommand,
+                                        RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                    <MenuItem Header="T&#x00FC;m&#x00FC;n&#x00FC; Temizle" Style="{StaticResource MenuItemStyle}"
+                              Foreground="#FFEF5350"
+                              Command="{Binding PlacementTarget.DataContext.TemizleCommand,
+                                        RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                </ContextMenu>
+            </DataGrid.ContextMenu>
             <DataGrid.ColumnHeaderStyle>
                 <Style TargetType="DataGridColumnHeader">
                     <Setter Property="Background" Value="#FF3D3D5C"/>
@@ -130,7 +216,7 @@
                 </Style>
             </DataGrid.ColumnHeaderStyle>
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Malzeme" Binding="{Binding MalzemeAdi}" Width="*"/>
+                <DataGridTextColumn Header="Katman" Binding="{Binding MalzemeAdi}" Width="*"/>
                 <DataGridTextColumn Header="Alan (m&#x00B2;)" Binding="{Binding Alan, StringFormat=F2}" Width="80">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
@@ -164,7 +250,7 @@
                 </Style>
             </DataGrid.ColumnHeaderStyle>
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Malzeme" Binding="{Binding MalzemeAdi}" Width="*"/>
+                <DataGridTextColumn Header="Katman" Binding="{Binding MalzemeAdi}" Width="*"/>
                 <DataGridTextColumn Header="Hacim (m&#x00B3;)" Binding="{Binding ToplamHacim, StringFormat=F2}" Width="90">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
@@ -203,10 +289,8 @@
             </Grid>
         </Border>
 
-        <!-- Row 9: Alt butonlar + durum -->
+        <!-- Row 9: Excel + durum -->
         <DockPanel Grid.Row="9" Margin="0,3,0,0">
-            <Button DockPanel.Dock="Right" Content="Temizle" Command="{Binding TemizleCommand}"
-                    Style="{StaticResource MetrajButton}" Margin="4,0,0,0" Background="#FF4D4D6C"/>
             <Button DockPanel.Dock="Right" Content="Excel Aktar" Command="{Binding ExcelAktarCommand}"
                     Style="{StaticResource MetrajButton}" Background="#FF217A46"/>
             <TextBlock Text="{Binding DurumMesaji}" Foreground="#FF8888AA" FontFamily="Segoe UI"

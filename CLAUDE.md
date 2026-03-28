@@ -79,3 +79,44 @@ Large services split into partial files: ClassName.Aspect.cs
 ## Loading
 
 NETLOAD → Metraj.dll seç
+
+## Yol Enkesit Okuma Modülü (Aktif Geliştirme)
+
+İhale DWG dosyalarından enkesit verilerini yarı-otomatik okuyan bağımsız panel.
+Plan dokümanı: `docs/YolEnkesitOkuma_Plan.md`
+
+### Klasör Yapısı (yeni dosyalar)
+- `Models/YolEnkesit/` → AnchorNokta, CizgiRolu, CizgiTanimi, KesitPenceresi, ReferansKesitSablonu, KesitGrubu, AlanHesapSonucu, TabloKiyasSonucu
+- `Services/YolEnkesit/` → AnchorTaramaService, KesitGruplamaService, CizgiRolAtamaService, KesitAlanHesapService, TabloOkumaService
+- `ViewModels/EnkesitOkuma/` → EnkesitOkumaMainViewModel, ReferansKesitViewModel, KesitDogrulamaViewModel
+- `Views/EnkesitOkuma/` → EnkesitOkuMainControl, ReferansKesitWindow, KesitDogrulamaWindow, KesitOnizlemeControl
+- `Commands/` → EnkesitOkuCommands.cs, EnkesitOkuPaletteManager.cs
+
+### Mevcut Kodda Değişiklikler (minimum müdahale)
+- `EnKesitAlanService.cs`: IkiCizgiArasiAlan, ClipToXRange, InterpolateY, ShoelaceAlan → public yap
+- `YolKesitService.cs`: IstasyonParse, IstasyonFormatla → public static yap
+- `Infrastructure/ServiceContainer.cs`: Yeni servislerin DI kaydı
+- `Commands/RibbonManager.cs`: "Enkesit Oku" ribbon butonu ekle
+
+### Dokunma
+- MetrajMainControl.xaml — tab ekleme, değişiklik yapma
+- YolMetrajViewModel, YolKesitService, HatchOlusturmaService — olduğu gibi kalacak
+- Mevcut tüm Views/ ve ViewModels/ dosyaları
+
+### Alan Hesap Kuralları (çizgi çiftleri)
+| Malzeme | Üst Çizgi | Alt Çizgi | Not |
+|---|---|---|---|
+| Sıyırma | Zemin | SiyirmaTaban | Her zaman |
+| Kazı (Yarma) | SiyirmaTaban | UstyapiAltKotu | SıyırmaTaban > UstyapiAlt olduğu X aralığı |
+| Dolgu | UstyapiAltKotu | SiyirmaTaban | UstyapiAlt > SıyırmaTaban olduğu X aralığı |
+| B.T. Yerine Konan | Sıyırma alanı | — | Dolgu bölgesindeki sıyırma |
+| B.T. Yerine Konmayan | Sıyırma alanı | — | Yarma bölgesindeki sıyırma |
+| Üstyapı tabakaları | Üst tabaka çizgisi | Alt tabaka çizgisi | ProjeKotu→Aşınma→Binder→Bitümlü→Plentmiks→Alttemel→Kırmataş |
+
+### Geliştirme Fazları
+- Faz 1: Models + AnchorTaramaService + unit testler
+- Faz 2: KesitPenceresi + KesitGruplamaService
+- Faz 3: KesitOnizlemeControl + ReferansKesitWindow + CizgiRolAtamaService
+- Faz 4: KesitAlanHesapService + otomatik eşleşme
+- Faz 5: TabloOkumaService + kıyaslama
+- Faz 6: KesitDogrulamaWindow + EnkesitOkuMainControl + Excel çıktı

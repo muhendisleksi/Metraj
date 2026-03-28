@@ -114,6 +114,10 @@ namespace Metraj.Commands
                 "Toplama", "Toplama mod\u00FCl\u00FCn\u00FC ayr\u0131 pencerede a\u00E7"));
             source.Items.Add(CreateButton("Yol\nMetraj", "YM", Color.FromRgb(0xE8, 0x59, 0x3C), "YOLMETRAJPANEL",
                 "Yol Metraj", "Yol Metraj mod\u00FCl\u00FCn\u00FC ayr\u0131 pencerede a\u00E7"));
+            source.Items.Add(CreateButton("\u0130hale\nKontrol", "\u0130K", Color.FromRgb(0xE5, 0x39, 0x35), "IHALEKONTROLPANEL",
+                "\u0130hale Kontrol", "\u0130hale dosyas\u0131 enkesit kontrol mod\u00FCl\u00FC"));
+            source.Items.Add(CreateButton("Enkesit\nOku", "EO", Color.FromRgb(0x00, 0x96, 0x88), "YOLENKESITOKU",
+                "Enkesit Oku", "İhale DWG'den enkesit okuma ve alan hesabı"));
         }
 
         private static void AddAraclarPanel(RibbonTab tab)

@@ -105,6 +105,23 @@ namespace Metraj.Infrastructure.AutoCAD
             return ed.GetKeywords(options);
         }
 
+        public PromptResult GetKeywords(string message, string[] keywords, string[] displayNames, string defaultKeyword = null)
+        {
+            var ed = GetEditor();
+            var options = new PromptKeywordOptions(message);
+
+            for (int i = 0; i < keywords.Length; i++)
+            {
+                string display = (displayNames != null && i < displayNames.Length) ? displayNames[i] : keywords[i];
+                options.Keywords.Add(keywords[i], keywords[i], display);
+            }
+
+            if (!string.IsNullOrEmpty(defaultKeyword))
+                options.Keywords.Default = defaultKeyword;
+
+            return ed.GetKeywords(options);
+        }
+
         public PromptSelectionResult GetSelection(string message = null)
         {
             var ed = GetEditor();

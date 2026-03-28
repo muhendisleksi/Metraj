@@ -19,6 +19,7 @@ namespace Metraj.ViewModels
         private YolKolonu _seciliKolon;
         private YolKesitVerisi _seciliIstasyon;
         private int _kolonSayaci = 0;
+        private string _sagTikMalzemeAdi;
 
         public ObservableCollection<YolKolonu> Kolonlar { get; } = new ObservableCollection<YolKolonu>();
         public ObservableCollection<YolKesitVerisi> SeciliKolonIstasyonlari { get; } = new ObservableCollection<YolKesitVerisi>();
@@ -27,6 +28,13 @@ namespace Metraj.ViewModels
 
         public HacimMetodu SeciliMetot { get => _seciliMetot; set => SetProperty(ref _seciliMetot, value); }
         public string DurumMesaji { get => _durumMesaji; set => SetProperty(ref _durumMesaji, value); }
+        public string SagTikMalzemeAdi
+        {
+            get => _sagTikMalzemeAdi;
+            set { if (SetProperty(ref _sagTikMalzemeAdi, value)) OnPropertyChanged(nameof(KalemSilBaslik)); }
+        }
+        public string KalemSilBaslik => string.IsNullOrEmpty(_sagTikMalzemeAdi)
+            ? "Kalemi Sil" : $"\"{_sagTikMalzemeAdi}\" Kalemini Sil";
 
         public YolKolonu SeciliKolon
         {
@@ -52,7 +60,11 @@ namespace Metraj.ViewModels
         public ICommand HesaplaCommand { get; }
         public ICommand TemizleCommand { get; }
         public ICommand ExcelAktarCommand { get; }
+        public ICommand IstasyonlariSifirlaCommand { get; }
         public ICommand TumHatchTemizleCommand { get; }
+        public ICommand KalemSilCommand { get; }
+        public ICommand AlanEkleCommand { get; }
+        public ICommand AlanCikarCommand { get; }
         public ICommand KaydetCommand { get; }
         public ICommand YukleCommand { get; }
 
@@ -62,7 +74,11 @@ namespace Metraj.ViewModels
             KolonSilCommand = new RelayCommand(KolonSil, () => SeciliKolon != null);
             IstasyonEkleCommand = new RelayCommand(IstasyonEkle, () => SeciliKolon != null);
             IstasyonSilCommand = new RelayCommand(IstasyonSil, () => SeciliIstasyon != null);
+            IstasyonlariSifirlaCommand = new RelayCommand(IstasyonlariSifirla, () => SeciliKolon != null && SeciliKolon.Istasyonlar.Count > 0);
             KalemEkleCommand = new RelayCommand(KalemEkle, () => SeciliIstasyon != null);
+            KalemSilCommand = new RelayCommand(KalemSil, () => SeciliIstasyon != null && !string.IsNullOrEmpty(SagTikMalzemeAdi));
+            AlanEkleCommand = new RelayCommand(AlanEkle, () => SeciliIstasyon != null && !string.IsNullOrEmpty(SagTikMalzemeAdi));
+            AlanCikarCommand = new RelayCommand(AlanCikar, () => SeciliIstasyon != null && !string.IsNullOrEmpty(SagTikMalzemeAdi));
             HesaplaCommand = new RelayCommand(Hesapla, () => SeciliKolon != null && SeciliKolon.Istasyonlar.Count >= 2);
             TemizleCommand = new RelayCommand(Temizle);
             ExcelAktarCommand = new RelayCommand(ExcelAktar, () => Kolonlar.Count > 0);
@@ -182,6 +198,90 @@ namespace Metraj.ViewModels
             SeciliKolon.Istasyonlar.Remove(SeciliIstasyon);
             SeciliIstasyon = null;
             SeciliKolonDegisti();
+        }
+
+        private void KalemSil()
+        {
+            if (SeciliIstasyon == null || string.IsNullOrEmpty(SagTikMalzemeAdi)) return;
+            var kalem = SeciliIstasyon.KatmanAlanlari.FirstOrDefault(k =>
+                k.MalzemeAdi.Equals(SagTikMalzemeAdi, StringComparison.OrdinalIgnoreCase));
+            if (kalem == null) { DurumMesaji = $"{SagTikMalzemeAdi} bulunamad\u0131."; return; }
+
+            // Hatch ve etiketi cizimdcen sil
+            try
+            {
+                var hatchService = ServiceContainer.GetRequiredService<IHatchOlusturmaService>();
+                var ayarService = ServiceContainer.GetRequiredService<Services.MalzemeHatchAyarService>();
+                var ayar = ayarService.MalzemeAyariGetir(SagTikMalzemeAdi);
+                if (ayar != null && kalem.TiklamaNoktalari.Count > 0)
+                    hatchService.MalzemeHatchSil(ayar.LayerAdi, ayar.EtiketLayerAdi, kalem.TiklamaNoktalari);
+            }
+            catch (System.Exception ex)
+            {
+                LoggingService.Warning("Hatch silme hatasi", ex);
+            }
+
+            SeciliIstasyon.KatmanAlanlari.Remove(kalem);
+            SeciliIstasyon.ToplamKaziAlani = SeciliIstasyon.KatmanAlanlari
+                .Where(k => k.MalzemeAdi.Equals("Yarma", StringComparison.OrdinalIgnoreCase)).Sum(k => k.Alan);
+            SeciliIstasyon.ToplamDolguAlani = SeciliIstasyon.KatmanAlanlari
+                .Where(k => k.MalzemeAdi.Equals("Dolgu", StringComparison.OrdinalIgnoreCase)).Sum(k => k.Alan);
+
+            string silinen = SagTikMalzemeAdi;
+            SeciliKolonDegisti();
+            SeciliIstasyon = SeciliIstasyon;
+            SeciliIstasyonDegisti();
+            DurumMesaji = $"Km {SeciliIstasyon?.IstasyonMetni}: \"{silinen}\" kalemi silindi.";
+        }
+
+        private void AlanEkle() { AlanDuzelt(true); }
+        private void AlanCikar() { AlanDuzelt(false); }
+
+        private void AlanDuzelt(bool ekleme)
+        {
+            if (SeciliIstasyon == null || SeciliKolon == null || string.IsNullOrEmpty(SagTikMalzemeAdi)) return;
+
+            var kalem = SeciliIstasyon.KatmanAlanlari.FirstOrDefault(k =>
+                k.MalzemeAdi.Equals(SagTikMalzemeAdi, StringComparison.OrdinalIgnoreCase));
+            if (kalem == null) { DurumMesaji = $"{SagTikMalzemeAdi} bulunamad\u0131."; return; }
+
+            try
+            {
+                var kesitService = ServiceContainer.GetRequiredService<IYolKesitService>();
+                double duzeltme = kesitService.AlanDuzelt(SeciliKolon.KolonHarfi, SagTikMalzemeAdi, ekleme);
+                if (Math.Abs(duzeltme) < Constants.AlanToleransi) return;
+
+                kalem.Alan = Math.Max(0, kalem.Alan + duzeltme);
+
+                SeciliIstasyon.ToplamKaziAlani = SeciliIstasyon.KatmanAlanlari
+                    .Where(k => k.MalzemeAdi.Equals("Yarma", StringComparison.OrdinalIgnoreCase)).Sum(k => k.Alan);
+                SeciliIstasyon.ToplamDolguAlani = SeciliIstasyon.KatmanAlanlari
+                    .Where(k => k.MalzemeAdi.Equals("Dolgu", StringComparison.OrdinalIgnoreCase)).Sum(k => k.Alan);
+
+                string islem = ekleme ? "eklendi" : "\u00E7\u0131kar\u0131ld\u0131";
+                SeciliKolonDegisti();
+                SeciliIstasyon = SeciliIstasyon;
+                SeciliIstasyonDegisti();
+                DurumMesaji = $"Km {SeciliIstasyon?.IstasyonMetni}: \"{SagTikMalzemeAdi}\" {islem} ({duzeltme:+0.00;-0.00} m\u00B2)";
+            }
+            catch (System.Exception ex)
+            {
+                DurumMesaji = "Hata: " + ex.Message;
+                LoggingService.Error("Alan d\u00FCzeltme hatas\u0131", ex);
+            }
+        }
+
+        private void IstasyonlariSifirla()
+        {
+            if (SeciliKolon == null || SeciliKolon.Istasyonlar.Count == 0) return;
+            SeciliKolon.Istasyonlar.Clear();
+            SeciliIstasyon = null;
+            SeciliKolonDegisti();
+            SeciliIstasyonKatmanlari.Clear();
+            MalzemeOzetleri.Clear();
+            SeciliKolon.KubajSonucu = null;
+            OnPropertiesChanged("ToplamKaziHacmi", "ToplamDolguHacmi", "NetHacim");
+            DurumMesaji = $"Kolon {SeciliKolon.KolonHarfi} istasyonlar\u0131 temizlendi.";
         }
 
         private void Hesapla()

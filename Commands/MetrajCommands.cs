@@ -37,6 +37,9 @@ namespace Metraj.Commands
 
                 _windowManager = new ModuleWindowManager();
 
+                // Enkesit Oku modülü başlat
+                EnkesitOkuCommands.Initialize();
+
                 // Ribbon menü oluştur
                 RibbonManager.CreateRibbon();
 
@@ -53,6 +56,7 @@ namespace Metraj.Commands
         {
             try
             {
+                EnkesitOkuCommands.Terminate();
                 _windowManager?.Dispose();
                 ServiceContainer.Dispose();
                 LoggingService.Close();
@@ -353,6 +357,61 @@ namespace Metraj.Commands
                 vm.YukleCommand.Execute(null);
             }
             catch (System.Exception ex) { LoggingService.Error("YOLYUKLE hatas\u0131", ex); }
+        }
+
+        [CommandMethod("METRAJIHALE")]
+        public static void ToggleIhaleKontrol()
+        {
+            if (!_initialized) return;
+            try
+            {
+                _windowManager.Toggle();
+                var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+                ed?.WriteMessage("\nİhale Kontrol sekmesini kullanın.\n");
+            }
+            catch (System.Exception ex)
+            {
+                LoggingService.Error("METRAJIHALE komutu hatası", ex);
+            }
+        }
+
+        [CommandMethod("METRAJTABLOOKU")]
+        public static void QuickTabloOku()
+        {
+            if (!_initialized) return;
+            try
+            {
+                var vm = ServiceContainer.GetRequiredService<IhaleKontrolViewModel>();
+                vm.TabloOkuCommand.Execute(null);
+            }
+            catch (System.Exception ex)
+            {
+                LoggingService.Error("METRAJTABLOOKU hatası", ex);
+            }
+        }
+
+        [CommandMethod("METRAJIHALEEXCEL")]
+        public static void IhaleExcel()
+        {
+            if (!_initialized) return;
+            try
+            {
+                var vm = ServiceContainer.GetRequiredService<IhaleKontrolViewModel>();
+                vm.ExcelRaporCommand.Execute(null);
+            }
+            catch (System.Exception ex)
+            {
+                LoggingService.Error("METRAJIHALEEXCEL hatası", ex);
+            }
+        }
+
+        [CommandMethod("IHALEKONTROLPANEL")]
+        public static void IhaleKontrolPanel()
+        {
+            if (!_initialized) return;
+            _windowManager.ToggleModul("İhale Kontrol",
+                new IhaleKontrolControl(),
+                ServiceContainer.GetRequiredService<IhaleKontrolViewModel>());
         }
 
         [CommandMethod("METRAJAYARLAR")]

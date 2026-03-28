@@ -5,6 +5,8 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
+using System.Windows.Media;
 using Metraj.Models;
 using Metraj.ViewModels;
 
@@ -96,6 +98,35 @@ namespace Metraj.Views
             var style = new Style(typeof(TextBlock));
             style.Setters.Add(new Setter(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center));
             return style;
+        }
+
+        private void IstasyonlarGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (!(DataContext is YolMetrajViewModel vm)) return;
+
+            // Tiklanan hucrenin DataGridCell'ini bul
+            DependencyObject dep = e.OriginalSource as DependencyObject;
+            while (dep != null && !(dep is DataGridCell))
+                dep = VisualTreeHelper.GetParent(dep);
+
+            if (dep is DataGridCell cell && cell.Column != null)
+            {
+                string header = cell.Column.Header as string;
+                if (header != null && header != "\u0130stasyon" && header != "Kalem")
+                {
+                    vm.SagTikMalzemeAdi = header;
+
+                    // Tiklanan satiri da sec
+                    DependencyObject rowDep = dep;
+                    while (rowDep != null && !(rowDep is DataGridRow))
+                        rowDep = VisualTreeHelper.GetParent(rowDep);
+                    if (rowDep is DataGridRow row)
+                        IstasyonlarGrid.SelectedItem = row.Item;
+
+                    return;
+                }
+            }
+            vm.SagTikMalzemeAdi = null;
         }
 
         private void MetotCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)

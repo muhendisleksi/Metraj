@@ -34,13 +34,19 @@ namespace Metraj.Models
         // Hatch layer ve renkleri
         public const string LayerYarmaHatch = "METRAJ-YARMA";
         public const string LayerDolguHatch = "METRAJ-DOLGU";
-        public const short RenkYarma = 3;           // Green
-        public const short RenkDolgu = 4;           // Cyan
+        public const short RenkYarma = 1;           // Red
+        public const short RenkDolgu = 5;           // Blue
         public const string LayerEtiketYarma = "METRAJ-YARMA-ETIKET";
         public const string LayerEtiketDolgu = "METRAJ-DOLGU-ETIKET";
         public const double EtiketYuksekligi = 1.5;
 
         // Hatch ayarları JSON dosyası
         public const string HatchAyarlariDosyaAdi = "MetrajHatchAyarlari.json";
+
+        // İhale Kontrol
+        public const string LayerIhaleKontrol = "METRAJ-IHALE";
+        public const short RenkIhaleKontrol = 1;  // Red
+        public const string ReferansKesitDosyaAdi = "MetrajReferansKesit.json";
+        public const string IhaleKontrolKlasor = "IhaleKontrol";
     }
 }

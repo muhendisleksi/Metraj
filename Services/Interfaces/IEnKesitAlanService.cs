@@ -12,5 +12,8 @@ namespace Metraj.Services.Interfaces
         List<Point2d> PolylineNoktalariniAl(ObjectId entityId);
         EnKesitAlanOlcumu BoundaryAlanHesapla(Point3d nokta);
         string MalzemeAdiCikar(string layerAdi);
+        List<Point2d> ClipToXRange(List<Point2d> points, double minX, double maxX);
+        double InterpolateY(List<Point2d> points, double x);
+        double ShoelaceAlan(List<Point2d> polygon);
     }
 }

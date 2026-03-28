@@ -285,7 +285,7 @@ namespace Metraj.Services
         /// <summary>
         /// Clips a polyline to an X range, interpolating Y values at boundaries
         /// </summary>
-        private List<Point2d> ClipToXRange(List<Point2d> points, double minX, double maxX)
+        public List<Point2d> ClipToXRange(List<Point2d> points, double minX, double maxX)
         {
             var result = new List<Point2d>();
 
@@ -311,7 +311,7 @@ namespace Metraj.Services
         /// <summary>
         /// Interpolates Y value at a given X along a polyline
         /// </summary>
-        private double InterpolateY(List<Point2d> points, double x)
+        public double InterpolateY(List<Point2d> points, double x)
         {
             if (points.Count == 0) return 0;
             if (points.Count == 1) return points[0].Y;
@@ -340,7 +340,7 @@ namespace Metraj.Services
         /// <summary>
         /// Shoelace formula for polygon area
         /// </summary>
-        private double ShoelaceAlan(List<Point2d> polygon)
+        public double ShoelaceAlan(List<Point2d> polygon)
         {
             if (polygon == null || polygon.Count < 3) return 0;
 

@@ -48,15 +48,15 @@ namespace Metraj.Services
             MalzemeHatchAyari aktifAyar = _ayarService.MalzemeAyariGetir(aktifMalzeme);
 
             _editorService.WriteMessage($"\n--- Kolon {kolonHarfi} | Km {istasyonMetni} ---\n");
-            _editorService.WriteMessage($"Aktif malzeme: {aktifMalzeme}. 'Kategori' ile de\u011Fi\u015Ftirin.\n");
+            _editorService.WriteMessage($"Aktif katman: {aktifMalzeme}. 'Katman' ile de\u011Fi\u015Ftirin.\n");
 
             var isaretler = new List<(ObjectId hatchId, KatmanAlanBilgisi bilgi)>();
 
             while (true)
             {
                 var result = _editorService.GetPointWithKeywords(
-                    $"\n[{aktifMalzeme.ToUpperInvariant()}] T\u0131klay\u0131n veya [NesneSec/Kategori/Yarma/Dolgu/GeriAl/Bitti]: ",
-                    new[] { "NesneSec", "Kategori", "Yarma", "Dolgu", "GeriAl", "Bitti" });
+                    $"\n[{aktifMalzeme.ToUpperInvariant()}] T\u0131klay\u0131n [Katman/NesneSec/GeriAl/Bitti]: ",
+                    new[] { "Katman", "NesneSec", "GeriAl", "Bitti" });
 
                 if (result.Status == PromptStatus.Cancel)
                     break;
@@ -65,33 +65,24 @@ namespace Metraj.Services
                 {
                     string kw = result.StringResult;
 
-                    if (kw.Equals("Yarma", StringComparison.OrdinalIgnoreCase))
+                    if (kw.Equals("Katman", StringComparison.OrdinalIgnoreCase))
                     {
-                        aktifMalzeme = "Yarma";
-                        aktifAyar = _ayarService.MalzemeAyariGetir(aktifMalzeme);
-                        _editorService.WriteMessage($"\nAktif malzeme: Yarma\n");
-                    }
-                    else if (kw.Equals("Dolgu", StringComparison.OrdinalIgnoreCase))
-                    {
-                        aktifMalzeme = "Dolgu";
-                        aktifAyar = _ayarService.MalzemeAyariGetir(aktifMalzeme);
-                        _editorService.WriteMessage($"\nAktif malzeme: Dolgu\n");
-                    }
-                    else if (kw.Equals("Kategori", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var secilen = KategoridenMalzemeSec();
+                        var secilen = MalzemeSec();
                         if (secilen != null)
                         {
                             aktifMalzeme = secilen;
                             aktifAyar = _ayarService.MalzemeAyariGetir(aktifMalzeme);
-                            _editorService.WriteMessage($"\nAktif malzeme: {aktifMalzeme}\n");
+                            _editorService.WriteMessage($"\nAktif: {aktifMalzeme}\n");
                         }
                     }
                     else if (kw.Equals("NesneSec", StringComparison.OrdinalIgnoreCase))
                     {
-                        var nesneResult = NesneSecVeAlanAl(aktifMalzeme, aktifAyar, kolonHarfi);
-                        if (nesneResult.HasValue)
+                        while (true)
+                        {
+                            var nesneResult = NesneSecVeAlanAl(aktifMalzeme, aktifAyar, kolonHarfi);
+                            if (!nesneResult.HasValue) break;
                             isaretler.Add(nesneResult.Value);
+                        }
                     }
                     else if (kw.Equals("GeriAl", StringComparison.OrdinalIgnoreCase))
                     {
@@ -131,7 +122,7 @@ namespace Metraj.Services
             }
 
             // "Bitti" sonras\u0131: her malzeme i\u00E7in toplam\u0131 hesaplay\u0131p tek etiket at
-            EtiketleriTopluOlustur(isaretler, kolonHarfi);
+            HatchBirlestirVeEtiketle(isaretler, kolonHarfi);
 
             // Ayn\u0131 malzemeleri birle\u015Ftirerek sonu\u00E7 olu\u015Ftur
             var gruplu = isaretler
@@ -177,22 +168,18 @@ namespace Metraj.Services
             while (true)
             {
                 var result = _editorService.GetPointWithKeywords(
-                    $"\n[{aktifMalzeme.ToUpperInvariant()}] T\u0131klay\u0131n [NesneSec/Kategori/Yarma/Dolgu/GeriAl/Bitti]: ",
-                    new[] { "NesneSec", "Kategori", "Yarma", "Dolgu", "GeriAl", "Bitti" });
+                    $"\n[{aktifMalzeme.ToUpperInvariant()}] T\u0131klay\u0131n [Katman/NesneSec/GeriAl/Bitti]: ",
+                    new[] { "Katman", "NesneSec", "GeriAl", "Bitti" });
 
                 if (result.Status == PromptStatus.Cancel) break;
 
                 if (result.Status == PromptStatus.Keyword)
                 {
                     string kw = result.StringResult;
-                    if (kw.Equals("Yarma", StringComparison.OrdinalIgnoreCase))
-                    { aktifMalzeme = "Yarma"; aktifAyar = _ayarService.MalzemeAyariGetir(aktifMalzeme); _editorService.WriteMessage($"\nAktif: Yarma\n"); }
-                    else if (kw.Equals("Dolgu", StringComparison.OrdinalIgnoreCase))
-                    { aktifMalzeme = "Dolgu"; aktifAyar = _ayarService.MalzemeAyariGetir(aktifMalzeme); _editorService.WriteMessage($"\nAktif: Dolgu\n"); }
-                    else if (kw.Equals("Kategori", StringComparison.OrdinalIgnoreCase))
-                    { var s = KategoridenMalzemeSec(); if (s != null) { aktifMalzeme = s; aktifAyar = _ayarService.MalzemeAyariGetir(aktifMalzeme); _editorService.WriteMessage($"\nAktif: {aktifMalzeme}\n"); } }
+                    if (kw.Equals("Katman", StringComparison.OrdinalIgnoreCase))
+                    { var s = MalzemeSec(); if (s != null) { aktifMalzeme = s; aktifAyar = _ayarService.MalzemeAyariGetir(aktifMalzeme); _editorService.WriteMessage($"\nAktif: {aktifMalzeme}\n"); } }
                     else if (kw.Equals("NesneSec", StringComparison.OrdinalIgnoreCase))
-                    { var r = NesneSecVeAlanAl(aktifMalzeme, aktifAyar, kolonHarfi); if (r.HasValue) isaretler.Add(r.Value); }
+                    { while (true) { var r = NesneSecVeAlanAl(aktifMalzeme, aktifAyar, kolonHarfi); if (!r.HasValue) break; isaretler.Add(r.Value); } }
                     else if (kw.Equals("GeriAl", StringComparison.OrdinalIgnoreCase))
                     { GeriAl(isaretler); }
                     else if (kw.Equals("Bitti", StringComparison.OrdinalIgnoreCase))
@@ -203,6 +190,17 @@ namespace Metraj.Services
                 if (result.Status == PromptStatus.OK)
                 {
                     var tikPt = result.Value;
+
+                    // Ayni alana tekrar tiklama engeli
+                    bool tekrar = isaretler.Any(x =>
+                        x.bilgi.TiklamaNoktalari.Any(n =>
+                            System.Math.Abs(n[0] - tikPt.X) < 0.5 && System.Math.Abs(n[1] - tikPt.Y) < 0.5));
+                    if (tekrar)
+                    {
+                        _editorService.WriteMessage("\nBu alan zaten isaretli.\n");
+                        continue;
+                    }
+
                     var (hatchId, alan) = _hatchService.HatchOlustur(tikPt, aktifAyar);
                     if (hatchId.IsNull || alan <= Constants.AlanToleransi)
                     { _editorService.WriteMessage("\nAlan bulunamad\u0131. 'NesneSec' deneyin.\n"); continue; }
@@ -220,7 +218,7 @@ namespace Metraj.Services
                 }
             }
 
-            EtiketleriTopluOlustur(isaretler, kolonHarfi);
+            HatchBirlestirVeEtiketle(isaretler, kolonHarfi);
 
             // Birle\u015Ftir
             var sonuc = new List<KatmanAlanBilgisi>();
@@ -241,45 +239,84 @@ namespace Metraj.Services
             return sonuc;
         }
 
-        private string KategoridenMalzemeSec()
+        public double AlanDuzelt(string kolonHarfi, string malzemeAdi, bool ekleme)
         {
-            var katResult = _editorService.GetKeywords(
-                "\nKategori [Ustyapi/Alttemel/ToprakIsleri/Ozel]: ",
-                new[] { "Ustyapi", "Alttemel", "ToprakIsleri", "Ozel" },
-                "Ustyapi");
+            var ayar = _ayarService.MalzemeAyariGetir(malzemeAdi);
+            string islem = ekleme ? "EKLE" : "CIKAR";
+            _editorService.WriteMessage($"\n--- Alan {islem}: {malzemeAdi} ---\n");
 
-            if (katResult.Status != PromptStatus.OK || string.IsNullOrEmpty(katResult.StringResult))
-                return null;
+            double toplamDuzeltme = 0;
+            var geciciHatchler = new List<Autodesk.AutoCAD.DatabaseServices.ObjectId>();
 
-            string[] malzemeler;
-            switch (katResult.StringResult)
+            while (true)
             {
-                case "Ustyapi":
-                    malzemeler = new[] { "Asinma", "Binder", "Bitumen" };
+                string mesaj = ekleme
+                    ? $"\n[{islem}] Eklenecek alani tiklayin [Bitti]: "
+                    : $"\n[{islem}] Cikarilacak alani tiklayin [Bitti]: ";
+
+                var result = _editorService.GetPointWithKeywords(mesaj, new[] { "Bitti" });
+
+                if (result.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.Cancel) break;
+                if (result.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.Keyword
+                    && result.StringResult.Equals("Bitti", System.StringComparison.OrdinalIgnoreCase))
                     break;
-                case "Alttemel":
-                    malzemeler = new[] { "Plentmiks", "AltTemel", "Siyirma" };
-                    break;
-                case "ToprakIsleri":
-                    malzemeler = new[] { "Yarma", "Dolgu" };
-                    break;
-                case "Ozel":
-                    malzemeler = new[] { "BTYerineKonan", "BTYerineKonmayan" };
-                    break;
-                default:
-                    return null;
+
+                if (result.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                {
+                    var tikPt = result.Value;
+                    var (hatchId, alan) = _hatchService.HatchOlustur(tikPt, ayar);
+                    if (hatchId.IsNull || alan <= Constants.AlanToleransi)
+                    {
+                        _editorService.WriteMessage("\nAlan bulunamadi.\n");
+                        continue;
+                    }
+
+                    toplamDuzeltme += alan;
+
+                    if (!ekleme)
+                    {
+                        // Cikarma: gecici hatch'i sil, sadece alani olc
+                        _hatchService.HatchSil(hatchId);
+                        _editorService.WriteMessage($"\n  -{alan:F2} m\u00B2\n");
+                    }
+                    else
+                    {
+                        geciciHatchler.Add(hatchId);
+                        _editorService.WriteMessage($"\n  +{alan:F2} m\u00B2\n");
+                    }
+                }
             }
 
+            _editorService.WriteMessage($"\nToplam duzeltme: {(ekleme ? "+" : "-")}{toplamDuzeltme:F2} m\u00B2\n");
+            return ekleme ? toplamDuzeltme : -toplamDuzeltme;
+        }
+
+        private string MalzemeSec()
+        {
+            var tumMalzemeler = new[]
+            {
+                "Yarma", "Dolgu", "Asinma", "Binder", "Bitumen",
+                "Plentmiks", "AltTemel", "Siyirma", "BTYerineKonan", "BTYerineKonmayan"
+            };
+
+            var goruntuAdlari = new[]
+            {
+                "Yarma", "Dolgu", "A\u015F\u0131nma", "Binder", "Bit\u00FCmen",
+                "Plentmiks", "AltTemel", "S\u0131y\u0131rma", "BT-Konan", "BT-Konmayan"
+            };
+
             var malResult = _editorService.GetKeywords(
-                $"\nMalzeme [{string.Join("/", malzemeler)}]: ",
-                malzemeler,
-                malzemeler[0]);
+                "\nKatman se\u00E7in: ",
+                tumMalzemeler,
+                goruntuAdlari,
+                "Yarma");
 
             if (malResult.Status != PromptStatus.OK || string.IsNullOrEmpty(malResult.StringResult))
                 return null;
 
-            // Keyword'den ger\u00E7ek malzeme ad\u0131na d\u00F6n\u00FC\u015Ft\u00FCr
-            return KeywordToMalzemeAdi(malResult.StringResult);
+            string sonuc = KeywordToMalzemeAdi(malResult.StringResult);
+            _editorService.WriteMessage($"\n>> Se\u00E7ilen katman: {sonuc}\n");
+            return sonuc;
         }
 
         private string KeywordToMalzemeAdi(string keyword)
@@ -323,7 +360,9 @@ namespace Metraj.Services
             return harf;
         }
 
-        public double IstasyonParse(string metin)
+        public double IstasyonParse(string metin) => IstasyonParseStatik(metin);
+
+        public static double IstasyonParseStatik(string metin)
         {
             if (string.IsNullOrWhiteSpace(metin)) return -1;
             string temiz = metin.Trim();
@@ -398,19 +437,35 @@ namespace Metraj.Services
                 var doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
                 var db = doc.Database;
                 double alan = 0;
+                Point3d merkezNokta = Point3d.Origin;
 
                 using (var tr = db.TransactionManager.StartTransaction())
                 {
                     var entity = tr.GetObject(entityResult.ObjectId, OpenMode.ForRead) as Entity;
 
                     if (entity is Polyline pl && pl.Closed)
+                    {
                         alan = pl.Area;
+                        if (pl.Bounds.HasValue)
+                        {
+                            var b = pl.Bounds.Value;
+                            merkezNokta = new Point3d((b.MinPoint.X + b.MaxPoint.X) / 2, (b.MinPoint.Y + b.MaxPoint.Y) / 2, 0);
+                        }
+                    }
                     else if (entity is Hatch h)
                     {
                         try { alan = h.Area; } catch { }
+                        if (h.Bounds.HasValue)
+                        {
+                            var b = h.Bounds.Value;
+                            merkezNokta = new Point3d((b.MinPoint.X + b.MaxPoint.X) / 2, (b.MinPoint.Y + b.MaxPoint.Y) / 2, 0);
+                        }
                     }
                     else if (entity is Circle c)
+                    {
                         alan = Math.PI * c.Radius * c.Radius;
+                        merkezNokta = c.Center;
+                    }
                     else
                     {
                         _editorService.WriteMessage("\nKapal\u0131 polyline, hatch veya circle se\u00E7in.\n");
@@ -426,16 +481,24 @@ namespace Metraj.Services
                     return null;
                 }
 
+                // Nesnenin kendisinden hatch olu\u015Ftur
+                var (hatchId, hatchAlan) = _hatchService.NesnedenHatchOlustur(entityResult.ObjectId, aktifAyar);
+                if (hatchAlan > Constants.AlanToleransi) alan = hatchAlan;
+
                 var bilgi = new KatmanAlanBilgisi
                 {
                     MalzemeAdi = aktifMalzeme,
                     Kategori = KategoriBelirleMalzeme(aktifMalzeme),
                     Alan = alan,
-                    KaynakLayerAdi = aktifAyar.LayerAdi
+                    KaynakLayerAdi = aktifAyar.LayerAdi,
+                    NesnedenSecildi = true,
+                    NesneHandle = entityResult.ObjectId.Handle.Value,
+                    TiklamaNoktalari = new System.Collections.Generic.List<double[]>
+                        { new[] { merkezNokta.X, merkezNokta.Y } }
                 };
 
-                _editorService.WriteMessage($"\n  {aktifMalzeme}: {alan:F2} m\u00B2 (nesne se\u00E7im)\n");
-                return (entityResult.ObjectId, bilgi);
+                _editorService.WriteMessage($"\n  {aktifMalzeme}: {alan:F2} m\u00B2 (nesne)\n");
+                return (hatchId.IsNull ? entityResult.ObjectId : hatchId, bilgi);
             }
             catch (System.Exception ex)
             {
@@ -444,21 +507,63 @@ namespace Metraj.Services
             }
         }
 
-        private void EtiketleriTopluOlustur(
+        private void HatchBirlestirVeEtiketle(
             List<(ObjectId hatchId, KatmanAlanBilgisi bilgi)> isaretler, string kolonHarfi)
         {
-            // Her malzeme i\u00E7in son hatch'in merkezine tek etiket at
             var gruplar = isaretler
-                .GroupBy(x => x.bilgi.MalzemeAdi, StringComparer.OrdinalIgnoreCase);
+                .GroupBy(x => x.bilgi.MalzemeAdi, StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
             foreach (var grup in gruplar)
             {
-                // Grubun son hatch'ine etiket at (en b\u00FCy\u00FCk alan olan\u0131 tercih et)
-                var enBuyuk = grup.OrderByDescending(x => x.bilgi.Alan).First();
-                if (!enBuyuk.hatchId.IsNull)
+                var ayar = _ayarService.MalzemeAyariGetir(grup.Key);
+
+                // 1. Tum bireysel hatch'leri sil
+                foreach (var item in grup)
                 {
-                    var ayar = _ayarService.MalzemeAyariGetir(grup.Key);
-                    _hatchService.EtiketYaz(enBuyuk.hatchId, kolonHarfi, ayar);
+                    if (!item.hatchId.IsNull)
+                        _hatchService.HatchSil(item.hatchId);
+                }
+
+                // 2. Tiklama noktalarini topla
+                var noktalar = new List<Autodesk.AutoCAD.Geometry.Point3d>();
+                foreach (var item in grup.Where(x => !x.bilgi.NesnedenSecildi))
+                {
+                    foreach (var n in item.bilgi.TiklamaNoktalari)
+                    {
+                        if (n.Length >= 2)
+                            noktalar.Add(new Autodesk.AutoCAD.Geometry.Point3d(n[0], n[1], 0));
+                    }
+                }
+
+                // 3. Nesne entity ObjectId'lerini topla (handle'dan)
+                var nesneIds = new List<ObjectId>();
+                var doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
+                if (doc != null)
+                {
+                    var db = doc.Database;
+                    foreach (var item in grup.Where(x => x.bilgi.NesnedenSecildi && x.bilgi.NesneHandle != 0))
+                    {
+                        try
+                        {
+                            var handle = new Autodesk.AutoCAD.DatabaseServices.Handle(item.bilgi.NesneHandle);
+                            if (db.TryGetObjectId(handle, out ObjectId entId) && !entId.IsNull)
+                                nesneIds.Add(entId);
+                        }
+                        catch { }
+                    }
+                }
+
+                // 4. Tek birlesik hatch olustur (tiklama + nesne)
+                if (noktalar.Count == 0 && nesneIds.Count == 0) continue;
+
+                var (birlesikHatchId, _) = _hatchService.CokluHatchOlustur(
+                    noktalar.Count > 0 ? noktalar : null, ayar, nesneIds.Count > 0 ? nesneIds : null);
+
+                // 5. Tek etiket - hatch merkezinde
+                if (!birlesikHatchId.IsNull)
+                {
+                    _hatchService.EtiketYaz(birlesikHatchId, kolonHarfi, ayar);
                 }
             }
         }
@@ -493,7 +598,7 @@ namespace Metraj.Services
             _editorService.WriteMessage("\nSon i\u015Faret geri al\u0131nd\u0131.\n");
         }
 
-        private string IstasyonFormatla(double istasyon)
+        public static string IstasyonFormatla(double istasyon)
         {
             int km = (int)(istasyon / 1000);
             double m = istasyon % 1000;

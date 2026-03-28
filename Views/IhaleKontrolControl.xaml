@@ -1,0 +1,210 @@
+<UserControl x:Class="Metraj.Views.IhaleKontrolControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#FF1E1E2E">
+    <UserControl.Resources>
+        <Style x:Key="ActionButton" TargetType="Button">
+            <Setter Property="Background" Value="#FF3D3D5C"/>
+            <Setter Property="Foreground" Value="#FFDCDCAA"/>
+            <Setter Property="BorderBrush" Value="#FF555577"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#FF4E4E6E"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="StatusText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#FF8888AA"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="LabelText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#FFB0B0CC"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="10"/>
+        </Style>
+        <Style x:Key="ValueText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#FF4EC9B0"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="10"/>
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="8">
+            <!-- Başlık -->
+            <TextBlock Text="İHALE KONTROL" Foreground="#FFDCDCAA"
+                       FontFamily="Segoe UI" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
+
+            <!-- 1. Tabloları Oku -->
+            <DockPanel Margin="0,2">
+                <Button Content="1. Tabloları Oku" Command="{Binding TabloOkuCommand}"
+                        Style="{StaticResource ActionButton}" DockPanel.Dock="Left" MinWidth="140"/>
+                <TextBlock Text="{Binding TabloParseStatus}" Style="{StaticResource StatusText}" Margin="8,0,0,0"/>
+            </DockPanel>
+
+            <!-- 2. Referans Kesit -->
+            <DockPanel Margin="0,4">
+                <Button Content="2. Referans Tanımla" Command="{Binding ReferansKesitTanimlaCommand}"
+                        Style="{StaticResource ActionButton}" DockPanel.Dock="Left" MinWidth="140"/>
+                <TextBlock Text="{Binding ReferansKesitStatus}" Style="{StaticResource StatusText}" Margin="8,0,0,0"/>
+            </DockPanel>
+
+            <!-- Profil Yükleme -->
+            <DockPanel Margin="0,2">
+                <Button Content="Profil Yükle" Command="{Binding ReferansKesitYukleCommand}"
+                        Style="{StaticResource ActionButton}" DockPanel.Dock="Left" MinWidth="90"/>
+                <ComboBox ItemsSource="{Binding KayitliProfiller}" SelectedItem="{Binding SeciliProfil}"
+                          Background="#FF2D2D44" Foreground="#FFDCDCAA" BorderBrush="#FF555577"
+                          FontSize="10" Margin="4,0,0,0" MinWidth="120"/>
+            </DockPanel>
+
+            <!-- 3. Geometrik Hesap -->
+            <DockPanel Margin="0,4">
+                <Button Content="3. Geometrik Hesap" Command="{Binding GeometrikHesapCommand}"
+                        Style="{StaticResource ActionButton}" DockPanel.Dock="Left" MinWidth="140"/>
+                <TextBlock Text="{Binding GeometrikHesapStatus}" Style="{StaticResource StatusText}" Margin="8,0,0,0"/>
+            </DockPanel>
+
+            <!-- 4. Karşılaştır -->
+            <DockPanel Margin="0,4">
+                <Button Content="4. Karşılaştır" Command="{Binding KarsilastirCommand}"
+                        Style="{StaticResource ActionButton}" DockPanel.Dock="Left" MinWidth="140"/>
+                <TextBlock Text="{Binding KarsilastirmaStatus}" Style="{StaticResource StatusText}" Margin="8,0,0,0"/>
+            </DockPanel>
+
+            <!-- Referans Kesit Bilgisi -->
+            <Border Background="#FF252538" CornerRadius="4" Padding="8,6" Margin="0,8,0,0">
+                <StackPanel>
+                    <TextBlock Text="Referans Kesit Bilgisi" Foreground="#FF8888AA"
+                               FontSize="10" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="50"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Arazi:" Style="{StaticResource LabelText}"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ReferansAraziInfo}" Style="{StaticResource ValueText}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Proje:" Style="{StaticResource LabelText}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ReferansProjeInfo}" Style="{StaticResource ValueText}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="S.Kot:" Style="{StaticResource LabelText}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ReferansSiyahKotInfo}" Style="{StaticResource ValueText}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Özet -->
+            <Border Background="#FF252538" CornerRadius="4" Padding="8,6" Margin="0,6,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding ToplamKesit}" Foreground="#FF4EC9B0"
+                                   FontSize="16" FontWeight="Bold" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Toplam" Style="{StaticResource LabelText}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding SorunsuzKesit}" Foreground="#FF4CAF50"
+                                   FontSize="16" FontWeight="Bold" HorizontalAlignment="Center"/>
+                        <TextBlock Text="OK" Style="{StaticResource LabelText}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding UyariKesit}" Foreground="#FFFFC107"
+                                   FontSize="16" FontWeight="Bold" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Uyarı" Style="{StaticResource LabelText}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="3" HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding HataliKesit}" Foreground="#FFEF5350"
+                                   FontSize="16" FontWeight="Bold" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Hata" Style="{StaticResource LabelText}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Tolerans Ayarları -->
+            <DockPanel Margin="0,6,0,0">
+                <TextBlock Text="Tolerans:" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                <TextBox Text="{Binding UyariTolerans, UpdateSourceTrigger=PropertyChanged}"
+                         Background="#FF2D2D44" Foreground="#FFDCDCAA" BorderBrush="#FF555577"
+                         Width="35" FontSize="10" Padding="2" VerticalAlignment="Center"/>
+                <TextBlock Text="% Uyarı" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="4,0,8,0"/>
+                <TextBox Text="{Binding HataTolerans, UpdateSourceTrigger=PropertyChanged}"
+                         Background="#FF2D2D44" Foreground="#FFDCDCAA" BorderBrush="#FF555577"
+                         Width="35" FontSize="10" Padding="2" VerticalAlignment="Center"/>
+                <TextBlock Text="% Hata" Style="{StaticResource LabelText}" VerticalAlignment="Center" Margin="4,0,0,0"/>
+            </DockPanel>
+
+            <!-- Karşılaştırma DataGrid -->
+            <DataGrid ItemsSource="{Binding Karsilastirmalar}"
+                      SelectedItem="{Binding SeciliKarsilastirma}"
+                      AutoGenerateColumns="False" IsReadOnly="True"
+                      Background="#FF252538" Foreground="#FFDCDCAA"
+                      BorderBrush="#FF555577" GridLinesVisibility="Horizontal"
+                      HorizontalGridLinesBrush="#FF3D3D5C"
+                      RowBackground="#FF252538" AlternatingRowBackground="#FF2A2A40"
+                      HeadersVisibility="Column" FontFamily="Segoe UI" FontSize="10"
+                      MaxHeight="200" Margin="0,6,0,0">
+                <DataGrid.ColumnHeaderStyle>
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="Background" Value="#FF2D2D44"/>
+                        <Setter Property="Foreground" Value="#FF8888AA"/>
+                        <Setter Property="Padding" Value="4,2"/>
+                        <Setter Property="FontSize" Value="9"/>
+                        <Setter Property="BorderBrush" Value="#FF555577"/>
+                        <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                    </Style>
+                </DataGrid.ColumnHeaderStyle>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="KM" Binding="{Binding IstasyonMetni}" Width="60"/>
+                    <DataGridTextColumn Header="Tablo" Binding="{Binding ToplamTabloDegeri, StringFormat=F2}" Width="55"/>
+                    <DataGridTextColumn Header="Hesap" Binding="{Binding ToplamGeometrikDeger, StringFormat=F2}" Width="55"/>
+                    <DataGridTextColumn Header="Fark" Binding="{Binding ToplamFark, StringFormat=F2}" Width="50"/>
+                    <DataGridTextColumn Header="%" Binding="{Binding ToplamFarkYuzde, StringFormat=F1}" Width="40"/>
+                    <DataGridTextColumn Header="Durum" Binding="{Binding Durum}" Width="55"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Alt Butonlar -->
+            <WrapPanel Margin="0,8,0,0" HorizontalAlignment="Left">
+                <Button Content="Excel Rapor" Command="{Binding ExcelRaporCommand}"
+                        Style="{StaticResource ActionButton}" Margin="0,0,4,0"/>
+                <Button Content="Temizle" Command="{Binding TemizleCommand}"
+                        Style="{StaticResource ActionButton}"/>
+            </WrapPanel>
+
+            <!-- Durum Mesajı -->
+            <TextBlock Text="{Binding DurumMesaji}" Foreground="#FF8888AA"
+                       FontSize="9" Margin="0,6,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
