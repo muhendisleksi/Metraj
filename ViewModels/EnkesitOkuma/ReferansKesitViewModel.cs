@@ -90,34 +90,68 @@ namespace Metraj.ViewModels.EnkesitOkuma
             {
                 if (cizgi.Rol != CizgiRolu.Tanimsiz) continue;
 
+                // 1. Layer adindan dene
                 string upper = (cizgi.LayerAdi ?? "").ToUpperInvariant();
-                if (upper.Contains("ZEMİN") || upper.Contains("ZEMIN") || upper.Contains("SIYAH"))
-                    cizgi.Rol = CizgiRolu.Zemin;
-                else if (upper.Contains("SIYIRMA") || upper.Contains("SİYIRMA"))
-                    cizgi.Rol = CizgiRolu.SiyirmaTaban;
-                else if (upper.Contains("PROJE") || upper.Contains("KIRMIZI"))
-                    cizgi.Rol = CizgiRolu.ProjeKotu;
-                else if (upper.Contains("EKSEN") || upper.Contains("CL") || upper.Contains("AXIS"))
-                    cizgi.Rol = CizgiRolu.EksenCizgisi;
-                else if (upper.Contains("CERCEVE") || upper.Contains("ÇERÇEVE") || upper.Contains("FRAME"))
-                    cizgi.Rol = CizgiRolu.CerceveCizgisi;
-                else if (upper.Contains("GRID") || upper.Contains("OLCEK"))
-                    cizgi.Rol = CizgiRolu.GridCizgisi;
-                else if (upper.Contains("HENDEK"))
-                    cizgi.Rol = CizgiRolu.HendekCizgisi;
-                else if (upper.Contains("SEV") || upper.Contains("ŞEV"))
-                    cizgi.Rol = CizgiRolu.SevCizgisi;
-                else if (upper.Contains("BANKET"))
-                    cizgi.Rol = CizgiRolu.BanketCizgisi;
-                else if (upper.Contains("ASINMA") || upper.Contains("AŞINMA"))
-                    cizgi.Rol = CizgiRolu.AsinmaTaban;
-                else if (upper.Contains("BINDER"))
-                    cizgi.Rol = CizgiRolu.BinderTaban;
+                if (upper.Contains("ZEMIN") || upper.Contains("SIYAH"))
+                { cizgi.Rol = CizgiRolu.Zemin; cizgi.OtomatikAtanmis = true; continue; }
+                if (upper.Contains("SIYIRMA"))
+                { cizgi.Rol = CizgiRolu.SiyirmaTaban; cizgi.OtomatikAtanmis = true; continue; }
+                if (upper.Contains("PROJE") || upper.Contains("KIRMIZI"))
+                { cizgi.Rol = CizgiRolu.ProjeKotu; cizgi.OtomatikAtanmis = true; continue; }
+                if (upper.Contains("EKSEN") || upper.Contains("CL") || upper.Contains("AXIS"))
+                { cizgi.Rol = CizgiRolu.EksenCizgisi; cizgi.OtomatikAtanmis = true; continue; }
+                if (upper.Contains("CERCEVE") || upper.Contains("FRAME"))
+                { cizgi.Rol = CizgiRolu.CerceveCizgisi; cizgi.OtomatikAtanmis = true; continue; }
+                if (upper.Contains("GRID") || upper.Contains("OLCEK"))
+                { cizgi.Rol = CizgiRolu.GridCizgisi; cizgi.OtomatikAtanmis = true; continue; }
+                if (upper.Contains("HENDEK"))
+                { cizgi.Rol = CizgiRolu.HendekCizgisi; cizgi.OtomatikAtanmis = true; continue; }
+                if (upper.Contains("SEV"))
+                { cizgi.Rol = CizgiRolu.SevCizgisi; cizgi.OtomatikAtanmis = true; continue; }
+                if (upper.Contains("BANKET"))
+                { cizgi.Rol = CizgiRolu.BanketCizgisi; cizgi.OtomatikAtanmis = true; continue; }
+                if (upper.Contains("ASINMA"))
+                { cizgi.Rol = CizgiRolu.AsinmaTaban; cizgi.OtomatikAtanmis = true; continue; }
+                if (upper.Contains("BINDER"))
+                { cizgi.Rol = CizgiRolu.BinderTaban; cizgi.OtomatikAtanmis = true; continue; }
 
-                if (cizgi.Rol != CizgiRolu.Tanimsiz)
-                    cizgi.OtomatikAtanmis = true;
+                // 2. Layer eslesmedi -> renk bazli dene
+                switch (cizgi.RenkIndex)
+                {
+                    case 3: // Yesil -> Zemin
+                        cizgi.Rol = CizgiRolu.Zemin;
+                        cizgi.OtomatikAtanmis = true;
+                        break;
+                    case 5: // Mavi -> Siyirma
+                        cizgi.Rol = CizgiRolu.SiyirmaTaban;
+                        cizgi.OtomatikAtanmis = true;
+                        break;
+                    case 1: // Kirmizi -> Proje kotu
+                        cizgi.Rol = CizgiRolu.ProjeKotu;
+                        cizgi.OtomatikAtanmis = true;
+                        break;
+                }
             }
 
+            // 3. Renk 7/8/9 (beyaz/gri) tanimsiz cizgileri Y pozisyonuna gore ustyapi tabakalari olarak ata
+            var gizliTabakalar = Cizgiler
+                .Where(c => c.Rol == CizgiRolu.Tanimsiz && (c.RenkIndex == 7 || c.RenkIndex == 8 || c.RenkIndex == 9))
+                .OrderByDescending(c => c.OrtalamaY)
+                .ToList();
+
+            var tabakaSirasi = new[]
+            {
+                CizgiRolu.AsinmaTaban, CizgiRolu.BinderTaban, CizgiRolu.BitumluTemelTaban,
+                CizgiRolu.PlentmiksTaban, CizgiRolu.AltTemelTaban, CizgiRolu.KirmatasTaban
+            };
+
+            for (int i = 0; i < Math.Min(gizliTabakalar.Count, tabakaSirasi.Length); i++)
+            {
+                gizliTabakalar[i].Rol = tabakaSirasi[i];
+                gizliTabakalar[i].OtomatikAtanmis = true;
+            }
+
+            // UI guncelle
             var temp = Cizgiler.ToList();
             Cizgiler.Clear();
             foreach (var c in temp) Cizgiler.Add(c);
@@ -134,7 +168,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
 
             var dialog = new Microsoft.Win32.SaveFileDialog
             {
-                Filter = "JSON Dosyası|*.json",
+                Filter = "JSON Dosyasi|*.json",
                 FileName = "EnkesitSablon.json"
             };
 

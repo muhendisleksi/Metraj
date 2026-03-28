@@ -42,7 +42,9 @@ namespace Metraj.Services.YolEnkesit
                         var obj = tr.GetObject(entId, OpenMode.ForRead);
                         if (obj is Entity ent)
                         {
-                            var bounds = ent.GeometricExtents;
+                            Extents3d bounds;
+                            try { bounds = ent.GeometricExtents; }
+                            catch { continue; }
                             if (!PencereIcindeMi(bounds, minPt, maxPt)) continue;
 
                             if (ent is Polyline || ent is Polyline2d || ent is Polyline3d || ent is Line)

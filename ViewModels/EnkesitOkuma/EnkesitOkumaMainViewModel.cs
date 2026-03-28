@@ -26,7 +26,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
         private readonly IEditorService _editorService;
 
         private int _aktifAdim = 1;
-        private string _durumMesaji = "Hazır";
+        private string _durumMesaji = "Hazir";
         private List<ObjectId> _secilenEntityler;
         private List<AnchorNokta> _anchorlar;
         private KesitPenceresi _pencere;
@@ -51,15 +51,14 @@ namespace Metraj.ViewModels.EnkesitOkuma
             _editorService = editorService;
 
             EntitySecCommand = new RelayCommand(EntitySec, () => AktifAdim == 1);
-            AnchorTaraCommand = new RelayCommand(AnchorTara, () => AktifAdim == 2 && _secilenEntityler != null);
-            PencereBelirleCommand = new RelayCommand(PencereBelirle, () => AktifAdim == 2 && _anchorlar != null);
-            KalibrasyonAcCommand = new RelayCommand(KalibrasyonAc, () => AktifAdim == 3);
-            SablonYukleCommand = new RelayCommand(SablonYukle, () => AktifAdim == 3);
-            TopluTaraCommand = new RelayCommand(TopluTara, () => AktifAdim == 4 && _sablon != null);
-            DogrulamaAcCommand = new RelayCommand(DogrulamaAc, () => AktifAdim == 5 && _kesitler != null);
-            ExcelAktarCommand = new RelayCommand(ExcelAktar, () => AktifAdim == 6);
-            JsonKaydetCommand = new RelayCommand(JsonKaydet, () => AktifAdim == 6);
-            IleriCommand = new RelayCommand(AdimIleri, () => AktifAdim < 6);
+            PencereBelirleCommand = new RelayCommand(PencereBelirle, () => AktifAdim == 1 && _anchorlar != null);
+            KalibrasyonAcCommand = new RelayCommand(KalibrasyonAc, () => AktifAdim == 2);
+            SablonYukleCommand = new RelayCommand(SablonYukle, () => AktifAdim == 2);
+            DogrulamaAcCommand = new RelayCommand(DogrulamaAc, () => AktifAdim == 3 && _kesitler != null);
+            ExcelAktarCommand = new RelayCommand(ExcelAktar, () => AktifAdim == 3 && _kesitler != null);
+            JsonKaydetCommand = new RelayCommand(JsonKaydet, () => AktifAdim == 3);
+            HesaplaCommand = new RelayCommand(Hesapla, () => AktifAdim == 3 && _kesitler != null);
+            IleriCommand = new RelayCommand(AdimIleri, () => AktifAdim < 3);
             GeriCommand = new RelayCommand(AdimGeri, () => AktifAdim > 1);
         }
 
@@ -69,8 +68,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
             set
             {
                 if (SetProperty(ref _aktifAdim, value))
-                    OnPropertiesChanged(nameof(Adim1Aktif), nameof(Adim2Aktif), nameof(Adim3Aktif),
-                        nameof(Adim4Aktif), nameof(Adim5Aktif), nameof(Adim6Aktif));
+                    OnPropertiesChanged(nameof(Adim1Aktif), nameof(Adim2Aktif), nameof(Adim3Aktif));
             }
         }
 
@@ -82,27 +80,34 @@ namespace Metraj.ViewModels.EnkesitOkuma
         public ReferansKesitSablonu Sablon { get => _sablon; set => SetProperty(ref _sablon, value); }
         public TopluTaramaSonucu TaramaSonucu { get => _taramaSonucu; set => SetProperty(ref _taramaSonucu, value); }
 
+        // 3 adim
         public bool Adim1Aktif => AktifAdim == 1;
         public bool Adim2Aktif => AktifAdim == 2;
         public bool Adim3Aktif => AktifAdim == 3;
-        public bool Adim4Aktif => AktifAdim == 4;
-        public bool Adim5Aktif => AktifAdim == 5;
-        public bool Adim6Aktif => AktifAdim == 6;
 
-        public string EntitySayisi => _secilenEntityler != null ? $"{_secilenEntityler.Count:N0} entity seçildi" : "";
+        public string EntitySayisi => _secilenEntityler != null ? $"{_secilenEntityler.Count:N0} entity secildi" : "";
         public string AnchorSayisi => _anchorlar != null ? $"{_anchorlar.Count} istasyon bulundu" : "";
-        public string PencereBilgisi => _pencere != null ? $"Pencere: {_pencere.Genislik:F1} × {_pencere.Yukseklik:F1}" : "";
+        public string PencereBilgisi => _pencere != null ? $"Pencere: {_pencere.Genislik:F1} x {_pencere.Yukseklik:F1}" : "";
         public string KesitSayisi => _kesitler != null ? $"{_kesitler.Count} kesit" : "";
+        public string SonucBilgisi
+        {
+            get
+            {
+                if (_kesitler == null) return "";
+                int onayli = _kesitler.Count(k => k.Durum == DogrulamaDurumu.Onaylandi);
+                int duzeltildi = _kesitler.Count(k => k.Durum == DogrulamaDurumu.Duzeltildi);
+                return $"{_kesitler.Count} kesit -- {onayli} onay, {duzeltildi} duzeltme";
+            }
+        }
 
         public ICommand EntitySecCommand { get; }
-        public ICommand AnchorTaraCommand { get; }
         public ICommand PencereBelirleCommand { get; }
         public ICommand KalibrasyonAcCommand { get; }
         public ICommand SablonYukleCommand { get; }
-        public ICommand TopluTaraCommand { get; }
         public ICommand DogrulamaAcCommand { get; }
         public ICommand ExcelAktarCommand { get; }
         public ICommand JsonKaydetCommand { get; }
+        public ICommand HesaplaCommand { get; }
         public ICommand IleriCommand { get; }
         public ICommand GeriCommand { get; }
 
@@ -116,14 +121,17 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 if (result.Status != PromptStatus.OK) return;
 
                 _secilenEntityler = new List<ObjectId>(result.Value.GetObjectIds());
-                DurumMesaji = $"{_secilenEntityler.Count:N0} entity seçildi";
+                DurumMesaji = $"{_secilenEntityler.Count:N0} entity secildi";
                 OnPropertyChanged(nameof(EntitySayisi));
                 LoggingService.Info(DurumMesaji);
+
+                // Otomatik anchor tara
+                AnchorTara();
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "Entity seçim hatası: " + ex.Message;
-                LoggingService.Error("Entity seçim hatası", ex);
+                DurumMesaji = "Entity secim hatasi: " + ex.Message;
+                LoggingService.Error("Entity secim hatasi", ex);
             }
         }
 
@@ -140,14 +148,14 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 }
                 else
                 {
-                    DurumMesaji = "İstasyon text'i bulunamadı";
+                    DurumMesaji = "Istasyon text'i bulunamadi";
                 }
                 OnPropertyChanged(nameof(AnchorSayisi));
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "Anchor tarama hatası: " + ex.Message;
-                LoggingService.Error("Anchor tarama hatası", ex);
+                DurumMesaji = "Anchor tarama hatasi: " + ex.Message;
+                LoggingService.Error("Anchor tarama hatasi", ex);
             }
         }
 
@@ -158,10 +166,10 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 var doc = AcadApp.DocumentManager.MdiActiveDocument;
                 var ed = doc.Editor;
 
-                var pt1Result = ed.GetPoint("\nPencere sol-alt köşesini tıklayın: ");
+                var pt1Result = ed.GetPoint("\nPencere sol-alt kosesini tiklayin: ");
                 if (pt1Result.Status != PromptStatus.OK) return;
 
-                var pt2Result = ed.GetCorner("\nPencere sağ-üst köşesini tıklayın: ", pt1Result.Value);
+                var pt2Result = ed.GetCorner("\nPencere sag-ust kosesini tiklayin: ", pt1Result.Value);
                 if (pt2Result.Status != PromptStatus.OK) return;
 
                 var pt1 = pt1Result.Value;
@@ -179,13 +187,13 @@ namespace Metraj.ViewModels.EnkesitOkuma
                     OffsetUstY = Math.Max(pt1.Y, pt2.Y) - ilkAnchor.Y
                 };
 
-                DurumMesaji = $"Pencere: {Pencere.Genislik:F1} × {Pencere.Yukseklik:F1} birim";
+                DurumMesaji = $"Pencere: {Pencere.Genislik:F1} x {Pencere.Yukseklik:F1} birim";
                 OnPropertyChanged(nameof(PencereBilgisi));
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "Pencere belirleme hatası: " + ex.Message;
-                LoggingService.Error("Pencere belirleme hatası", ex);
+                DurumMesaji = "Pencere belirleme hatasi: " + ex.Message;
+                LoggingService.Error("Pencere belirleme hatasi", ex);
             }
         }
 
@@ -195,7 +203,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
             {
                 if (_anchorlar == null || _pencere == null || _secilenEntityler == null)
                 {
-                    DurumMesaji = "Önce tarama ve pencere belirleme adımlarını tamamlayın";
+                    DurumMesaji = "Once hazirlik adimini tamamlayin";
                     return;
                 }
 
@@ -204,7 +212,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
 
                 if (ilkKesitler.Count == 0)
                 {
-                    DurumMesaji = "Referans kesitte çizgi bulunamadı";
+                    DurumMesaji = "Referans kesitte cizgi bulunamadi";
                     return;
                 }
 
@@ -214,18 +222,31 @@ namespace Metraj.ViewModels.EnkesitOkuma
 
                 var window = new Views.EnkesitOkuma.ReferansKesitWindow();
                 window.DataContext = vm;
-                window.Owner = System.Windows.Application.Current.MainWindow;
+
+                try
+                {
+                    var acadWin = AcadApp.MainWindow;
+                    if (acadWin != null)
+                    {
+                        var helper = new System.Windows.Interop.WindowInteropHelper(window);
+                        helper.Owner = acadWin.Handle;
+                    }
+                }
+                catch { }
 
                 if (window.ShowDialog() == true)
                 {
                     Sablon = vm.OlusturulanSablon;
-                    DurumMesaji = $"{Sablon.Kurallar.Count} çizgi rolü tanımlandı";
+                    DurumMesaji = $"{Sablon.Kurallar.Count} cizgi rolu tanimlandi";
+
+                    // Otomatik toplu tarama baslat
+                    TopluTara();
                 }
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "Kalibrasyon hatası: " + ex.Message;
-                LoggingService.Error("Kalibrasyon hatası", ex);
+                DurumMesaji = "Kalibrasyon hatasi: " + ex.Message;
+                LoggingService.Error("Kalibrasyon hatasi", ex);
             }
         }
 
@@ -235,21 +256,24 @@ namespace Metraj.ViewModels.EnkesitOkuma
             {
                 var dialog = new Microsoft.Win32.OpenFileDialog
                 {
-                    Filter = "JSON Dosyası|*.json",
-                    Title = "Şablon Yükle"
+                    Filter = "JSON Dosyasi|*.json",
+                    Title = "Sablon Yukle"
                 };
 
                 if (dialog.ShowDialog() == true)
                 {
                     string json = System.IO.File.ReadAllText(dialog.FileName);
                     Sablon = JsonConvert.DeserializeObject<ReferansKesitSablonu>(json);
-                    DurumMesaji = $"Şablon yüklendi: {Sablon.Kurallar.Count} kural";
+                    DurumMesaji = $"Sablon yuklendi: {Sablon.Kurallar.Count} kural";
+
+                    // Otomatik toplu tarama baslat
+                    TopluTara();
                 }
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "Şablon yükleme hatası: " + ex.Message;
-                LoggingService.Error("Şablon yükleme hatası", ex);
+                DurumMesaji = "Sablon yukleme hatasi: " + ex.Message;
+                LoggingService.Error("Sablon yukleme hatasi", ex);
             }
         }
 
@@ -257,7 +281,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
         {
             try
             {
-                DurumMesaji = "Tarama başlıyor...";
+                DurumMesaji = "Tarama basliyor...";
                 IlerlemeYuzde = 0;
 
                 Kesitler = _gruplamaService.KesitGrupla(_anchorlar, _pencere, _secilenEntityler);
@@ -287,13 +311,16 @@ namespace Metraj.ViewModels.EnkesitOkuma
                     SorunluKesit = sorunlu
                 };
 
-                DurumMesaji = $"{Kesitler.Count} kesit tarandı — {uyumlu} uyumlu, {uyari} uyarı, {sorunlu} sorunlu";
-                OnPropertyChanged(nameof(KesitSayisi));
+                DurumMesaji = $"{Kesitler.Count} kesit tarandi -- {uyumlu} uyumlu, {uyari} uyari, {sorunlu} sorunlu";
+                OnPropertiesChanged(nameof(KesitSayisi), nameof(SonucBilgisi));
+
+                // Otomatik sonuc adimina gec
+                AktifAdim = 3;
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "Toplu tarama hatası: " + ex.Message;
-                LoggingService.Error("Toplu tarama hatası", ex);
+                DurumMesaji = "Toplu tarama hatasi: " + ex.Message;
+                LoggingService.Error("Toplu tarama hatasi", ex);
             }
         }
 
@@ -306,18 +333,39 @@ namespace Metraj.ViewModels.EnkesitOkuma
 
                 var window = new Views.EnkesitOkuma.KesitDogrulamaWindow();
                 window.DataContext = vm;
-                window.Owner = System.Windows.Application.Current.MainWindow;
+
+                try
+                {
+                    var acadWin = AcadApp.MainWindow;
+                    if (acadWin != null)
+                    {
+                        var helper = new System.Windows.Interop.WindowInteropHelper(window);
+                        helper.Owner = acadWin.Handle;
+                    }
+                }
+                catch { }
+
                 window.ShowDialog();
 
                 int onayli = Kesitler.Count(k => k.Durum == DogrulamaDurumu.Onaylandi);
                 int duzeltildi = Kesitler.Count(k => k.Durum == DogrulamaDurumu.Duzeltildi);
-                DurumMesaji = $"{Kesitler.Count} kesit doğrulandı ({onayli} onay, {duzeltildi} düzeltme)";
+                DurumMesaji = $"{Kesitler.Count} kesit dogrulandi ({onayli} onay, {duzeltildi} duzeltme)";
+                OnPropertyChanged(nameof(SonucBilgisi));
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "Doğrulama hatası: " + ex.Message;
-                LoggingService.Error("Doğrulama hatası", ex);
+                DurumMesaji = "Dogrulama hatasi: " + ex.Message;
+                LoggingService.Error("Dogrulama hatasi", ex);
             }
+        }
+
+        private void Hesapla()
+        {
+            if (_kesitler == null) return;
+            _alanHesapService.TopluAlanHesapla(_kesitler);
+            _tabloService.TopluKiyasla(_kesitler);
+            DurumMesaji = "Hesaplama tamamlandi";
+            OnPropertyChanged(nameof(SonucBilgisi));
         }
 
         private void ExcelAktar()
@@ -326,7 +374,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
             {
                 var dialog = new Microsoft.Win32.SaveFileDialog
                 {
-                    Filter = "Excel Dosyası|*.xlsx",
+                    Filter = "Excel Dosyasi|*.xlsx",
                     FileName = "YolEnkesitOkuma_Sonuc.xlsx"
                 };
 
@@ -334,13 +382,13 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 {
                     var exportService = ServiceContainer.GetRequiredService<Services.Interfaces.IExcelExportService>();
                     exportService.EnkesitOkumaExport(Kesitler, dialog.FileName);
-                    DurumMesaji = "Excel dosyası kaydedildi";
+                    DurumMesaji = "Excel dosyasi kaydedildi";
                 }
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "Excel aktarım hatası: " + ex.Message;
-                LoggingService.Error("Excel aktarım hatası", ex);
+                DurumMesaji = "Excel aktarim hatasi: " + ex.Message;
+                LoggingService.Error("Excel aktarim hatasi", ex);
             }
         }
 
@@ -350,7 +398,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
             {
                 var dialog = new Microsoft.Win32.SaveFileDialog
                 {
-                    Filter = "JSON Dosyası|*.json",
+                    Filter = "JSON Dosyasi|*.json",
                     FileName = "YolEnkesitOkuma_Veri.json"
                 };
 
@@ -364,19 +412,14 @@ namespace Metraj.ViewModels.EnkesitOkuma
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "JSON kayıt hatası: " + ex.Message;
-                LoggingService.Error("JSON kayıt hatası", ex);
+                DurumMesaji = "JSON kayit hatasi: " + ex.Message;
+                LoggingService.Error("JSON kayit hatasi", ex);
             }
         }
 
         private void AdimIleri()
         {
-            if (AktifAdim < 6)
-            {
-                AktifAdim++;
-                if (AktifAdim == 2 && _anchorlar == null && _secilenEntityler != null)
-                    AnchorTara();
-            }
+            if (AktifAdim < 3) AktifAdim++;
         }
 
         private void AdimGeri()

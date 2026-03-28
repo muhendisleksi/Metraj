@@ -23,23 +23,23 @@ namespace Metraj.Views.EnkesitOkuma
 
         private static readonly Dictionary<CizgiRolu, Color> RolRenkleri = new Dictionary<CizgiRolu, Color>
         {
-            { CizgiRolu.Zemin, Color.FromRgb(0x4C, 0xAF, 0x50) },
-            { CizgiRolu.SiyirmaTaban, Color.FromRgb(0x21, 0x96, 0xF3) },
-            { CizgiRolu.ProjeKotu, Color.FromRgb(0xF4, 0x43, 0x36) },
-            { CizgiRolu.UstyapiAltKotu, Color.FromRgb(0xFF, 0x98, 0x00) },
-            { CizgiRolu.AsinmaTaban, Color.FromRgb(0x9C, 0x27, 0xB0) },
-            { CizgiRolu.BinderTaban, Color.FromRgb(0x00, 0xBC, 0xD4) },
-            { CizgiRolu.BitumluTemelTaban, Color.FromRgb(0x79, 0x55, 0x48) },
-            { CizgiRolu.PlentmiksTaban, Color.FromRgb(0x60, 0x7D, 0x8B) },
-            { CizgiRolu.AltTemelTaban, Color.FromRgb(0xFF, 0xC1, 0x07) },
-            { CizgiRolu.KirmatasTaban, Color.FromRgb(0xCD, 0xDC, 0x39) },
-            { CizgiRolu.EksenCizgisi, Color.FromRgb(0xFF, 0xFF, 0xFF) },
-            { CizgiRolu.HendekCizgisi, Color.FromRgb(0x00, 0x96, 0x88) },
-            { CizgiRolu.SevCizgisi, Color.FromRgb(0x8B, 0xC3, 0x4A) },
+            { CizgiRolu.Zemin, Color.FromRgb(0x2E, 0x8B, 0x57) },
+            { CizgiRolu.SiyirmaTaban, Color.FromRgb(0x37, 0x8A, 0xDD) },
+            { CizgiRolu.ProjeKotu, Color.FromRgb(0xE2, 0x4B, 0x4A) },
+            { CizgiRolu.UstyapiAltKotu, Color.FromRgb(0x88, 0x88, 0x88) },
+            { CizgiRolu.AsinmaTaban, Color.FromRgb(0xD8, 0x5A, 0x30) },
+            { CizgiRolu.BinderTaban, Color.FromRgb(0xEF, 0x9F, 0x27) },
+            { CizgiRolu.BitumluTemelTaban, Color.FromRgb(0x7F, 0x77, 0xDD) },
+            { CizgiRolu.PlentmiksTaban, Color.FromRgb(0x5D, 0xCA, 0xA5) },
+            { CizgiRolu.AltTemelTaban, Color.FromRgb(0x97, 0xC4, 0x59) },
+            { CizgiRolu.KirmatasTaban, Color.FromRgb(0xB4, 0xB2, 0xA9) },
+            { CizgiRolu.EksenCizgisi, Color.FromRgb(0x99, 0x99, 0x99) },
+            { CizgiRolu.HendekCizgisi, Color.FromRgb(0xD8, 0x5A, 0x30) },
+            { CizgiRolu.SevCizgisi, Color.FromRgb(0x8B, 0x45, 0x13) },
             { CizgiRolu.BanketCizgisi, Color.FromRgb(0xE9, 0x1E, 0x63) },
             { CizgiRolu.CerceveCizgisi, Color.FromRgb(0x42, 0x42, 0x42) },
             { CizgiRolu.GridCizgisi, Color.FromRgb(0x37, 0x37, 0x37) },
-            { CizgiRolu.Tanimsiz, Color.FromRgb(0x75, 0x75, 0x75) },
+            { CizgiRolu.Tanimsiz, Color.FromRgb(0xAA, 0xAA, 0xAA) },
             { CizgiRolu.Diger, Color.FromRgb(0x61, 0x61, 0x61) },
         };
 
@@ -55,6 +55,50 @@ namespace Metraj.Views.EnkesitOkuma
             _zoom = 1.0;
             _pan = new Point(0, 0);
             Ciz();
+        }
+
+        public void VurgulaCizgi(CizgiTanimi cizgi)
+        {
+            _secilenCizgi = cizgi;
+            Ciz();
+        }
+
+        private Brush CizgiRengiBelirle(CizgiTanimi cizgi)
+        {
+            if (cizgi.Rol != CizgiRolu.Tanimsiz && RolRenkleri.ContainsKey(cizgi.Rol))
+            {
+                var c = RolRenkleri[cizgi.Rol];
+                if (cizgi.Rol == CizgiRolu.CerceveCizgisi || cizgi.Rol == CizgiRolu.GridCizgisi)
+                    return new SolidColorBrush(Color.FromArgb(0x55, c.R, c.G, c.B));
+                return new SolidColorBrush(c);
+            }
+
+            return AcadRenkBrush(cizgi.RenkIndex);
+        }
+
+        private Brush AcadRenkBrush(short colorIndex)
+        {
+            switch (colorIndex)
+            {
+                case 1: return new SolidColorBrush(Color.FromRgb(0xE2, 0x4B, 0x4A));
+                case 2: return new SolidColorBrush(Color.FromRgb(0xEF, 0xB8, 0x4E));
+                case 3: return new SolidColorBrush(Color.FromRgb(0x2E, 0x8B, 0x57));
+                case 4: return new SolidColorBrush(Color.FromRgb(0x4E, 0xC9, 0xB0));
+                case 5: return new SolidColorBrush(Color.FromRgb(0x37, 0x8A, 0xDD));
+                case 6: return new SolidColorBrush(Color.FromRgb(0xC5, 0x60, 0xD0));
+                case 7: return new SolidColorBrush(Color.FromRgb(0xCC, 0xCC, 0xCC));
+                default:
+                    try
+                    {
+                        var acadColor = Autodesk.AutoCAD.Colors.Color.FromColorIndex(
+                            Autodesk.AutoCAD.Colors.ColorMethod.ByAci, colorIndex);
+                        return new SolidColorBrush(Color.FromRgb(acadColor.Red, acadColor.Green, acadColor.Blue));
+                    }
+                    catch
+                    {
+                        return new SolidColorBrush(Color.FromRgb(0xAA, 0xAA, 0xAA));
+                    }
+            }
         }
 
         private void Ciz()
@@ -87,20 +131,23 @@ namespace Metraj.Views.EnkesitOkuma
             {
                 if (cizgi.Noktalar.Count < 2) continue;
 
-                var color = RolRenkleri.ContainsKey(cizgi.Rol) ? RolRenkleri[cizgi.Rol] : Colors.Gray;
                 bool secili = cizgi == _secilenCizgi;
-                double kalinlik = secili ? 3 : (cizgi.Rol == CizgiRolu.CerceveCizgisi || cizgi.Rol == CizgiRolu.GridCizgisi ? 0.5 : 1.5);
+                double kalinlik = secili ? 4 : (cizgi.Rol == CizgiRolu.CerceveCizgisi || cizgi.Rol == CizgiRolu.GridCizgisi ? 0.5 : 1.5);
 
                 var polyline = new WpfPolyline();
-                polyline.Stroke = new SolidColorBrush(color);
+                polyline.Stroke = CizgiRengiBelirle(cizgi);
                 polyline.StrokeThickness = kalinlik;
+                polyline.StrokeLineJoin = PenLineJoin.Round;
+                polyline.StrokeStartLineCap = PenLineCap.Round;
+                polyline.StrokeEndLineCap = PenLineCap.Round;
+                polyline.Cursor = Cursors.Hand;
 
                 if (cizgi.Rol == CizgiRolu.Tanimsiz || cizgi.Rol == CizgiRolu.Diger)
                     polyline.StrokeDashArray = new System.Windows.Media.DoubleCollection(new[] { 4.0, 2.0 });
 
                 if (secili)
                     polyline.Effect = new System.Windows.Media.Effects.DropShadowEffect
-                    { Color = color, BlurRadius = 8, ShadowDepth = 0 };
+                    { Color = Colors.White, BlurRadius = 10, ShadowDepth = 0 };
 
                 foreach (var nokta in cizgi.Noktalar)
                 {
@@ -111,11 +158,65 @@ namespace Metraj.Views.EnkesitOkuma
 
                 polyline.Tag = cizgi;
                 polyline.MouseLeftButtonDown += Polyline_Click;
-                polyline.Cursor = Cursors.Hand;
+
+                polyline.MouseEnter += (s, ev) =>
+                {
+                    if ((s as WpfPolyline)?.Tag != _secilenCizgi)
+                        (s as WpfPolyline).StrokeThickness = 3;
+                };
+                polyline.MouseLeave += (s, ev) =>
+                {
+                    if ((s as WpfPolyline)?.Tag != _secilenCizgi)
+                        (s as WpfPolyline).StrokeThickness = 1.5;
+                };
 
                 polyline.ToolTip = $"{cizgi.Rol} | {cizgi.LayerAdi} | Renk:{cizgi.RenkIndex}";
 
                 KesitCanvas.Children.Add(polyline);
+
+                // Cizgi etiketi ekle (ana roller icin)
+                if (cizgi.Rol != CizgiRolu.Tanimsiz && cizgi.Rol != CizgiRolu.Diger
+                    && cizgi.Rol != CizgiRolu.CerceveCizgisi && cizgi.Rol != CizgiRolu.GridCizgisi
+                    && cizgi.Noktalar.Count > 0)
+                {
+                    var sonNokta = cizgi.Noktalar.Last();
+                    double lx = (sonNokta.X - minX) * scale + 14 + _pan.X;
+                    double ly = canvasH - ((sonNokta.Y - minY) * scale + 10) + _pan.Y;
+
+                    string etiketAdi = RolKisaAd(cizgi.Rol);
+                    var etiket = new System.Windows.Controls.TextBlock
+                    {
+                        Text = etiketAdi,
+                        FontSize = 10,
+                        FontFamily = new FontFamily("Segoe UI"),
+                        Foreground = CizgiRengiBelirle(cizgi),
+                    };
+                    Canvas.SetLeft(etiket, lx);
+                    Canvas.SetTop(etiket, ly - 8);
+                    KesitCanvas.Children.Add(etiket);
+                }
+            }
+        }
+
+        private string RolKisaAd(CizgiRolu rol)
+        {
+            switch (rol)
+            {
+                case CizgiRolu.Zemin: return "zemin";
+                case CizgiRolu.SiyirmaTaban: return "siyirma";
+                case CizgiRolu.ProjeKotu: return "proje kotu";
+                case CizgiRolu.UstyapiAltKotu: return "ustyapi alt";
+                case CizgiRolu.AsinmaTaban: return "asinma";
+                case CizgiRolu.BinderTaban: return "binder";
+                case CizgiRolu.BitumluTemelTaban: return "bitumlu";
+                case CizgiRolu.PlentmiksTaban: return "plentmiks";
+                case CizgiRolu.AltTemelTaban: return "alttemel";
+                case CizgiRolu.KirmatasTaban: return "kirmatas";
+                case CizgiRolu.EksenCizgisi: return "CL";
+                case CizgiRolu.HendekCizgisi: return "hendek";
+                case CizgiRolu.SevCizgisi: return "sev";
+                case CizgiRolu.BanketCizgisi: return "banket";
+                default: return rol.ToString();
             }
         }
 
@@ -124,9 +225,10 @@ namespace Metraj.Views.EnkesitOkuma
             if (sender is WpfPolyline pl && pl.Tag is CizgiTanimi cizgi)
             {
                 _secilenCizgi = cizgi;
-                BilgiText.Text = $"{cizgi.Rol} — {cizgi.LayerAdi} — Renk: {cizgi.RenkIndex} — Y: {cizgi.OrtalamaY:F2}";
+                BilgiText.Text = $"{cizgi.Rol} -- {cizgi.LayerAdi} -- Renk: {cizgi.RenkIndex} -- Y: {cizgi.OrtalamaY:F2}";
                 CizgiSecildi?.Invoke(this, cizgi);
                 Ciz();
+                e.Handled = true;
             }
         }
 

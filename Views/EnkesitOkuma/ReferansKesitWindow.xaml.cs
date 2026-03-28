@@ -13,11 +13,25 @@ namespace Metraj.Views.EnkesitOkuma
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            if (DataContext is ReferansKesitViewModel vm)
+            var vm = DataContext as ReferansKesitViewModel;
+            if (vm == null) return;
+
+            OnizlemeControl.CizgileriYukle(new System.Collections.Generic.List<Models.YolEnkesit.CizgiTanimi>(vm.Cizgiler));
+
+            // Canvas -> Liste senkronizasyonu
+            OnizlemeControl.CizgiSecildi += (s, cizgi) =>
             {
-                OnizlemeControl.CizgileriYukle(new System.Collections.Generic.List<Models.YolEnkesit.CizgiTanimi>(vm.Cizgiler));
-                OnizlemeControl.CizgiSecildi += (s, cizgi) => vm.SecilenCizgi = cizgi;
-            }
+                vm.SecilenCizgi = cizgi;
+            };
+
+            // Liste -> Canvas senkronizasyonu
+            vm.PropertyChanged += (s, args) =>
+            {
+                if (args.PropertyName == nameof(vm.SecilenCizgi) && vm.SecilenCizgi != null)
+                {
+                    OnizlemeControl.VurgulaCizgi(vm.SecilenCizgi);
+                }
+            };
         }
 
         private void BtnKaydet_Click(object sender, RoutedEventArgs e)

@@ -1,11 +1,11 @@
 <UserControl x:Class="Metraj.Views.EnkesitOkuma.KesitOnizlemeControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Background="#FF1E1E2E">
+             Background="#FF0A0A14">
     <Grid>
         <Canvas x:Name="KesitCanvas"
                 ClipToBounds="True"
-                Background="#FF1E1E2E"
+                Background="#FF0A0A14"
                 MouseWheel="Canvas_MouseWheel"
                 MouseDown="Canvas_MouseDown"
                 MouseUp="Canvas_MouseUp"
@@ -13,7 +13,7 @@
 
         <TextBlock x:Name="BilgiText"
                    VerticalAlignment="Top" HorizontalAlignment="Left"
-                   Margin="8" Foreground="#AAB2C0" FontSize="11"
-                   Text="Çizgi üzerine tıklayın"/>
+                   Margin="8" Foreground="#FF8888AA" FontSize="11"
+                   Text="Cizgi uzerine tiklayin"/>
     </Grid>
 </UserControl>
