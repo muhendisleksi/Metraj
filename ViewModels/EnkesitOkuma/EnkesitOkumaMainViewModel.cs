@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
@@ -34,6 +35,9 @@ namespace Metraj.ViewModels.EnkesitOkuma
         private ReferansKesitSablonu _sablon;
         private TopluTaramaSonucu _taramaSonucu;
         private int _ilerlemeYuzde;
+        private bool _taramaDevamEdiyor;
+        private bool _iptalIstendi;
+        private string _ilerlemeDetay = "";
 
         public EnkesitOkumaMainViewModel(
             IAnchorTaramaService anchorService,
@@ -50,16 +54,17 @@ namespace Metraj.ViewModels.EnkesitOkuma
             _tabloService = tabloService;
             _editorService = editorService;
 
-            EntitySecCommand = new RelayCommand(EntitySec, () => AktifAdim == 1);
-            PencereBelirleCommand = new RelayCommand(PencereBelirle, () => AktifAdim == 1 && _anchorlar != null);
-            KalibrasyonAcCommand = new RelayCommand(KalibrasyonAc, () => AktifAdim == 2);
-            SablonYukleCommand = new RelayCommand(SablonYukle, () => AktifAdim == 2);
-            DogrulamaAcCommand = new RelayCommand(DogrulamaAc, () => AktifAdim == 3 && _kesitler != null);
-            ExcelAktarCommand = new RelayCommand(ExcelAktar, () => AktifAdim == 3 && _kesitler != null);
-            JsonKaydetCommand = new RelayCommand(JsonKaydet, () => AktifAdim == 3);
-            HesaplaCommand = new RelayCommand(Hesapla, () => AktifAdim == 3 && _kesitler != null);
-            IleriCommand = new RelayCommand(AdimIleri, () => AktifAdim < 3);
-            GeriCommand = new RelayCommand(AdimGeri, () => AktifAdim > 1);
+            EntitySecCommand = new RelayCommand(EntitySec, () => AktifAdim == 1 && !_taramaDevamEdiyor);
+            PencereBelirleCommand = new RelayCommand(PencereBelirle, () => AktifAdim == 1 && _anchorlar != null && !_taramaDevamEdiyor);
+            KalibrasyonAcCommand = new RelayCommand(KalibrasyonAc, () => AktifAdim == 2 && !_taramaDevamEdiyor);
+            SablonYukleCommand = new RelayCommand(SablonYukle, () => AktifAdim == 2 && !_taramaDevamEdiyor);
+            DogrulamaAcCommand = new RelayCommand(DogrulamaAc, () => AktifAdim == 3 && _kesitler != null && !_taramaDevamEdiyor);
+            ExcelAktarCommand = new RelayCommand(ExcelAktar, () => AktifAdim == 3 && _kesitler != null && !_taramaDevamEdiyor);
+            JsonKaydetCommand = new RelayCommand(JsonKaydet, () => AktifAdim == 3 && !_taramaDevamEdiyor);
+            HesaplaCommand = new RelayCommand(Hesapla, () => AktifAdim == 3 && _kesitler != null && !_taramaDevamEdiyor);
+            IptalCommand = new RelayCommand(IptalEt, () => _taramaDevamEdiyor);
+            IleriCommand = new RelayCommand(AdimIleri, () => AktifAdim < 3 && !_taramaDevamEdiyor);
+            GeriCommand = new RelayCommand(AdimGeri, () => AktifAdim > 1 && !_taramaDevamEdiyor);
         }
 
         public int AktifAdim
@@ -74,13 +79,16 @@ namespace Metraj.ViewModels.EnkesitOkuma
 
         public string DurumMesaji { get => _durumMesaji; set => SetProperty(ref _durumMesaji, value); }
         public int IlerlemeYuzde { get => _ilerlemeYuzde; set => SetProperty(ref _ilerlemeYuzde, value); }
+        public string IlerlemeDetay { get => _ilerlemeDetay; set => SetProperty(ref _ilerlemeDetay, value); }
+        public bool TaramaDevamEdiyor { get => _taramaDevamEdiyor; set { if (SetProperty(ref _taramaDevamEdiyor, value)) OnPropertyChanged(nameof(IptalGorunur)); } }
+        public bool IptalGorunur => _taramaDevamEdiyor;
+
         public List<AnchorNokta> Anchorlar { get => _anchorlar; set => SetProperty(ref _anchorlar, value); }
         public KesitPenceresi Pencere { get => _pencere; set => SetProperty(ref _pencere, value); }
         public List<KesitGrubu> Kesitler { get => _kesitler; set => SetProperty(ref _kesitler, value); }
         public ReferansKesitSablonu Sablon { get => _sablon; set => SetProperty(ref _sablon, value); }
         public TopluTaramaSonucu TaramaSonucu { get => _taramaSonucu; set => SetProperty(ref _taramaSonucu, value); }
 
-        // 3 adim
         public bool Adim1Aktif => AktifAdim == 1;
         public bool Adim2Aktif => AktifAdim == 2;
         public bool Adim3Aktif => AktifAdim == 3;
@@ -108,8 +116,29 @@ namespace Metraj.ViewModels.EnkesitOkuma
         public ICommand ExcelAktarCommand { get; }
         public ICommand JsonKaydetCommand { get; }
         public ICommand HesaplaCommand { get; }
+        public ICommand IptalCommand { get; }
         public ICommand IleriCommand { get; }
         public ICommand GeriCommand { get; }
+
+        /// <summary>
+        /// UI thread'ine nefes aldirir — bekleyen render/input event'lerini isler.
+        /// AutoCAD API ana thread gerektirdiginden async kullanilamaz, bunun yerine
+        /// her N kesit isleminden sonra bu metod cagrilir.
+        /// </summary>
+        private void UIGuncelle()
+        {
+            try
+            {
+                Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.Background);
+            }
+            catch { }
+        }
+
+        private void IptalEt()
+        {
+            _iptalIstendi = true;
+            DurumMesaji = "Iptal ediliyor...";
+        }
 
         private void EntitySec()
         {
@@ -125,7 +154,6 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 OnPropertyChanged(nameof(EntitySayisi));
                 LoggingService.Info(DurumMesaji);
 
-                // Otomatik anchor tara
                 AnchorTara();
             }
             catch (System.Exception ex)
@@ -239,7 +267,6 @@ namespace Metraj.ViewModels.EnkesitOkuma
                     Sablon = vm.OlusturulanSablon;
                     DurumMesaji = $"{Sablon.Kurallar.Count} cizgi rolu tanimlandi";
 
-                    // Otomatik toplu tarama baslat
                     TopluTara();
                 }
             }
@@ -266,7 +293,6 @@ namespace Metraj.ViewModels.EnkesitOkuma
                     Sablon = JsonConvert.DeserializeObject<ReferansKesitSablonu>(json);
                     DurumMesaji = $"Sablon yuklendi: {Sablon.Kurallar.Count} kural";
 
-                    // Otomatik toplu tarama baslat
                     TopluTara();
                 }
             }
@@ -281,19 +307,71 @@ namespace Metraj.ViewModels.EnkesitOkuma
         {
             try
             {
-                DurumMesaji = "Tarama basliyor...";
+                TaramaDevamEdiyor = true;
+                _iptalIstendi = false;
                 IlerlemeYuzde = 0;
+                IlerlemeDetay = "Entity gruplama...";
+                DurumMesaji = "Tarama basliyor...";
+                UIGuncelle();
 
+                // Faz 1: Entity gruplama (tek Transaction — AutoCAD API)
                 Kesitler = _gruplamaService.KesitGrupla(_anchorlar, _pencere, _secilenEntityler);
-                IlerlemeYuzde = 30;
+                int toplam = Kesitler.Count;
 
-                _rolAtamaService.TopluRolAta(Kesitler, _sablon);
-                IlerlemeYuzde = 60;
+                if (_iptalIstendi) { TaramaBitir("Iptal edildi"); return; }
 
-                _alanHesapService.TopluAlanHesapla(Kesitler);
-                IlerlemeYuzde = 80;
+                IlerlemeYuzde = 10;
+                IlerlemeDetay = $"{toplam} kesit bulundu, roller ataniyor...";
+                UIGuncelle();
 
-                _tabloService.TopluKiyasla(Kesitler);
+                // Faz 2: Rol atama — kesit kesit, her 10 kesitte UI guncelle
+                for (int i = 0; i < toplam; i++)
+                {
+                    if (_iptalIstendi) { TaramaBitir($"Iptal edildi ({i}/{toplam} kesit islendi)"); return; }
+
+                    _rolAtamaService.OtomatikRolAta(Kesitler[i], _sablon);
+
+                    if ((i + 1) % 10 == 0 || i == toplam - 1)
+                    {
+                        int yuzde = 10 + (int)((double)(i + 1) / toplam * 30);
+                        IlerlemeYuzde = yuzde;
+                        IlerlemeDetay = $"Rol atama: {i + 1} / {toplam}";
+                        UIGuncelle();
+                    }
+                }
+
+                // Faz 3: Alan hesabi — kesit kesit
+                for (int i = 0; i < toplam; i++)
+                {
+                    if (_iptalIstendi) { TaramaBitir($"Iptal edildi ({i}/{toplam} alan hesabi)"); return; }
+
+                    _alanHesapService.AlanHesapla(Kesitler[i]);
+
+                    if ((i + 1) % 10 == 0 || i == toplam - 1)
+                    {
+                        int yuzde = 40 + (int)((double)(i + 1) / toplam * 30);
+                        IlerlemeYuzde = yuzde;
+                        IlerlemeDetay = $"Alan hesabi: {i + 1} / {toplam}";
+                        UIGuncelle();
+                    }
+                }
+
+                // Faz 4: Tablo kiyaslama — kesit kesit
+                for (int i = 0; i < toplam; i++)
+                {
+                    if (_iptalIstendi) { TaramaBitir($"Iptal edildi ({i}/{toplam} kiyas)"); return; }
+
+                    _tabloService.Kiyasla(Kesitler[i]);
+
+                    if ((i + 1) % 20 == 0 || i == toplam - 1)
+                    {
+                        int yuzde = 70 + (int)((double)(i + 1) / toplam * 30);
+                        IlerlemeYuzde = yuzde;
+                        IlerlemeDetay = $"Tablo kiyasi: {i + 1} / {toplam}";
+                        UIGuncelle();
+                    }
+                }
+
                 IlerlemeYuzde = 100;
 
                 int uyumlu = Kesitler.Count(k => k.Durum == DogrulamaDurumu.Onaylandi);
@@ -305,23 +383,29 @@ namespace Metraj.ViewModels.EnkesitOkuma
                     Kesitler = Kesitler,
                     Sablon = Sablon,
                     TaramaTarihi = DateTime.Now,
-                    ToplamKesit = Kesitler.Count,
+                    ToplamKesit = toplam,
                     OnayliKesit = uyumlu,
                     UyariKesit = uyari,
                     SorunluKesit = sorunlu
                 };
 
-                DurumMesaji = $"{Kesitler.Count} kesit tarandi -- {uyumlu} uyumlu, {uyari} uyari, {sorunlu} sorunlu";
+                TaramaBitir($"{toplam} kesit tarandi -- {uyumlu} uyumlu, {uyari} uyari, {sorunlu} sorunlu");
                 OnPropertiesChanged(nameof(KesitSayisi), nameof(SonucBilgisi));
-
-                // Otomatik sonuc adimina gec
                 AktifAdim = 3;
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "Toplu tarama hatasi: " + ex.Message;
+                TaramaBitir("Toplu tarama hatasi: " + ex.Message);
                 LoggingService.Error("Toplu tarama hatasi", ex);
             }
+        }
+
+        private void TaramaBitir(string mesaj)
+        {
+            TaramaDevamEdiyor = false;
+            _iptalIstendi = false;
+            DurumMesaji = mesaj;
+            IlerlemeDetay = "";
         }
 
         private void DogrulamaAc()

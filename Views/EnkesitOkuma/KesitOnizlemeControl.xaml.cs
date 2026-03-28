@@ -68,8 +68,9 @@ namespace Metraj.Views.EnkesitOkuma
             if (cizgi.Rol != CizgiRolu.Tanimsiz && RolRenkleri.ContainsKey(cizgi.Rol))
             {
                 var c = RolRenkleri[cizgi.Rol];
+                // Cerceve/Grid: %20-30 opacity
                 if (cizgi.Rol == CizgiRolu.CerceveCizgisi || cizgi.Rol == CizgiRolu.GridCizgisi)
-                    return new SolidColorBrush(Color.FromArgb(0x55, c.R, c.G, c.B));
+                    return new SolidColorBrush(Color.FromArgb(0x40, c.R, c.G, c.B));
                 return new SolidColorBrush(c);
             }
 
@@ -110,55 +111,80 @@ namespace Metraj.Views.EnkesitOkuma
             double canvasH = KesitCanvas.ActualHeight;
             if (canvasW < 10 || canvasH < 10) return;
 
-            var tumNoktalar = _cizgiler.SelectMany(c => c.Noktalar).ToList();
-            if (tumNoktalar.Count == 0) return;
+            // Fit-to-view: cerceve/grid cizgilerini HARIC tut, sadece anlamli cizgilere gore zoom yap
+            var anlamliCizgiler = _cizgiler.Where(c =>
+                c.Rol != CizgiRolu.CerceveCizgisi && c.Rol != CizgiRolu.GridCizgisi).ToList();
 
-            double minX = tumNoktalar.Min(p => p.X);
-            double maxX = tumNoktalar.Max(p => p.X);
-            double minY = tumNoktalar.Min(p => p.Y);
-            double maxY = tumNoktalar.Max(p => p.Y);
+            var fitNoktalar = (anlamliCizgiler.Count > 0 ? anlamliCizgiler : _cizgiler)
+                .SelectMany(c => c.Noktalar).ToList();
+
+            if (fitNoktalar.Count == 0) return;
+
+            double minX = fitNoktalar.Min(p => p.X);
+            double maxX = fitNoktalar.Max(p => p.X);
+            double minY = fitNoktalar.Min(p => p.Y);
+            double maxY = fitNoktalar.Max(p => p.Y);
 
             double rangeX = maxX - minX;
             double rangeY = maxY - minY;
             if (rangeX < 0.01) rangeX = 1;
             if (rangeY < 0.01) rangeY = 1;
 
-            double scaleX = (canvasW - 20) / rangeX * _zoom;
-            double scaleY = (canvasH - 20) / rangeY * _zoom;
+            double padding = 30;
+            double scaleX = (canvasW - padding * 2) / rangeX * _zoom;
+            double scaleY = (canvasH - padding * 2) / rangeY * _zoom;
             double scale = Math.Min(scaleX, scaleY);
 
-            foreach (var cizgi in _cizgiler)
+            // Cerceve/grid cizgilerini ONCE ciz (arkada kalsin)
+            foreach (var cizgi in _cizgiler.Where(c => c.Rol == CizgiRolu.CerceveCizgisi || c.Rol == CizgiRolu.GridCizgisi))
+                CizgiCiz(cizgi, scale, minX, minY, canvasH, padding);
+
+            // Diger cizgileri ustune ciz
+            foreach (var cizgi in _cizgiler.Where(c => c.Rol != CizgiRolu.CerceveCizgisi && c.Rol != CizgiRolu.GridCizgisi))
+                CizgiCiz(cizgi, scale, minX, minY, canvasH, padding);
+        }
+
+        private void CizgiCiz(CizgiTanimi cizgi, double scale, double minX, double minY, double canvasH, double padding)
+        {
+            if (cizgi.Noktalar.Count < 2) return;
+
+            bool secili = cizgi == _secilenCizgi;
+            bool cerceve = cizgi.Rol == CizgiRolu.CerceveCizgisi || cizgi.Rol == CizgiRolu.GridCizgisi;
+
+            // Kalinlik belirleme
+            double kalinlik;
+            if (secili) kalinlik = 4;
+            else if (cizgi.Rol == CizgiRolu.ProjeKotu) kalinlik = 2.5;
+            else if (cerceve) kalinlik = 0.3;
+            else kalinlik = 1.2;
+
+            var polyline = new WpfPolyline();
+            polyline.Stroke = CizgiRengiBelirle(cizgi);
+            polyline.StrokeThickness = kalinlik;
+            polyline.StrokeLineJoin = PenLineJoin.Round;
+            polyline.StrokeStartLineCap = PenLineCap.Round;
+            polyline.StrokeEndLineCap = PenLineCap.Round;
+            polyline.Cursor = cerceve ? Cursors.Arrow : Cursors.Hand;
+
+            // Sadece SiyirmaTaban kesikli cizilir
+            if (cizgi.Rol == CizgiRolu.SiyirmaTaban)
+                polyline.StrokeDashArray = new System.Windows.Media.DoubleCollection(new[] { 6.0, 3.0 });
+
+            if (secili)
+                polyline.Effect = new System.Windows.Media.Effects.DropShadowEffect
+                { Color = Colors.White, BlurRadius = 10, ShadowDepth = 0 };
+
+            foreach (var nokta in cizgi.Noktalar)
             {
-                if (cizgi.Noktalar.Count < 2) continue;
+                double cx = (nokta.X - minX) * scale + padding + _pan.X;
+                double cy = canvasH - ((nokta.Y - minY) * scale + padding) + _pan.Y;
+                polyline.Points.Add(new Point(cx, cy));
+            }
 
-                bool secili = cizgi == _secilenCizgi;
-                double kalinlik = secili ? 4 : (cizgi.Rol == CizgiRolu.CerceveCizgisi || cizgi.Rol == CizgiRolu.GridCizgisi ? 0.5 : 1.5);
-
-                var polyline = new WpfPolyline();
-                polyline.Stroke = CizgiRengiBelirle(cizgi);
-                polyline.StrokeThickness = kalinlik;
-                polyline.StrokeLineJoin = PenLineJoin.Round;
-                polyline.StrokeStartLineCap = PenLineCap.Round;
-                polyline.StrokeEndLineCap = PenLineCap.Round;
-                polyline.Cursor = Cursors.Hand;
-
-                if (cizgi.Rol == CizgiRolu.Tanimsiz || cizgi.Rol == CizgiRolu.Diger)
-                    polyline.StrokeDashArray = new System.Windows.Media.DoubleCollection(new[] { 4.0, 2.0 });
-
-                if (secili)
-                    polyline.Effect = new System.Windows.Media.Effects.DropShadowEffect
-                    { Color = Colors.White, BlurRadius = 10, ShadowDepth = 0 };
-
-                foreach (var nokta in cizgi.Noktalar)
-                {
-                    double cx = (nokta.X - minX) * scale + 10 + _pan.X;
-                    double cy = canvasH - ((nokta.Y - minY) * scale + 10) + _pan.Y;
-                    polyline.Points.Add(new Point(cx, cy));
-                }
-
-                polyline.Tag = cizgi;
+            polyline.Tag = cizgi;
+            if (!cerceve)
+            {
                 polyline.MouseLeftButtonDown += Polyline_Click;
-
                 polyline.MouseEnter += (s, ev) =>
                 {
                     if ((s as WpfPolyline)?.Tag != _secilenCizgi)
@@ -166,35 +192,34 @@ namespace Metraj.Views.EnkesitOkuma
                 };
                 polyline.MouseLeave += (s, ev) =>
                 {
-                    if ((s as WpfPolyline)?.Tag != _secilenCizgi)
-                        (s as WpfPolyline).StrokeThickness = 1.5;
+                    var tag = (s as WpfPolyline)?.Tag as CizgiTanimi;
+                    if (tag != _secilenCizgi)
+                        (s as WpfPolyline).StrokeThickness = tag?.Rol == CizgiRolu.ProjeKotu ? 2.5 : 1.2;
                 };
+            }
 
-                polyline.ToolTip = $"{cizgi.Rol} | {cizgi.LayerAdi} | Renk:{cizgi.RenkIndex}";
+            polyline.ToolTip = $"{cizgi.Rol} | {cizgi.LayerAdi} | Renk:{cizgi.RenkIndex}";
+            KesitCanvas.Children.Add(polyline);
 
-                KesitCanvas.Children.Add(polyline);
+            // Cizgi etiketi (ana roller icin, cerceve/grid haric)
+            if (!cerceve && cizgi.Rol != CizgiRolu.Tanimsiz && cizgi.Rol != CizgiRolu.Diger
+                && cizgi.Noktalar.Count > 0)
+            {
+                var sonNokta = cizgi.Noktalar.Last();
+                double lx = (sonNokta.X - minX) * scale + padding + 6 + _pan.X;
+                double ly = canvasH - ((sonNokta.Y - minY) * scale + padding) + _pan.Y;
 
-                // Cizgi etiketi ekle (ana roller icin)
-                if (cizgi.Rol != CizgiRolu.Tanimsiz && cizgi.Rol != CizgiRolu.Diger
-                    && cizgi.Rol != CizgiRolu.CerceveCizgisi && cizgi.Rol != CizgiRolu.GridCizgisi
-                    && cizgi.Noktalar.Count > 0)
+                string durum = cizgi.Rol != CizgiRolu.Tanimsiz ? " \u2713" : " ?";
+                var etiket = new TextBlock
                 {
-                    var sonNokta = cizgi.Noktalar.Last();
-                    double lx = (sonNokta.X - minX) * scale + 14 + _pan.X;
-                    double ly = canvasH - ((sonNokta.Y - minY) * scale + 10) + _pan.Y;
-
-                    string etiketAdi = RolKisaAd(cizgi.Rol);
-                    var etiket = new System.Windows.Controls.TextBlock
-                    {
-                        Text = etiketAdi,
-                        FontSize = 10,
-                        FontFamily = new FontFamily("Segoe UI"),
-                        Foreground = CizgiRengiBelirle(cizgi),
-                    };
-                    Canvas.SetLeft(etiket, lx);
-                    Canvas.SetTop(etiket, ly - 8);
-                    KesitCanvas.Children.Add(etiket);
-                }
+                    Text = RolKisaAd(cizgi.Rol) + durum,
+                    FontSize = 10,
+                    FontFamily = new FontFamily("Segoe UI"),
+                    Foreground = CizgiRengiBelirle(cizgi),
+                };
+                Canvas.SetLeft(etiket, lx);
+                Canvas.SetTop(etiket, ly - 8);
+                KesitCanvas.Children.Add(etiket);
             }
         }
 

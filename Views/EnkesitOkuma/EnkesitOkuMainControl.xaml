@@ -129,10 +129,31 @@
                     <Button Content="Sablon Yukle (.json)" Command="{Binding SablonYukleCommand}"
                             Style="{StaticResource DarkBtn}" Height="32" Margin="0,8,0,0"/>
 
+                    <!-- Ilerleme -->
                     <ProgressBar Value="{Binding IlerlemeYuzde}" Height="6" Margin="0,12,0,0"
                                  Background="#FF333333" Foreground="#FF4EC9B0"/>
+                    <TextBlock Text="{Binding IlerlemeDetay}" Foreground="#FF8888AA"
+                               Margin="0,4,0,0" FontSize="11"/>
                     <TextBlock Text="{Binding KesitSayisi}" Foreground="#FF4EC9B0"
-                               Margin="0,6,0,0" FontSize="12"/>
+                               Margin="0,2,0,0" FontSize="12"/>
+
+                    <!-- Iptal butonu -->
+                    <Button Content="Iptal" Command="{Binding IptalCommand}"
+                            Visibility="{Binding IptalGorunur, Converter={StaticResource BoolToVis}}"
+                            Height="28" Margin="0,8,0,0" Padding="4"
+                            Background="#44E24B4A" Foreground="#FFE24B4A" BorderBrush="#FFE24B4A"
+                            BorderThickness="1" Cursor="Hand">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
                 </StackPanel>
 
                 <!-- Adim 3: Sonuc -->

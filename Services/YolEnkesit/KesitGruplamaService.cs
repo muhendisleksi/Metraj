@@ -13,7 +13,7 @@ namespace Metraj.Services.YolEnkesit
     {
         private readonly IDocumentContext _documentContext;
         private readonly IEnKesitAlanService _enKesitAlanService;
-        private const double MinCizgiUzunlugu = 0.1;
+        private const double MinCizgiUzunlugu = 0.05;
 
         public KesitGruplamaService(IDocumentContext documentContext, IEnKesitAlanService enKesitAlanService)
         {
@@ -45,7 +45,8 @@ namespace Metraj.Services.YolEnkesit
                             Extents3d bounds;
                             try { bounds = ent.GeometricExtents; }
                             catch { continue; }
-                            if (!PencereIcindeMi(bounds, minPt, maxPt)) continue;
+
+                            if (!PencereKesisimVar(bounds, minPt, maxPt)) continue;
 
                             if (ent is Polyline || ent is Polyline2d || ent is Polyline3d || ent is Line)
                             {
@@ -65,20 +66,30 @@ namespace Metraj.Services.YolEnkesit
                     }
 
                     if (kesit.Cizgiler.Count > 0)
+                    {
+                        // CL (dikey eksen) cizgisi tespiti
+                        CL_Tespit(kesit);
                         kesitler.Add(kesit);
+                        LogLayerDagilimi(kesit);
+                    }
                 }
 
                 tr.Commit();
             }
 
-            LoggingService.Info($"Kesit gruplama: {kesitler.Count} kesit, toplam {kesitler.Sum(k => k.Cizgiler.Count)} çizgi");
+            // CL bulunamayan kesitleri logla
+            int clEksik = kesitler.Count(k => k.CLEksik);
+            if (clEksik > 0)
+                LoggingService.Warning($"CL eksik: {clEksik}/{kesitler.Count} kesitte CL cizgisi bulunamadi");
+
+            LoggingService.Info($"Kesit gruplama: {kesitler.Count} kesit, toplam {kesitler.Sum(k => k.Cizgiler.Count)} cizgi");
             return kesitler;
         }
 
-        private bool PencereIcindeMi(Extents3d bounds, Point3d minPt, Point3d maxPt)
+        private bool PencereKesisimVar(Extents3d bounds, Point3d minPt, Point3d maxPt)
         {
-            return bounds.MinPoint.X >= minPt.X - 0.5 && bounds.MaxPoint.X <= maxPt.X + 0.5 &&
-                   bounds.MinPoint.Y >= minPt.Y - 0.5 && bounds.MaxPoint.Y <= maxPt.Y + 0.5;
+            return bounds.MaxPoint.X >= minPt.X && bounds.MinPoint.X <= maxPt.X &&
+                   bounds.MaxPoint.Y >= minPt.Y && bounds.MinPoint.Y <= maxPt.Y;
         }
 
         private CizgiTanimi CizgiTanimiOlustur(Entity ent, ObjectId entId, Transaction tr)
@@ -101,7 +112,57 @@ namespace Metraj.Services.YolEnkesit
             if (cizgi.Noktalar.Count < 2) return false;
             double minX = cizgi.Noktalar.Min(p => p.X);
             double maxX = cizgi.Noktalar.Max(p => p.X);
-            return (maxX - minX) >= MinCizgiUzunlugu;
+            double minY = cizgi.Noktalar.Min(p => p.Y);
+            double maxY = cizgi.Noktalar.Max(p => p.Y);
+            return (maxX - minX) >= MinCizgiUzunlugu || (maxY - minY) >= MinCizgiUzunlugu;
+        }
+
+        /// <summary>
+        /// Dikey cizgiyi bul: X araligi cok dar, Y araligi genis.
+        /// Bu cizgi CL (center line) eksenidir.
+        /// </summary>
+        private void CL_Tespit(KesitGrubu kesit)
+        {
+            CizgiTanimi enIyiCL = null;
+            double enBuyukYAraligi = 0;
+
+            foreach (var cizgi in kesit.Cizgiler)
+            {
+                if (cizgi.Noktalar.Count < 2) continue;
+
+                double xMin = cizgi.Noktalar.Min(p => p.X);
+                double xMax = cizgi.Noktalar.Max(p => p.X);
+                double yMin = cizgi.Noktalar.Min(p => p.Y);
+                double yMax = cizgi.Noktalar.Max(p => p.Y);
+                double xAraligi = xMax - xMin;
+                double yAraligi = yMax - yMin;
+
+                // Dikey cizgi: X araligi < 0.5 birim VE Y araligi > 3 birim VE Y/X orani > 10
+                if (xAraligi < 0.5 && yAraligi > 3 && (xAraligi < 0.01 || yAraligi / xAraligi > 10))
+                {
+                    if (yAraligi > enBuyukYAraligi)
+                    {
+                        enBuyukYAraligi = yAraligi;
+                        enIyiCL = cizgi;
+                    }
+                }
+            }
+
+            if (enIyiCL != null)
+            {
+                enIyiCL.Rol = CizgiRolu.EksenCizgisi;
+                enIyiCL.OtomatikAtanmis = true;
+                kesit.CL_X = enIyiCL.Noktalar.Average(p => p.X);
+            }
+        }
+
+        private void LogLayerDagilimi(KesitGrubu kesit)
+        {
+            var dagilim = kesit.Cizgiler.GroupBy(c => c.LayerAdi)
+                .Select(g => $"{g.Key}:{g.Count()}")
+                .ToList();
+            string clBilgi = kesit.CL_X.HasValue ? $"CL={kesit.CL_X:F1}" : "CL=YOK";
+            LoggingService.Info($"Kesit {kesit.Anchor?.IstasyonMetni}: {kesit.Cizgiler.Count} cizgi, {clBilgi} — {string.Join(", ", dagilim)}");
         }
     }
 }

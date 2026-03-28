@@ -16,17 +16,17 @@ namespace Metraj.Services.YolEnkesit
 
         private static readonly Dictionary<string, string[]> MalzemeAnahtarlar = new Dictionary<string, string[]>
         {
-            { "Yarma", new[] { "YARMA", "KAZI", "YARMASI" } },
-            { "Dolgu", new[] { "DOLGU", "DOLGUSU" } },
-            { "Sıyırma", new[] { "SIYIRMA", "SIYIRMASI", "BİTKİSEL" } },
-            { "Aşınma", new[] { "AŞINMA", "ASINMA" } },
+            { "Yarma", new[] { "YARMA", "KAZI" } },
+            { "Dolgu", new[] { "DOLGU" } },
+            { "Siyirma", new[] { "SIYIRMA", "SİYIRMA", "BİTKİSEL", "BITKISEL" } },
+            { "Asinma", new[] { "AŞINMA", "ASINMA" } },
             { "Binder", new[] { "BİNDER", "BINDER" } },
-            { "Bitümlü Temel", new[] { "BİTÜMLÜ", "BITUMLU" } },
-            { "Plentmiks", new[] { "PLENTMİKS", "PLENTMIKS" } },
-            { "Alttemel", new[] { "ALTTEMEL", "ALT TEMEL" } },
-            { "Kırmataş", new[] { "KIRMATAŞ", "KIRMATAS" } },
-            { "B.T. Yerine Konan", new[] { "YERİNE KONAN", "YERINE KONAN" } },
-            { "B.T. Yerine Konmayan", new[] { "YERİNE KONMAYAN", "YERINE KONMAYAN" } },
+            { "Bitumlu Temel", new[] { "BİTÜMLÜ", "BITUMLU", "BITUMEN", "BİTÜMEN" } },
+            { "Plentmiks", new[] { "PLENTMİKS", "PLENTMIKS", "PLENTMIS" } },
+            { "Alttemel", new[] { "ALTTEMEL", "ALT TEMEL", "GRANULER", "GRANÜLER" } },
+            { "Kirmatas", new[] { "KIRMATAŞ", "KIRMATAS" } },
+            { "B.T. Yerine Konan", new[] { "YERİNE KONAN", "YERINE KONAN", "BT KONAN" } },
+            { "B.T. Yerine Konmayan", new[] { "YERİNE KONMAYAN", "YERINE KONMAYAN", "BT KONMAYAN" } },
         };
 
         public TabloOkumaService(IDocumentContext documentContext)
@@ -43,7 +43,8 @@ namespace Metraj.Services.YolEnkesit
 
             var textler = TextleriOku(kesit.TextObjeler);
 
-            foreach (var (metin, _) in textler)
+            // Yontem 1: Ayni text icerisinde anahtar kelime + sayi (orn: "Yarma = 16.27" veya "Yarma | 16.27")
+            foreach (var (metin, x, y) in textler)
             {
                 foreach (var (malzeme, anahtarlar) in MalzemeAnahtarlar)
                 {
@@ -61,6 +62,67 @@ namespace Metraj.Services.YolEnkesit
                     }
                 }
             }
+
+            // Yontem 2: Ayri text objeleri (malzeme adi ayri, deger ayri — yakin konumda)
+            // Malzeme adi text'i ile yanindaki/altindaki sayi text'ini eslesir
+            if (degerler.Count == 0 && textler.Count >= 2)
+            {
+                var malzemeTextleri = new List<(string malzeme, double x, double y)>();
+                var sayiTextleri = new List<(double deger, double x, double y)>();
+
+                foreach (var (metin, x, y) in textler)
+                {
+                    string upper = metin.ToUpperInvariant();
+
+                    // Bu text bir malzeme adi mi?
+                    foreach (var (malzeme, anahtarlar) in MalzemeAnahtarlar)
+                    {
+                        if (anahtarlar.Any(a => upper.Contains(a)))
+                        {
+                            malzemeTextleri.Add((malzeme, x, y));
+                            break;
+                        }
+                    }
+
+                    // Bu text bir sayi mi?
+                    if (double.TryParse(metin.Replace(',', '.'), System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out double sayi))
+                    {
+                        sayiTextleri.Add((sayi, x, y));
+                    }
+                }
+
+                // Yakin konumdaki malzeme-sayi ciftlerini eslestir
+                foreach (var (malzeme, mx, my) in malzemeTextleri)
+                {
+                    if (degerler.ContainsKey(malzeme)) continue;
+
+                    // En yakin sayi text'ini bul (oncelik: saga yakin, sonra asagi yakin)
+                    var enYakin = sayiTextleri
+                        .Where(s => Math.Abs(s.y - my) < 3.0) // ayni satir (Y farki < 3 birim)
+                        .OrderBy(s => Math.Abs(s.x - mx))
+                        .FirstOrDefault();
+
+                    if (enYakin.deger > 0 || (enYakin.x != 0 && enYakin.y != 0))
+                    {
+                        degerler[malzeme] = enYakin.deger;
+                    }
+                    else
+                    {
+                        // Altindaki sayi text'ini dene
+                        enYakin = sayiTextleri
+                            .Where(s => Math.Abs(s.x - mx) < 5.0 && s.y < my)
+                            .OrderByDescending(s => s.y)
+                            .FirstOrDefault();
+
+                        if (enYakin.deger > 0 || (enYakin.x != 0 && enYakin.y != 0))
+                            degerler[malzeme] = enYakin.deger;
+                    }
+                }
+            }
+
+            if (degerler.Count > 0)
+                LoggingService.Info($"Tablo okuma {kesit.Anchor?.IstasyonMetni}: {degerler.Count} malzeme — {string.Join(", ", degerler.Select(d => $"{d.Key}={d.Value:F2}"))}");
 
             return degerler;
         }
@@ -93,7 +155,7 @@ namespace Metraj.Services.YolEnkesit
 
             kesit.TabloKiyaslari = sonuclar;
 
-            bool hepsiUyumlu = sonuclar.All(s => s.Uyumlu);
+            bool hepsiUyumlu = sonuclar.Count > 0 && sonuclar.All(s => s.Uyumlu);
             bool sorunluVar = sonuclar.Any(s => s.FarkYuzde > UyariToleransYuzde);
 
             if (sorunluVar)
@@ -111,12 +173,12 @@ namespace Metraj.Services.YolEnkesit
 
             int uyumlu = kesitler.Count(k => k.Durum == DogrulamaDurumu.Onaylandi);
             int sorunlu = kesitler.Count(k => k.Durum == DogrulamaDurumu.Sorunlu);
-            LoggingService.Info($"Toplu kıyaslama: {uyumlu} uyumlu, {sorunlu} sorunlu");
+            LoggingService.Info($"Toplu kiyaslama: {uyumlu} uyumlu, {sorunlu} sorunlu");
         }
 
-        private List<(string metin, ObjectId id)> TextleriOku(List<ObjectId> textIds)
+        private List<(string metin, double x, double y)> TextleriOku(List<ObjectId> textIds)
         {
-            var sonuc = new List<(string, ObjectId)>();
+            var sonuc = new List<(string, double, double)>();
 
             using (var tr = _documentContext.BeginTransaction())
             {
@@ -124,14 +186,23 @@ namespace Metraj.Services.YolEnkesit
                 {
                     var obj = tr.GetObject(id, OpenMode.ForRead);
                     string metin = null;
+                    double x = 0, y = 0;
 
                     if (obj is DBText dbText)
+                    {
                         metin = dbText.TextString;
+                        x = dbText.Position.X;
+                        y = dbText.Position.Y;
+                    }
                     else if (obj is MText mText)
+                    {
                         metin = mText.Contents;
+                        x = mText.Location.X;
+                        y = mText.Location.Y;
+                    }
 
                     if (!string.IsNullOrWhiteSpace(metin))
-                        sonuc.Add((metin.Trim(), id));
+                        sonuc.Add((metin.Trim(), x, y));
                 }
 
                 tr.Commit();
@@ -142,9 +213,18 @@ namespace Metraj.Services.YolEnkesit
 
         private double? SayiCikar(string metin)
         {
-            var match = Regex.Match(metin, @"[=:]\s*([\d.,]+)");
+            // "Yarma = 16.27" veya "Yarma | 16.27" veya "Yarma : 16.27"
+            var match = Regex.Match(metin, @"[=:|]\s*([\d.,]+)");
             if (!match.Success)
-                match = Regex.Match(metin, @"([\d]+[.,][\d]+)");
+            {
+                // "Yarma  16.27" (boslukla ayrilmis)
+                match = Regex.Match(metin, @"\s+([\d]+[.,]\d+)\s*$");
+            }
+            if (!match.Success)
+            {
+                // Sadece sonundaki sayi
+                match = Regex.Match(metin, @"([\d]+[.,]\d+)$");
+            }
 
             if (match.Success)
             {

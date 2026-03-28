@@ -7,7 +7,7 @@
         WindowStartupLocation="CenterScreen" WindowStyle="ToolWindow"
         Background="#FF1E1E2E">
     <Window.Resources>
-        <Style x:Key="DarkButton" TargetType="Button">
+        <Style x:Key="DarkBtn" TargetType="Button">
             <Setter Property="Background" Value="#FF2D2D44"/>
             <Setter Property="Foreground" Value="#FFCCCCDD"/>
             <Setter Property="BorderBrush" Value="#FF3D3D5C"/>
@@ -32,42 +32,35 @@
                                 <Setter Property="Background" Value="#FF4EC9B0"/>
                                 <Setter Property="Foreground" Value="#FF1E1E2E"/>
                             </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Background" Value="#FF252535"/>
-                                <Setter Property="Foreground" Value="#FF555566"/>
-                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
-        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource DarkButton}">
+        <Style x:Key="PrimBtn" TargetType="Button" BasedOn="{StaticResource DarkBtn}">
             <Setter Property="Background" Value="#FF4EC9B0"/>
             <Setter Property="Foreground" Value="#FF1E1E2E"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#FF5DD9C0"/>
-                </Trigger>
-            </Style.Triggers>
         </Style>
     </Window.Resources>
 
     <Grid Margin="4">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="2*"/>
-            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="65*"/>
+            <ColumnDefinition Width="35*"/>
         </Grid.ColumnDefinitions>
 
         <!-- Sol: Kesit Onizleme -->
-        <Border Grid.Column="0" Background="#FF12121E" CornerRadius="4" Margin="4">
+        <Border Grid.Column="0" Background="#FF0A0A14" CornerRadius="4" Margin="4"
+                BorderBrush="#FF3D3D5C" BorderThickness="1">
             <local:KesitOnizlemeControl x:Name="OnizlemeControl"/>
         </Border>
 
-        <!-- Sag: Rol Atama -->
+        <!-- Sag: Cizgi Rolleri -->
         <Border Grid.Column="1" Background="#FF2D2D44" Margin="4" CornerRadius="4" Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
@@ -75,34 +68,35 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Bilgi -->
-                <TextBlock Grid.Row="0" Text="{Binding SecilenCizgiBilgi}" Foreground="#FF8888AA"
-                           FontSize="11" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                <!-- Baslik -->
+                <TextBlock Grid.Row="0" Text="Cizgi rolleri" Foreground="#FFCCCCDD" FontWeight="Bold"
+                           FontSize="14" Margin="0,0,0,8"/>
+
+                <!-- Secili cizgi bilgisi -->
+                <TextBlock Grid.Row="1" Text="{Binding SecilenCizgiBilgi}" Foreground="#FF8888AA"
+                           FontSize="10" Margin="0,0,0,6" TextWrapping="Wrap"/>
 
                 <!-- Cizgi Listesi -->
-                <ListBox Grid.Row="1" ItemsSource="{Binding Cizgiler}"
+                <ListBox Grid.Row="2" ItemsSource="{Binding Cizgiler}"
                          SelectedItem="{Binding SecilenCizgi}"
-                         Background="#FF1E1E2E" Foreground="#FFCCCCDD"
-                         BorderBrush="#FF3D3D5C" BorderThickness="1" Margin="0,0,0,8">
+                         Background="#FF1E1E2E" BorderBrush="#FF3D3D5C" BorderThickness="1"
+                         Margin="0,0,0,8">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal" Margin="2">
-                                <Ellipse Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center">
-                                    <Ellipse.Style>
-                                        <Style TargetType="Ellipse">
-                                            <Setter Property="Fill" Value="#FF757575"/>
-                                        </Style>
-                                    </Ellipse.Style>
-                                </Ellipse>
-                                <TextBlock Text="{Binding Rol}" Width="90" Foreground="#FFCCCCDD" FontSize="12"/>
-                                <TextBlock Text="{Binding LayerAdi}" Foreground="#FF8888AA" FontSize="11"/>
+                            <StackPanel Orientation="Horizontal" Margin="2,1">
+                                <Ellipse Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center"
+                                         Fill="#FF757575"/>
+                                <TextBlock Text="{Binding Rol}" Width="85" Foreground="#FFCCCCDD" FontSize="12"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding LayerAdi}" Foreground="#FF8888AA" FontSize="10"
+                                           VerticalAlignment="Center"/>
                             </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem">
                             <Setter Property="Background" Value="Transparent"/>
-                            <Setter Property="Foreground" Value="#FFCCCCDD"/>
+                            <Setter Property="Padding" Value="4,2"/>
                             <Style.Triggers>
                                 <Trigger Property="IsSelected" Value="True">
                                     <Setter Property="Background" Value="#FF3D3D5C"/>
@@ -116,36 +110,28 @@
                 </ListBox>
 
                 <!-- Rol Secimi -->
-                <StackPanel Grid.Row="2" Margin="0,0,0,8">
-                    <TextBlock Text="Rol Ata:" Foreground="#FFCCCCDD" Margin="0,0,0,4"/>
+                <StackPanel Grid.Row="3" Margin="0,0,0,6">
+                    <TextBlock Text="Rol Ata:" Foreground="#FFCCCCDD" Margin="0,0,0,3" FontSize="12"/>
                     <ComboBox ItemsSource="{Binding MevcutRoller}"
                               SelectedItem="{Binding SecilenRol}"
-                              Height="28" FontSize="12"
-                              Background="#FF2D2D44" Foreground="#FFCCCCDD"
-                              BorderBrush="#FF3D3D5C"/>
+                              Height="26" FontSize="11"
+                              Background="#FF2D2D44" Foreground="#FFCCCCDD" BorderBrush="#FF3D3D5C"/>
                     <Button Content="Rolu Ata" Command="{Binding RolAta}"
-                            Style="{StaticResource PrimaryButton}"
-                            Margin="0,4,0,0" Height="28"/>
+                            Style="{StaticResource PrimBtn}" Margin="0,4,0,0" Height="26" Padding="4"/>
                 </StackPanel>
 
                 <!-- Otomatik Ata -->
-                <Button Grid.Row="3" Content="Tumunu Otomatik Ata"
+                <Button Grid.Row="4" Content="Tumunu Otomatik Ata"
                         Command="{Binding TumunuOtomatikAta}"
-                        Style="{StaticResource DarkButton}"
-                        Height="28" Margin="0,0,0,8"
+                        Style="{StaticResource DarkBtn}" Height="26" Margin="0,0,0,8" Padding="4"
                         Background="#FF2D5A4A" Foreground="#FF4EC9B0" BorderBrush="#FF4EC9B0"/>
 
                 <!-- Kaydet / Iptal -->
-                <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="Sablona Kaydet" Command="{Binding SablonDosyayaKaydet}"
-                            Style="{StaticResource DarkButton}"
-                            Width="100" Height="28" Margin="0,0,6,0" Padding="4"/>
+                <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Content="Kaydet" x:Name="BtnKaydet" Click="BtnKaydet_Click"
-                            Style="{StaticResource PrimaryButton}"
-                            Width="80" Height="28" Padding="4"/>
+                            Style="{StaticResource PrimBtn}" Width="80" Height="28" Padding="4"/>
                     <Button Content="Iptal" x:Name="BtnIptal" Click="BtnIptal_Click"
-                            Style="{StaticResource DarkButton}"
-                            Width="60" Height="28" Margin="6,0,0,0" Padding="4"/>
+                            Style="{StaticResource DarkBtn}" Width="60" Height="28" Margin="6,0,0,0" Padding="4"/>
                 </StackPanel>
             </Grid>
         </Border>

@@ -37,7 +37,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
             set
             {
                 if (SetProperty(ref _aktifKesit, value))
-                    OnPropertiesChanged(nameof(AktifKesitBilgi), nameof(AktifKesitAlanlar), nameof(AktifKesitCizgiler));
+                    OnPropertiesChanged(nameof(AktifKesitBilgi), nameof(AktifKesitAlanlar), nameof(AktifKesitCizgiler), nameof(AktifKesitKiyaslar));
             }
         }
 

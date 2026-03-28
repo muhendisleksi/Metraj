@@ -68,6 +68,9 @@ namespace Metraj.ViewModels.EnkesitOkuma
             Cizgiler.Clear();
             foreach (var c in kesit.Cizgiler.OrderByDescending(c => c.OrtalamaY))
                 Cizgiler.Add(c);
+
+            // Otomatik atama acilista calisir
+            OtomatikAta();
         }
 
         private void RolAtaUygula()
@@ -92,28 +95,66 @@ namespace Metraj.ViewModels.EnkesitOkuma
 
                 // 1. Layer adindan dene
                 string upper = (cizgi.LayerAdi ?? "").ToUpperInvariant();
-                if (upper.Contains("ZEMIN") || upper.Contains("SIYAH"))
+
+                // Zemin / Arazi
+                if (upper.Contains("ZEMIN") || upper.Contains("SIYAH") || upper.Contains("ARAZI") || upper.Contains("ARAZİ"))
                 { cizgi.Rol = CizgiRolu.Zemin; cizgi.OtomatikAtanmis = true; continue; }
-                if (upper.Contains("SIYIRMA"))
+
+                // Siyirma
+                if (upper.Contains("SIYIRMA") || upper.Contains("SİYIRMA") || upper.Contains("SIYRIM"))
                 { cizgi.Rol = CizgiRolu.SiyirmaTaban; cizgi.OtomatikAtanmis = true; continue; }
-                if (upper.Contains("PROJE") || upper.Contains("KIRMIZI"))
+
+                // Proje kotu / Design
+                if (upper.Contains("PROJE") || upper.Contains("KIRMIZI") || upper.Contains("DESIGN") || upper.Contains("TASARIM") || upper.Contains("DESİGN"))
                 { cizgi.Rol = CizgiRolu.ProjeKotu; cizgi.OtomatikAtanmis = true; continue; }
+
+                // Eksen
                 if (upper.Contains("EKSEN") || upper.Contains("CL") || upper.Contains("AXIS"))
                 { cizgi.Rol = CizgiRolu.EksenCizgisi; cizgi.OtomatikAtanmis = true; continue; }
-                if (upper.Contains("CERCEVE") || upper.Contains("FRAME"))
+
+                // Cerceve / Pafta / Palye
+                if (upper.Contains("CERCEVE") || upper.Contains("FRAME") || upper.Contains("PAFTA") || upper.Contains("PALYE"))
                 { cizgi.Rol = CizgiRolu.CerceveCizgisi; cizgi.OtomatikAtanmis = true; continue; }
-                if (upper.Contains("GRID") || upper.Contains("OLCEK"))
+
+                // Grid / Olcek
+                if (upper.Contains("GRID") || upper.Contains("OLCEK") || upper.Contains("ÖLÇEK"))
                 { cizgi.Rol = CizgiRolu.GridCizgisi; cizgi.OtomatikAtanmis = true; continue; }
+
+                // Hendek
                 if (upper.Contains("HENDEK"))
                 { cizgi.Rol = CizgiRolu.HendekCizgisi; cizgi.OtomatikAtanmis = true; continue; }
-                if (upper.Contains("SEV"))
+
+                // Sev
+                if (upper.Contains("SEV") || upper.Contains("ŞEV"))
                 { cizgi.Rol = CizgiRolu.SevCizgisi; cizgi.OtomatikAtanmis = true; continue; }
-                if (upper.Contains("BANKET"))
+
+                // Banket / Bordur
+                if (upper.Contains("BANKET") || upper.Contains("BORDUR") || upper.Contains("BORDÜR"))
                 { cizgi.Rol = CizgiRolu.BanketCizgisi; cizgi.OtomatikAtanmis = true; continue; }
-                if (upper.Contains("ASINMA"))
+
+                // Asinma
+                if (upper.Contains("ASINMA") || upper.Contains("AŞINMA"))
                 { cizgi.Rol = CizgiRolu.AsinmaTaban; cizgi.OtomatikAtanmis = true; continue; }
+
+                // Binder
                 if (upper.Contains("BINDER"))
                 { cizgi.Rol = CizgiRolu.BinderTaban; cizgi.OtomatikAtanmis = true; continue; }
+
+                // Bitumen / Bitumlu
+                if (upper.Contains("BITUMEN") || upper.Contains("BİTÜM") || upper.Contains("BITÜM") || upper.Contains("BITUMLU") || upper.Contains("BİTÜMLÜ"))
+                { cizgi.Rol = CizgiRolu.BitumluTemelTaban; cizgi.OtomatikAtanmis = true; continue; }
+
+                // Granuler / Alttemel
+                if (upper.Contains("GRANULER") || upper.Contains("GRANÜLER") || upper.Contains("ALTTEMEL") || upper.Contains("ALT TEMEL"))
+                { cizgi.Rol = CizgiRolu.AltTemelTaban; cizgi.OtomatikAtanmis = true; continue; }
+
+                // Plentmiks
+                if (upper.Contains("PLENT"))
+                { cizgi.Rol = CizgiRolu.PlentmiksTaban; cizgi.OtomatikAtanmis = true; continue; }
+
+                // Kirmatas
+                if (upper.Contains("KIRMA") || upper.Contains("KIRMATAŞ"))
+                { cizgi.Rol = CizgiRolu.KirmatasTaban; cizgi.OtomatikAtanmis = true; continue; }
 
                 // 2. Layer eslesmedi -> renk bazli dene
                 switch (cizgi.RenkIndex)
@@ -133,7 +174,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 }
             }
 
-            // 3. Renk 7/8/9 (beyaz/gri) tanimsiz cizgileri Y pozisyonuna gore ustyapi tabakalari olarak ata
+            // 3. Renk 7/8/9 tanimsiz cizgileri Y pozisyonuna gore ustyapi tabakalari olarak ata
             var gizliTabakalar = Cizgiler
                 .Where(c => c.Rol == CizgiRolu.Tanimsiz && (c.RenkIndex == 7 || c.RenkIndex == 8 || c.RenkIndex == 9))
                 .OrderByDescending(c => c.OrtalamaY)
@@ -147,6 +188,8 @@ namespace Metraj.ViewModels.EnkesitOkuma
 
             for (int i = 0; i < Math.Min(gizliTabakalar.Count, tabakaSirasi.Length); i++)
             {
+                // Eger bu rol zaten atanmissa atla
+                if (Cizgiler.Any(c => c.Rol == tabakaSirasi[i])) continue;
                 gizliTabakalar[i].Rol = tabakaSirasi[i];
                 gizliTabakalar[i].OtomatikAtanmis = true;
             }
