@@ -74,7 +74,17 @@ namespace Metraj.Services.YolEnkesit
                                 var cizgi = CizgiTanimiOlustur(ent, entId, tr);
                                 if (cizgi != null)
                                 {
-                                    // Entity clipping: polyline noktalarini pencere X sinirlarinda kirp
+                                    // Entity clipping: once gercek X kesisimini kontrol et
+                                    double entMinX = cizgi.Noktalar.Min(p => p.X);
+                                    double entMaxX = cizgi.Noktalar.Max(p => p.X);
+                                    double overlapMin = Math.Max(entMinX, minPt.X);
+                                    double overlapMax = Math.Min(entMaxX, maxPt.X);
+
+                                    // Yeterli kesisim yoksa bu entity'yi atla
+                                    // (ClipToXRange extrapolasyon ile hayalet nokta uretir)
+                                    if (overlapMax - overlapMin < MinCizgiUzunlugu) continue;
+
+                                    // Pencere X sinirlarinda kirp
                                     cizgi.Noktalar = _enKesitAlanService.ClipToXRange(
                                         cizgi.Noktalar, minPt.X, maxPt.X);
                                     cizgi.OrtalamaY = cizgi.Noktalar.Count > 0
