@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
@@ -19,23 +20,51 @@ namespace Metraj.Services.YolEnkesit
         // =============== ANA GIRIS NOKTASI ===============
 
         /// <summary>
-        /// Alan hesabi: TraceBoundary oncelikli, Shoelace fallback.
+        /// Alan hesabi: Her malzeme icin TraceBoundary oncelikli, bulunamazsa Shoelace fallback.
+        /// Iki yontemin sonuclarini per-malzeme birlestirerek en iyi kapsami saglar.
         /// </summary>
         public List<AlanHesapSonucu> AlanHesapla(KesitGrubu kesit)
         {
-            // Oncelik: TraceBoundary
             var tbSonuclar = TraceBoundaryAlanHesapla(kesit);
-            if (tbSonuclar.Count > 0)
+            var shSonuclar = ShoelaceAlanHesapla(kesit);
+
+            // Per-malzeme birlestirme: TB varsa TB, yoksa Shoelace
+            var tbDict = new Dictionary<string, AlanHesapSonucu>();
+            foreach (var s in tbSonuclar)
+                tbDict[s.MalzemeAdi] = s;
+
+            var shDict = new Dictionary<string, AlanHesapSonucu>();
+            foreach (var s in shSonuclar)
+                shDict[s.MalzemeAdi] = s;
+
+            var tumMalzemeler = new HashSet<string>(tbDict.Keys);
+            foreach (var k in shDict.Keys)
+                tumMalzemeler.Add(k);
+
+            var birlesik = new List<AlanHesapSonucu>();
+            bool detayliLog = _logSayaci < 3;
+
+            foreach (var mal in tumMalzemeler)
             {
-                kesit.HesaplananAlanlar = tbSonuclar;
-                _logSayaci++;
-                return tbSonuclar;
+                if (tbDict.TryGetValue(mal, out var tb))
+                {
+                    birlesik.Add(tb);
+                    if (detayliLog) LoggingService.Info($"  {mal}: TB={tb.Alan:F4} m2");
+                }
+                else if (shDict.TryGetValue(mal, out var sh))
+                {
+                    sh.Aciklama += " [Shoelace fallback]";
+                    birlesik.Add(sh);
+                    if (detayliLog) LoggingService.Info($"  {mal}: Shoelace={sh.Alan:F4} m2 [fallback]");
+                }
             }
 
-            // Fallback: Shoelace
-            if (_logSayaci < 3)
-                LoggingService.Info($"TraceBoundary sonuc yok, Shoelace fallback: {kesit.Anchor?.IstasyonMetni}");
-            return ShoelaceAlanHesapla(kesit);
+            if (detayliLog)
+                LoggingService.Info($"Birlesik sonuc: {tbDict.Count} TB + {birlesik.Count - tbDict.Count} Shoelace = {birlesik.Count} malzeme");
+
+            kesit.HesaplananAlanlar = birlesik;
+            _logSayaci++;
+            return birlesik;
         }
 
         // =============== TRACE BOUNDARY ===============
@@ -362,6 +391,233 @@ namespace Metraj.Services.YolEnkesit
             {
                 LoggingService.Warning($"TraceBoundaryAlanAl hatasi: {ex.Message}");
                 return null;
+            }
+        }
+
+        // =============== TANILAMA — [3b] TRACEBOUNDARY DETAY ===============
+
+        /// <summary>
+        /// Tanilama raporu icin [3b] TRACEBOUNDARY DETAY bolumunu yazar.
+        /// Her malzeme cifti icin sample point denemelerini ve TraceBoundary sonuclarini detayli loglar.
+        /// </summary>
+        internal void TBTanilamaKesitYaz(StringBuilder sb, KesitGrubu kesit)
+        {
+            sb.AppendLine();
+            sb.AppendLine("  [3b] TRACEBOUNDARY DETAY");
+
+            if (!kesit.CL_X.HasValue)
+            {
+                sb.AppendLine("      CL_X yok — TraceBoundary uygulanamaz");
+                return;
+            }
+
+            double clX = kesit.CL_X.Value;
+            sb.AppendLine($"      CL_X = {clX:F4}");
+
+            // Standart malzeme ciftleri
+            var ciftler = new[]
+            {
+                (ust: CizgiRolu.Zemin, alt: CizgiRolu.SiyirmaTaban, ad: "Siyirma"),
+                (ust: CizgiRolu.ProjeKotu, alt: CizgiRolu.AsinmaTaban, ad: "Asinma"),
+                (ust: CizgiRolu.AsinmaTaban, alt: CizgiRolu.BinderTaban, ad: "Binder"),
+                (ust: CizgiRolu.BinderTaban, alt: CizgiRolu.BitumluTemelTaban, ad: "Bitumlu Temel"),
+                (ust: CizgiRolu.BitumluTemelTaban, alt: CizgiRolu.PlentmiksTaban, ad: "Plentmiks"),
+                (ust: CizgiRolu.PlentmiksTaban, alt: CizgiRolu.AltTemelTaban, ad: "Alttemel"),
+                (ust: CizgiRolu.AltTemelTaban, alt: CizgiRolu.KirmatasTaban, ad: "Kirmatas"),
+            };
+
+            foreach (var (ustRol, altRol, ad) in ciftler)
+            {
+                sb.AppendLine($"      --- {ad} ({ustRol} / {altRol}) ---");
+
+                var ustNkt = RolNoktalariniAl(kesit, ustRol);
+                var altNkt = RolNoktalariniAl(kesit, altRol);
+
+                if (ustNkt == null || altNkt == null)
+                {
+                    sb.AppendLine($"          CIZGI EKSIK: ust({ustRol})={ustNkt?.Count.ToString() ?? "YOK"}, alt({altRol})={altNkt?.Count.ToString() ?? "YOK"}");
+                    continue;
+                }
+
+                TBSampleDetayYaz(sb, ustNkt, altNkt, clX);
+            }
+
+            // Yarma / Dolgu
+            sb.AppendLine($"      --- Yarma/Dolgu (SiyirmaTaban / UstyapiAltKotu) ---");
+            var siyirmaNkt = RolNoktalariniAl(kesit, CizgiRolu.SiyirmaTaban);
+            var ustyapiAltNkt = UstyapiAltNoktalariniAl(kesit);
+
+            if (siyirmaNkt == null || ustyapiAltNkt == null)
+            {
+                sb.AppendLine($"          CIZGI EKSIK: siyirma={siyirmaNkt?.Count.ToString() ?? "YOK"}, ustyapiAlt={ustyapiAltNkt?.Count.ToString() ?? "YOK"}");
+            }
+            else
+            {
+                // CL noktasi
+                sb.AppendLine($"          [CL deneme]");
+                TBSampleDetayYaz(sb, siyirmaNkt, ustyapiAltNkt, clX);
+
+                // Sol/sag taraf
+                double minXOrtak = Math.Max(siyirmaNkt.Min(p => p.X), ustyapiAltNkt.Min(p => p.X));
+                double maxXOrtak = Math.Min(siyirmaNkt.Max(p => p.X), ustyapiAltNkt.Max(p => p.X));
+                double solX = Math.Max(clX - 3.0, minXOrtak + 0.5);
+                double sagX = Math.Min(clX + 3.0, maxXOrtak - 0.5);
+
+                sb.AppendLine($"          [Sol taraf deneme]");
+                TBTekNoktaDetayYaz(sb, siyirmaNkt, ustyapiAltNkt, solX);
+                sb.AppendLine($"          [Sag taraf deneme]");
+                TBTekNoktaDetayYaz(sb, siyirmaNkt, ustyapiAltNkt, sagX);
+            }
+        }
+
+        /// <summary>
+        /// CL_X, CL_X-2, CL_X+2 denemelerini detayli yazar.
+        /// </summary>
+        private void TBSampleDetayYaz(StringBuilder sb, List<Point2d> ustNkt, List<Point2d> altNkt, double clX)
+        {
+            double[] denemeXleri = { clX, clX - 2.0, clX + 2.0 };
+            string[] etiketler = { "CL", "CL-2", "CL+2" };
+
+            double minXOrtak = Math.Max(ustNkt.Min(p => p.X), altNkt.Min(p => p.X));
+            double maxXOrtak = Math.Min(ustNkt.Max(p => p.X), altNkt.Max(p => p.X));
+            sb.AppendLine($"          Ortak X araligi: [{minXOrtak:F2}..{maxXOrtak:F2}]");
+
+            for (int i = 0; i < denemeXleri.Length; i++)
+            {
+                double x = denemeXleri[i];
+                string etiket = etiketler[i];
+                TBTekNoktaDetayYaz(sb, ustNkt, altNkt, x, etiket);
+            }
+        }
+
+        /// <summary>
+        /// Tek bir X koordinatinda sample point olusturup TraceBoundary detayini yazar.
+        /// </summary>
+        private void TBTekNoktaDetayYaz(StringBuilder sb, List<Point2d> ustNkt, List<Point2d> altNkt, double x, string etiket = null)
+        {
+            string lbl = etiket != null ? $"{etiket} (X={x:F2})" : $"X={x:F2}";
+
+            double minXOrtak = Math.Max(ustNkt.Min(p => p.X), altNkt.Min(p => p.X));
+            double maxXOrtak = Math.Min(ustNkt.Max(p => p.X), altNkt.Max(p => p.X));
+
+            if (x < minXOrtak || x > maxXOrtak)
+            {
+                sb.AppendLine($"          {lbl}: X ARALIK DISI [min={minXOrtak:F2}, max={maxXOrtak:F2}]");
+                return;
+            }
+
+            double ustY = _enKesitAlanService.InterpolateY(ustNkt, x);
+            double altY = _enKesitAlanService.InterpolateY(altNkt, x);
+            double yFark = Math.Abs(ustY - altY);
+
+            if (yFark < 0.001)
+            {
+                sb.AppendLine($"          {lbl}: ustY={ustY:F4}, altY={altY:F4}, |fark|={yFark:F6} < 0.001 — ATLIYOR (cizgiler cakisik)");
+                return;
+            }
+
+            double ortaY = (ustY + altY) / 2.0;
+            sb.AppendLine($"          {lbl}: ustY={ustY:F4}, altY={altY:F4}, ortaY={ortaY:F4}, yFark={yFark:F4}");
+
+            // TraceBoundary detayli cagri
+            var (alan, detay) = TraceBoundaryDetayliAlanAl(new Point3d(x, ortaY, 0));
+
+            if (alan.HasValue && alan.Value > 0.0001)
+                sb.AppendLine($"          → BASARILI: alan={alan.Value:F4} m2 ({detay})");
+            else
+                sb.AppendLine($"          → BASARISIZ: {detay}");
+        }
+
+        /// <summary>
+        /// TraceBoundary cagrisinin her adimini tanilayarak (alan, detay) dondurur.
+        /// Hesap mantigi TraceBoundaryAlanAl ile ayni, sadece ek tanilama bilgisi toplar.
+        /// </summary>
+        private (double? alan, string detay) TraceBoundaryDetayliAlanAl(Point3d nokta)
+        {
+            try
+            {
+                var doc = Application.DocumentManager.MdiActiveDocument;
+                if (doc == null) return (null, "MdiActiveDocument=null");
+
+                var ed = doc.Editor;
+                DBObjectCollection boundaries;
+
+                try
+                {
+                    boundaries = ed.TraceBoundary(nokta, true);
+                }
+                catch (System.Exception ex)
+                {
+                    return (null, $"TraceBoundary exception: {ex.GetType().Name}: {ex.Message}");
+                }
+
+                if (boundaries == null) return (null, "boundaries=null");
+                if (boundaries.Count == 0) return (null, "boundaries.Count=0 (acik bolge — kapali sinir yok)");
+
+                // Boundary objelerinin tiplerini say
+                int curveCount = 0;
+                var tipler = new List<string>();
+                foreach (DBObject obj in boundaries)
+                {
+                    tipler.Add(obj.GetType().Name);
+                    if (obj is Curve) curveCount++;
+                }
+                string tipOzet = string.Join(",", tipler);
+
+                if (curveCount == 0)
+                {
+                    foreach (DBObject obj in boundaries) obj.Dispose();
+                    return (null, $"boundaries={boundaries.Count} ama Curve yok, tipler=[{tipOzet}]");
+                }
+
+                double alan = 0;
+                string regionDetay;
+                try
+                {
+                    var curves = new DBObjectCollection();
+                    foreach (DBObject obj in boundaries)
+                        if (obj is Curve c) curves.Add(c);
+
+                    var regions = Region.CreateFromCurves(curves);
+                    if (regions.Count > 0)
+                    {
+                        var region = regions[0] as Region;
+                        alan = region.Area;
+                        regionDetay = $"Region.Count={regions.Count}, Area={alan:F4}";
+                        region.Dispose();
+                        for (int i = 1; i < regions.Count; i++)
+                            ((DBObject)regions[i]).Dispose();
+                    }
+                    else
+                    {
+                        regionDetay = "Region.CreateFromCurves=0 (curve'ler kapali bolge olusturmuyor)";
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    regionDetay = $"Region exception: {ex.Message}";
+                    foreach (DBObject obj in boundaries)
+                    {
+                        if (obj is Polyline pl)
+                        {
+                            alan = pl.Area;
+                            regionDetay += $", Polyline.Area fallback={alan:F4}";
+                            break;
+                        }
+                    }
+                }
+                finally
+                {
+                    foreach (DBObject obj in boundaries)
+                        obj.Dispose();
+                }
+
+                string sonuc = $"boundaries={boundaries.Count} [{tipOzet}], curves={curveCount}, {regionDetay}";
+                return (alan > 0 ? alan : (double?)null, sonuc);
+            }
+            catch (System.Exception ex)
+            {
+                return (null, $"Genel hata: {ex.GetType().Name}: {ex.Message}");
             }
         }
     }

@@ -55,7 +55,21 @@ namespace Metraj.Services.YolEnkesit
             if (yataylar.Count == 1) return yataylar[0].Noktalar;
 
             // Birden fazla yatay cizgi: noktalarini birlestir
-            return NoktalariMerge(yataylar);
+            int oncekiToplamNokta = yataylar.Sum(c => c.Noktalar.Count);
+            var sonuc = NoktalariMerge(yataylar);
+
+            // Tanilama logu — birlesme oncesi/sonrasi nokta farki
+            if (_logSayaci < 3)
+            {
+                LoggingService.Info($"  [MERGE-TANILAMA] {rol}: {cizgiler.Count} parca ({yataylar.Count} yatay + {cizgiler.Count - yataylar.Count} dikey)");
+                foreach (var c in yataylar)
+                    LoggingService.Info($"    parca: {c.Noktalar.Count} pnt, X=[{c.Noktalar.Min(p => p.X):F2}..{c.Noktalar.Max(p => p.X):F2}]");
+                LoggingService.Info($"    MERGE: {oncekiToplamNokta} -> {sonuc.Count} pnt, X=[{sonuc.Min(p => p.X):F2}..{sonuc.Max(p => p.X):F2}]");
+                if (oncekiToplamNokta - sonuc.Count > 2)
+                    LoggingService.Warning($"    UYARI: {oncekiToplamNokta - sonuc.Count} nokta kayboldu!");
+            }
+
+            return sonuc;
         }
 
         /// <summary>
@@ -145,7 +159,7 @@ namespace Metraj.Services.YolEnkesit
             // Siyirma
             if (zeminNkt != null && siyirmaNkt != null)
             {
-                double siyirmaAlani = IkiCizgiArasiAlanHesapla(zeminNkt, siyirmaNkt);
+                double siyirmaAlani = IkiCizgiArasiAlanHesapla(zeminNkt, siyirmaNkt, "Siyirma");
                 if (detayliLog) LoggingService.Info($"  Siyirma alani: {siyirmaAlani:F4} m2");
                 sonuclar.Add(new AlanHesapSonucu
                 {
@@ -217,10 +231,10 @@ namespace Metraj.Services.YolEnkesit
             }
             else
             {
-                double tamAlan = IkiCizgiArasiAlanHesapla(siyirmaNkt, ustyapiAltNkt);
                 double siyirmaOrtY = siyirmaNkt.Average(p => p.Y);
                 double ustyapiOrtY = ustyapiAltNkt.Average(p => p.Y);
                 string malzeme = siyirmaOrtY > ustyapiOrtY ? "Yarma" : "Dolgu";
+                double tamAlan = IkiCizgiArasiAlanHesapla(siyirmaNkt, ustyapiAltNkt, malzeme);
 
                 if (tamAlan > 0.0001)
                     sonuclar.Add(new AlanHesapSonucu { MalzemeAdi = malzeme, Alan = tamAlan, UstCizgiRolu = siyirmaOrtY > ustyapiOrtY ? CizgiRolu.SiyirmaTaban : CizgiRolu.UstyapiAltKotu, AltCizgiRolu = siyirmaOrtY > ustyapiOrtY ? CizgiRolu.UstyapiAltKotu : CizgiRolu.SiyirmaTaban, Aciklama = $"{malzeme} - tam bolge" });
@@ -252,7 +266,7 @@ namespace Metraj.Services.YolEnkesit
                     LogBirlesim(kesit, alt, altNkt);
                 }
 
-                double alan = IkiCizgiArasiAlanHesapla(ustNkt, altNkt);
+                double alan = IkiCizgiArasiAlanHesapla(ustNkt, altNkt, ad);
                 if (detayliLog) LoggingService.Info($"  {ad}: {alan:F4} m2 ({ust} -> {alt})");
 
                 if (alan > 0.0001)
@@ -269,7 +283,7 @@ namespace Metraj.Services.YolEnkesit
             }
         }
 
-        private double IkiCizgiArasiAlanHesapla(List<Point2d> ustNoktalar, List<Point2d> altNoktalar)
+        private double IkiCizgiArasiAlanHesapla(List<Point2d> ustNoktalar, List<Point2d> altNoktalar, string malzemeAdi = null)
         {
             double minX = Math.Max(ustNoktalar.Min(p => p.X), altNoktalar.Min(p => p.X));
             double maxX = Math.Min(ustNoktalar.Max(p => p.X), altNoktalar.Max(p => p.X));
@@ -283,7 +297,21 @@ namespace Metraj.Services.YolEnkesit
             polygon.AddRange(ustKesik.OrderBy(p => p.X));
             polygon.AddRange(altKesik.OrderByDescending(p => p.X));
 
-            return _enKesitAlanService.ShoelaceAlan(polygon);
+            double alan = _enKesitAlanService.ShoelaceAlan(polygon);
+
+            // Tanilama logu — birlesme oncesi/sonrasi nokta kaybi ve polygon bilgisi
+            if (_logSayaci < 3 && malzemeAdi != null)
+            {
+                LoggingService.Info($"  [SH-TANILAMA] {malzemeAdi}:");
+                LoggingService.Info($"    Ust girdi: {ustNoktalar.Count} pnt, X=[{ustNoktalar.Min(p => p.X):F2}..{ustNoktalar.Max(p => p.X):F2}]");
+                LoggingService.Info($"    Alt girdi: {altNoktalar.Count} pnt, X=[{altNoktalar.Min(p => p.X):F2}..{altNoktalar.Max(p => p.X):F2}]");
+                LoggingService.Info($"    Clip X: [{minX:F2}..{maxX:F2}], genislik={maxX - minX:F2}");
+                LoggingService.Info($"    Clip sonrasi: ust={ustKesik.Count} pnt, alt={altKesik.Count} pnt");
+                LoggingService.Info($"    Polygon: {polygon.Count} pnt, X=[{polygon.Min(p => p.X):F2}..{polygon.Max(p => p.X):F2}], Y=[{polygon.Min(p => p.Y):F2}..{polygon.Max(p => p.Y):F2}]");
+                LoggingService.Info($"    Shoelace alan: {alan:F4} m2");
+            }
+
+            return alan;
         }
 
         private double? KesisimXBul(List<Point2d> cizgi1, List<Point2d> cizgi2, double minX, double maxX)
@@ -482,7 +510,7 @@ namespace Metraj.Services.YolEnkesit
             }
 
             // Siyirma
-            CiftHesapLog(sb, "Siyirma", zeminNkt, siyirmaNkt, CizgiRolu.Zemin, CizgiRolu.SiyirmaTaban);
+            CiftHesapLog(sb, "Siyirma", zeminNkt, siyirmaNkt, CizgiRolu.Zemin, CizgiRolu.SiyirmaTaban, kesit);
 
             // Yarma/Dolgu
             if (siyirmaNkt != null && ustyapiAltNkt != null)
@@ -540,8 +568,11 @@ namespace Metraj.Services.YolEnkesit
             {
                 var ustNkt = RolNoktalariniAl(kesit, ust);
                 var altNkt = RolNoktalariniAl(kesit, alt);
-                CiftHesapLog(sb, ad, ustNkt, altNkt, ust, alt);
+                CiftHesapLog(sb, ad, ustNkt, altNkt, ust, alt, kesit);
             }
+
+            // 3b. TraceBoundary detay
+            TBTanilamaKesitYaz(sb, kesit);
 
             // 4. Tablo text durumu
             sb.AppendLine();
@@ -569,7 +600,7 @@ namespace Metraj.Services.YolEnkesit
             }
         }
 
-        private void CiftHesapLog(StringBuilder sb, string ad, List<Point2d> ustNkt, List<Point2d> altNkt, CizgiRolu ustRol, CizgiRolu altRol)
+        private void CiftHesapLog(StringBuilder sb, string ad, List<Point2d> ustNkt, List<Point2d> altNkt, CizgiRolu ustRol, CizgiRolu altRol, KesitGrubu kesit = null)
         {
             sb.AppendLine($"  --- {ad} ---");
             if (ustNkt == null || altNkt == null)
@@ -577,6 +608,17 @@ namespace Metraj.Services.YolEnkesit
                 string eksik = ustNkt == null ? ustRol.ToString() : altRol.ToString();
                 sb.AppendLine($"      SONUC: {eksik} eksik, hesap yapilamadi.");
                 return;
+            }
+
+            // Birlesme oncesi parca bilgisi
+            if (kesit != null)
+            {
+                var ustParcalar = kesit.Cizgiler.Where(c => c.Rol == ustRol).ToList();
+                var altParcalar = kesit.Cizgiler.Where(c => c.Rol == altRol).ToList();
+                int ustHamNokta = ustParcalar.Sum(c => c.Noktalar.Count);
+                int altHamNokta = altParcalar.Sum(c => c.Noktalar.Count);
+                sb.AppendLine($"      Ust ham: {ustParcalar.Count} parca, {ustHamNokta} pnt -> birlesik {ustNkt.Count} pnt (kayip: {ustHamNokta - ustNkt.Count})");
+                sb.AppendLine($"      Alt ham: {altParcalar.Count} parca, {altHamNokta} pnt -> birlesik {altNkt.Count} pnt (kayip: {altHamNokta - altNkt.Count})");
             }
 
             double ustMinX = ustNkt.Min(p => p.X), ustMaxX = ustNkt.Max(p => p.X);
@@ -595,7 +637,16 @@ namespace Metraj.Services.YolEnkesit
                 return;
             }
 
-            double alan = IkiCizgiArasiAlanHesapla(ustNkt, altNkt);
+            var ustKesik = _enKesitAlanService.ClipToXRange(ustNkt, minX, maxX);
+            var altKesik = _enKesitAlanService.ClipToXRange(altNkt, minX, maxX);
+            sb.AppendLine($"      Clip sonrasi: ust={ustKesik.Count} pnt, alt={altKesik.Count} pnt");
+
+            var polygon = new List<Point2d>();
+            polygon.AddRange(ustKesik.OrderBy(p => p.X));
+            polygon.AddRange(altKesik.OrderByDescending(p => p.X));
+            sb.AppendLine($"      Polygon: {polygon.Count} pnt, X=[{polygon.Min(p => p.X):F2}..{polygon.Max(p => p.X):F2}], Y=[{polygon.Min(p => p.Y):F2}..{polygon.Max(p => p.Y):F2}]");
+
+            double alan = _enKesitAlanService.ShoelaceAlan(polygon);
             double ortYFark = Math.Abs(ustNkt.Average(p => p.Y) - altNkt.Average(p => p.Y));
             sb.AppendLine($"      Y farki (ortalama): {ortYFark:F4} birim");
             sb.AppendLine($"      SONUC: {alan:F4} m2");

@@ -41,27 +41,69 @@ namespace Metraj.Services.YolEnkesit
             var degerler = new Dictionary<string, double>();
 
             if (kesit.TextObjeler == null || kesit.TextObjeler.Count == 0)
+            {
+                if (_logSayaci < 3) LoggingService.Warning($"TabloOku: {kesit.Anchor?.IstasyonMetni} — TextObjeler bos!");
                 return degerler;
+            }
 
             var textler = TextleriOku(kesit.TextObjeler);
+            bool tanilama = _logSayaci < 3;
 
-            // Ilk 3 kesit icin text iceriklerini logla (tanilama)
-            if (_logSayaci < 3 && textler.Count > 0)
+            // ===== DETAYLI TANILAMA =====
+            if (tanilama && textler.Count > 0)
             {
-                LoggingService.Info($"=== TABLO TEXT TANILAMA: {kesit.Anchor?.IstasyonMetni} ({textler.Count} text) ===");
-                int gosterilecek = Math.Min(textler.Count, 30);
+                LoggingService.Info($"=== TABLO TEXT TANILAMA: {kesit.Anchor?.IstasyonMetni} ({textler.Count} text, {kesit.TextObjeler.Count} ObjectId) ===");
+
+                // Tum text'leri listele (50'ye kadar)
+                int gosterilecek = Math.Min(textler.Count, 50);
                 for (int i = 0; i < gosterilecek; i++)
                 {
                     var (metin, x, y) = textler[i];
                     string kisa = metin.Length > 60 ? metin.Substring(0, 60) + "..." : metin;
                     LoggingService.Info($"  [{i,2}] X={x:F1} Y={y:F1} \"{kisa}\"");
                 }
-                if (textler.Count > 30)
-                    LoggingService.Info($"  ... ve {textler.Count - 30} text daha");
+                if (textler.Count > 50)
+                    LoggingService.Info($"  ... ve {textler.Count - 50} text daha");
+
+                // Anahtar kelime eslesmesi tanilama
+                LoggingService.Info($"  --- ANAHTAR KELIME TARAMASI ---");
+                int eslesenText = 0;
+                foreach (var (metin, x, y) in textler)
+                {
+                    string upper = metin.ToUpperInvariant();
+                    foreach (var (malzeme, anahtarlar) in MalzemeAnahtarlar)
+                    {
+                        string bulunanAnahtar = anahtarlar.FirstOrDefault(a => upper.Contains(a));
+                        if (bulunanAnahtar != null)
+                        {
+                            double? deger = SayiCikar(metin);
+                            LoggingService.Info($"    ESLESTI: \"{metin}\" -> {malzeme} (anahtar:{bulunanAnahtar}), sayi={deger?.ToString("F2") ?? "YOK"}");
+                            eslesenText++;
+                            break;
+                        }
+                    }
+                }
+                if (eslesenText == 0)
+                    LoggingService.Warning($"    HICBIR TEXT ANAHTAR KELIME ICERMIYOR!");
+
+                // Saf sayi text'leri
+                var sayilar = new List<(string metin, double deger, double x, double y)>();
+                foreach (var (metin, x, y) in textler)
+                {
+                    if (double.TryParse(metin.Replace(',', '.'), System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out double sayi))
+                    {
+                        sayilar.Add((metin, sayi, x, y));
+                    }
+                }
+                LoggingService.Info($"  --- SAF SAYI TEXT'LERI: {sayilar.Count} ---");
+                foreach (var (metin, deger, x, y) in sayilar.Take(20))
+                    LoggingService.Info($"    X={x:F1} Y={y:F1} deger={deger:F4} (\"{metin}\")");
+
                 _logSayaci++;
             }
 
-            // Yontem 1: Ayni text icerisinde anahtar kelime + sayi (orn: "Yarma = 16.27" veya "Yarma | 16.27")
+            // ===== YONTEM 1: Ayni text'te anahtar + sayi =====
             foreach (var (metin, x, y) in textler)
             {
                 foreach (var (malzeme, anahtarlar) in MalzemeAnahtarlar)
@@ -81,9 +123,11 @@ namespace Metraj.Services.YolEnkesit
                 }
             }
 
-            // Yontem 2: Ayri text objeleri (malzeme adi ayri, deger ayri — yakin konumda)
-            // Malzeme adi text'i ile yanindaki/altindaki sayi text'ini eslesir
-            if (degerler.Count == 0 && textler.Count >= 2)
+            if (tanilama)
+                LoggingService.Info($"  Yontem 1 sonuc: {degerler.Count} malzeme — {string.Join(", ", degerler.Select(d => $"{d.Key}={d.Value:F2}"))}");
+
+            // ===== YONTEM 2: Ayri text objeleri (malzeme adi + yakin sayi) =====
+            // Yontem 1'de bulunamayan malzemeler icin de calistir
             {
                 var malzemeTextleri = new List<(string malzeme, double x, double y)>();
                 var sayiTextleri = new List<(double deger, double x, double y)>();
@@ -92,7 +136,6 @@ namespace Metraj.Services.YolEnkesit
                 {
                     string upper = metin.ToUpperInvariant();
 
-                    // Bu text bir malzeme adi mi?
                     foreach (var (malzeme, anahtarlar) in MalzemeAnahtarlar)
                     {
                         if (anahtarlar.Any(a => upper.Contains(a)))
@@ -102,7 +145,6 @@ namespace Metraj.Services.YolEnkesit
                         }
                     }
 
-                    // Bu text bir sayi mi?
                     if (double.TryParse(metin.Replace(',', '.'), System.Globalization.NumberStyles.Float,
                         System.Globalization.CultureInfo.InvariantCulture, out double sayi))
                     {
@@ -110,37 +152,47 @@ namespace Metraj.Services.YolEnkesit
                     }
                 }
 
-                // Yakin konumdaki malzeme-sayi ciftlerini eslestir
+                if (tanilama)
+                    LoggingService.Info($"  Yontem 2 adaylari: {malzemeTextleri.Count} malzeme text, {sayiTextleri.Count} sayi text");
+
                 foreach (var (malzeme, mx, my) in malzemeTextleri)
                 {
                     if (degerler.ContainsKey(malzeme)) continue;
 
-                    // En yakin sayi text'ini bul (oncelik: saga yakin, sonra asagi yakin)
                     var enYakin = sayiTextleri
-                        .Where(s => Math.Abs(s.y - my) < 3.0) // ayni satir (Y farki < 3 birim)
+                        .Where(s => Math.Abs(s.y - my) < 3.0)
                         .OrderBy(s => Math.Abs(s.x - mx))
                         .FirstOrDefault();
 
                     if (enYakin.deger > 0 || (enYakin.x != 0 && enYakin.y != 0))
                     {
                         degerler[malzeme] = enYakin.deger;
+                        if (tanilama) LoggingService.Info($"    Y2 eslesti: {malzeme} = {enYakin.deger:F2} (satir, dx={Math.Abs(enYakin.x - mx):F1})");
                     }
                     else
                     {
-                        // Altindaki sayi text'ini dene
                         enYakin = sayiTextleri
                             .Where(s => Math.Abs(s.x - mx) < 5.0 && s.y < my)
                             .OrderByDescending(s => s.y)
                             .FirstOrDefault();
 
                         if (enYakin.deger > 0 || (enYakin.x != 0 && enYakin.y != 0))
+                        {
                             degerler[malzeme] = enYakin.deger;
+                            if (tanilama) LoggingService.Info($"    Y2 eslesti: {malzeme} = {enYakin.deger:F2} (alt, dy={my - enYakin.y:F1})");
+                        }
+                        else if (tanilama)
+                        {
+                            LoggingService.Warning($"    Y2 BASARISIZ: {malzeme} pos=({mx:F1},{my:F1}) — yakin sayi bulunamadi");
+                        }
                     }
                 }
             }
 
             if (degerler.Count > 0)
                 LoggingService.Info($"Tablo okuma {kesit.Anchor?.IstasyonMetni}: {degerler.Count} malzeme — {string.Join(", ", degerler.Select(d => $"{d.Key}={d.Value:F2}"))}");
+            else if (tanilama)
+                LoggingService.Warning($"Tablo okuma {kesit.Anchor?.IstasyonMetni}: HICBIR MALZEME BULUNAMADI ({textler.Count} text taranmasina ragmen)");
 
             return degerler;
         }
