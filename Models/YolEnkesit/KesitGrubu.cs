@@ -8,8 +8,8 @@ namespace Metraj.Models.YolEnkesit
 {
     public class KesitGrubu
     {
-        /// <summary>Yatay cizgi esigi: X araligi bundan buyukse yatay kabul edilir</summary>
-        private const double YatayCizgiMinX = 2.0;
+        /// <summary>Dikey cizgi esigi: Y/X orani bundan buyukse dikey kabul edilir</summary>
+        private const double DikeyOranEsigi = 5.0;
         /// <summary>Nokta birlesme esigi</summary>
         private const double MergeTolerans = 0.01;
 
@@ -44,10 +44,8 @@ namespace Metraj.Models.YolEnkesit
             if (parcalar == null || parcalar.Count == 0) return null;
             if (parcalar.Count == 1) return parcalar[0];
 
-            // Dikey cizgileri filtrele
-            var yataylar = parcalar.Where(c =>
-                c.Noktalar.Count >= 2 &&
-                c.Noktalar.Max(p => p.X) - c.Noktalar.Min(p => p.X) >= YatayCizgiMinX).ToList();
+            // Dikey cizgileri filtrele (Y/X orani > 5 ise dikey eleman)
+            var yataylar = parcalar.Where(c => !CizgiDikeyMi(c)).ToList();
 
             if (yataylar.Count == 0)
                 return parcalar.OrderByDescending(c => c.Noktalar.Max(p => p.X) - c.Noktalar.Min(p => p.X)).First();
@@ -80,6 +78,19 @@ namespace Metraj.Models.YolEnkesit
                 OtomatikAtanmis = ilk.OtomatikAtanmis,
                 OrtalamaY = birlesik.Average(p => p.Y)
             };
+        }
+
+        /// <summary>
+        /// Y/X orani > 5 ise dikey eleman (hendek kenari, CL, sev).
+        /// 0.5m'den dar ve Y/X > 5 → dikey. Aksi halde yatay tabaka parcasi.
+        /// </summary>
+        private static bool CizgiDikeyMi(CizgiTanimi c)
+        {
+            if (c.Noktalar.Count < 2) return true;
+            double xRange = c.Noktalar.Max(p => p.X) - c.Noktalar.Min(p => p.X);
+            double yRange = c.Noktalar.Max(p => p.Y) - c.Noktalar.Min(p => p.Y);
+            if (xRange < 0.01) return true; // neredeyse sifir X → kesinlikle dikey
+            return yRange / xRange > DikeyOranEsigi;
         }
     }
 }

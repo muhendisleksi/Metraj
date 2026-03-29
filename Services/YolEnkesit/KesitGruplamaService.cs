@@ -64,7 +64,7 @@ namespace Metraj.Services.YolEnkesit
 
                             if (!PencereKesisimVar(bounds, minPt, maxPt)) continue;
 
-                            if (ent is DBText || ent is MText)
+                            if (ent is DBText || ent is MText || ent is Table)
                             {
                                 kesit.TextObjeler.Add(entId);
                                 kesitEntityler.Add(entId.Handle.Value);
@@ -74,26 +74,17 @@ namespace Metraj.Services.YolEnkesit
                                 var cizgi = CizgiTanimiOlustur(ent, entId, tr);
                                 if (cizgi != null)
                                 {
-                                    // Entity clipping: once gercek X kesisimini kontrol et
-                                    double entMinX = cizgi.Noktalar.Min(p => p.X);
-                                    double entMaxX = cizgi.Noktalar.Max(p => p.X);
-                                    double overlapMin = Math.Max(entMinX, minPt.X);
-                                    double overlapMax = Math.Min(entMaxX, maxPt.X);
+                                    // Guvenli clipping: extrapolasyon YAPMA, sadece tasan kismi kes
+                                    cizgi.Noktalar = GuvenliClip(cizgi.Noktalar, minPt.X, maxPt.X);
 
-                                    // Yeterli kesisim yoksa bu entity'yi atla
-                                    // (ClipToXRange extrapolasyon ile hayalet nokta uretir)
-                                    if (overlapMax - overlapMin < MinCizgiUzunlugu) continue;
-
-                                    // Pencere X sinirlarinda kirp
-                                    cizgi.Noktalar = _enKesitAlanService.ClipToXRange(
-                                        cizgi.Noktalar, minPt.X, maxPt.X);
-                                    cizgi.OrtalamaY = cizgi.Noktalar.Count > 0
-                                        ? cizgi.Noktalar.Average(p => p.Y) : 0;
-
-                                    if (CizgiGecerliMi(cizgi))
+                                    if (cizgi.Noktalar.Count >= 2)
                                     {
-                                        kesit.Cizgiler.Add(cizgi);
-                                        kesitEntityler.Add(entId.Handle.Value);
+                                        cizgi.OrtalamaY = cizgi.Noktalar.Average(p => p.Y);
+                                        if (CizgiGecerliMi(cizgi))
+                                        {
+                                            kesit.Cizgiler.Add(cizgi);
+                                            kesitEntityler.Add(entId.Handle.Value);
+                                        }
                                     }
                                 }
                             }
@@ -138,7 +129,7 @@ namespace Metraj.Services.YolEnkesit
                         if (mevcutTextler.Contains(entId.Handle.Value)) continue;
 
                         var obj = tr.GetObject(entId, OpenMode.ForRead);
-                        if (!(obj is DBText) && !(obj is MText)) continue;
+                        if (!(obj is DBText) && !(obj is MText) && !(obj is Table)) continue;
 
                         var ent = (Entity)obj;
                         Extents3d bounds;
@@ -211,6 +202,37 @@ namespace Metraj.Services.YolEnkesit
                 Noktalar = noktalar,
                 OrtalamaY = noktalar.Average(p => p.Y)
             };
+        }
+
+        /// <summary>
+        /// Cizgi noktalarini pencere X sinirlarinda kirpar.
+        /// EXTRAPOLASYON YAPMAZ — cizgi pencereden kisaysa dokunmaz.
+        /// Sadece cizginin pencereden tasan kisimlarini keser ve
+        /// sinir noktalarinda interpolasyon yapar.
+        /// </summary>
+        private List<Point2d> GuvenliClip(List<Point2d> noktalar, double pencereMinX, double pencereMaxX)
+        {
+            if (noktalar == null || noktalar.Count < 2) return noktalar;
+
+            double entMinX = noktalar.Min(p => p.X);
+            double entMaxX = noktalar.Max(p => p.X);
+
+            // Gercek kesisim var mi?
+            double overlapMin = Math.Max(entMinX, pencereMinX);
+            double overlapMax = Math.Min(entMaxX, pencereMaxX);
+            if (overlapMax - overlapMin < MinCizgiUzunlugu)
+                return new List<Point2d>(); // kesisim yok
+
+            // Cizgi pencere icinde mi? Dokunma.
+            if (entMinX >= pencereMinX && entMaxX <= pencereMaxX)
+                return noktalar;
+
+            // Cizgi pencereden tasiyor — sadece tasan kismi kes
+            // Clip sinirlari: cizginin kendi araligi ile pencerenin kesisimi
+            double clipMin = Math.Max(entMinX, pencereMinX);
+            double clipMax = Math.Min(entMaxX, pencereMaxX);
+
+            return _enKesitAlanService.ClipToXRange(noktalar, clipMin, clipMax);
         }
 
         private bool CizgiGecerliMi(CizgiTanimi cizgi)

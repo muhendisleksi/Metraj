@@ -34,6 +34,8 @@ namespace Metraj.Services.YolEnkesit
             _documentContext = documentContext;
         }
 
+        private int _logSayaci;
+
         public Dictionary<string, double> TabloOku(KesitGrubu kesit)
         {
             var degerler = new Dictionary<string, double>();
@@ -42,6 +44,22 @@ namespace Metraj.Services.YolEnkesit
                 return degerler;
 
             var textler = TextleriOku(kesit.TextObjeler);
+
+            // Ilk 3 kesit icin text iceriklerini logla (tanilama)
+            if (_logSayaci < 3 && textler.Count > 0)
+            {
+                LoggingService.Info($"=== TABLO TEXT TANILAMA: {kesit.Anchor?.IstasyonMetni} ({textler.Count} text) ===");
+                int gosterilecek = Math.Min(textler.Count, 30);
+                for (int i = 0; i < gosterilecek; i++)
+                {
+                    var (metin, x, y) = textler[i];
+                    string kisa = metin.Length > 60 ? metin.Substring(0, 60) + "..." : metin;
+                    LoggingService.Info($"  [{i,2}] X={x:F1} Y={y:F1} \"{kisa}\"");
+                }
+                if (textler.Count > 30)
+                    LoggingService.Info($"  ... ve {textler.Count - 30} text daha");
+                _logSayaci++;
+            }
 
             // Yontem 1: Ayni text icerisinde anahtar kelime + sayi (orn: "Yarma = 16.27" veya "Yarma | 16.27")
             foreach (var (metin, x, y) in textler)
@@ -168,6 +186,7 @@ namespace Metraj.Services.YolEnkesit
 
         public void TopluKiyasla(List<KesitGrubu> kesitler)
         {
+            _logSayaci = 0;
             foreach (var kesit in kesitler)
                 Kiyasla(kesit);
 
@@ -185,30 +204,57 @@ namespace Metraj.Services.YolEnkesit
                 foreach (var id in textIds)
                 {
                     var obj = tr.GetObject(id, OpenMode.ForRead);
-                    string metin = null;
-                    double x = 0, y = 0;
 
                     if (obj is DBText dbText)
                     {
-                        metin = dbText.TextString;
-                        x = dbText.Position.X;
-                        y = dbText.Position.Y;
+                        if (!string.IsNullOrWhiteSpace(dbText.TextString))
+                            sonuc.Add((dbText.TextString.Trim(), dbText.Position.X, dbText.Position.Y));
                     }
                     else if (obj is MText mText)
                     {
-                        metin = mText.Contents;
-                        x = mText.Location.X;
-                        y = mText.Location.Y;
+                        if (!string.IsNullOrWhiteSpace(mText.Contents))
+                            sonuc.Add((mText.Contents.Trim(), mText.Location.X, mText.Location.Y));
                     }
-
-                    if (!string.IsNullOrWhiteSpace(metin))
-                        sonuc.Add((metin.Trim(), x, y));
+                    else if (obj is Table table)
+                    {
+                        // AcDbTable: her hucreyi ayri text olarak oku
+                        TabloHucreleriniOku(table, sonuc);
+                    }
                 }
 
                 tr.Commit();
             }
 
             return sonuc;
+        }
+
+        /// <summary>AutoCAD Table entity'sinin tum hucrelerini text olarak cikarir.</summary>
+        private void TabloHucreleriniOku(Table table, List<(string, double, double)> sonuc)
+        {
+            try
+            {
+                for (int row = 0; row < table.Rows.Count; row++)
+                {
+                    for (int col = 0; col < table.Columns.Count; col++)
+                    {
+                        string metin = null;
+                        try { metin = table.GetTextString(row, col, 0); }
+                        catch { continue; }
+
+                        if (string.IsNullOrWhiteSpace(metin)) continue;
+
+                        // Hucre pozisyonu tahmini: tablo pozisyonu bazli
+                        double x = table.Position.X + col * 5.0;
+                        double y = table.Position.Y - row * 1.5;
+
+                        sonuc.Add((metin.Trim(), x, y));
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                LoggingService.Warning($"Table okuma hatasi: {ex.Message}");
+            }
         }
 
         private double? SayiCikar(string metin)

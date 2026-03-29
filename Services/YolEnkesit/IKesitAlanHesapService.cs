@@ -6,6 +6,7 @@ namespace Metraj.Services.YolEnkesit
     public interface IKesitAlanHesapService
     {
         List<AlanHesapSonucu> AlanHesapla(KesitGrubu kesit);
+        List<AlanHesapSonucu> TraceBoundaryAlanHesapla(KesitGrubu kesit);
         void TopluAlanHesapla(List<KesitGrubu> kesitler);
 
         /// <summary>5 orneklem kesit icin detayli tanilama raporu yazar (dosyaya).</summary>

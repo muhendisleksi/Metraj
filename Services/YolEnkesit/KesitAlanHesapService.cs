@@ -9,13 +9,13 @@ using Metraj.Services.Interfaces;
 
 namespace Metraj.Services.YolEnkesit
 {
-    public class KesitAlanHesapService : IKesitAlanHesapService
+    public partial class KesitAlanHesapService : IKesitAlanHesapService
     {
         private readonly IEnKesitAlanService _enKesitAlanService;
         private int _logSayaci;
 
-        // Yatay cizgi esigi: X araligi bu degerden buyukse yatay kabul edilir
-        private const double YatayCizgiMinXAraligi = 2.0;
+        // Dikey cizgi esigi: Y/X orani bundan buyukse dikey kabul edilir
+        private const double DikeyOranEsigi = 5.0;
         // Nokta birlesme esigi: bu mesafeden yakin noktalar tek noktaya dusurulur
         private const double NoktaBirlesmeToleransi = 0.01;
 
@@ -38,12 +38,14 @@ namespace Metraj.Services.YolEnkesit
             if (cizgiler.Count == 0) return null;
             if (cizgiler.Count == 1) return cizgiler[0].Noktalar;
 
-            // Dikey cizgileri filtrele (X araligi < esik = dikey eleman, tabaka degil)
+            // Dikey cizgileri filtrele (Y/X orani > 5 = dikey eleman, tabaka degil)
             var yataylar = cizgiler.Where(c =>
             {
                 if (c.Noktalar.Count < 2) return false;
                 double xRange = c.Noktalar.Max(p => p.X) - c.Noktalar.Min(p => p.X);
-                return xRange >= YatayCizgiMinXAraligi;
+                if (xRange < 0.01) return false;
+                double yRange = c.Noktalar.Max(p => p.Y) - c.Noktalar.Min(p => p.Y);
+                return yRange / xRange <= DikeyOranEsigi;
             }).ToList();
 
             // Hepsi dikey ise, en genis X araligina sahip olani don
@@ -89,7 +91,10 @@ namespace Metraj.Services.YolEnkesit
 
         // =============== ALAN HESABI ===============
 
-        public List<AlanHesapSonucu> AlanHesapla(KesitGrubu kesit)
+        /// <summary>
+        /// Shoelace (polygon) yontemiyle alan hesabi — TraceBoundary basarisiz oldugunda fallback.
+        /// </summary>
+        private List<AlanHesapSonucu> ShoelaceAlanHesapla(KesitGrubu kesit)
         {
             var sonuclar = new List<AlanHesapSonucu>();
             bool detayliLog = _logSayaci < 3;
@@ -109,6 +114,26 @@ namespace Metraj.Services.YolEnkesit
             var zeminNkt = RolNoktalariniAl(kesit, CizgiRolu.Zemin);
             var siyirmaNkt = RolNoktalariniAl(kesit, CizgiRolu.SiyirmaTaban);
             var ustyapiAltNkt = RolNoktalariniAl(kesit, CizgiRolu.UstyapiAltKotu);
+
+            // UstyapiAltKotu fallback: yoksa en alt tabaka cizgisini kullan
+            // Yol platformunun alt siniri = en alttaki ustyapi tabakasi
+            if (ustyapiAltNkt == null)
+            {
+                var fallbackSirasi = new[]
+                {
+                    CizgiRolu.KirmatasTaban, CizgiRolu.AltTemelTaban, CizgiRolu.PlentmiksTaban,
+                    CizgiRolu.BitumluTemelTaban, CizgiRolu.BinderTaban, CizgiRolu.AsinmaTaban
+                };
+                foreach (var fb in fallbackSirasi)
+                {
+                    ustyapiAltNkt = RolNoktalariniAl(kesit, fb);
+                    if (ustyapiAltNkt != null)
+                    {
+                        if (detayliLog) LoggingService.Info($"  UstyapiAltKotu YOK -> fallback: {fb}");
+                        break;
+                    }
+                }
+            }
 
             if (detayliLog)
             {
@@ -383,7 +408,8 @@ namespace Metraj.Services.YolEnkesit
                 double cMinY = c.Noktalar.Count > 0 ? c.Noktalar.Min(p => p.Y) : 0;
                 double cMaxY = c.Noktalar.Count > 0 ? c.Noktalar.Max(p => p.Y) : 0;
                 double xAraligi = cMaxX - cMinX;
-                string tip = xAraligi < YatayCizgiMinXAraligi ? " [DIKEY]" : "";
+                double yAraligi = cMaxY - cMinY;
+                string tip = (xAraligi < 0.01 || yAraligi / xAraligi > DikeyOranEsigi) ? " [DIKEY]" : "";
                 string oto = c.OtomatikAtanmis ? "" : " [MANUEL]";
                 sb.AppendLine($"  {c.Rol,-20} {(c.LayerAdi ?? "?"),-25} {c.Noktalar.Count,4} {cMinX,10:F2} {cMaxX,10:F2} {cMinY,10:F2} {cMaxY,10:F2} {c.OrtalamaY,10:F2}{oto}{tip}");
             }
@@ -411,7 +437,14 @@ namespace Metraj.Services.YolEnkesit
                 }
 
                 var birlesik = RolNoktalariniAl(kesit, rol);
-                int yataySayisi = parcalar.Count(c => c.Noktalar.Count >= 2 && c.Noktalar.Max(p => p.X) - c.Noktalar.Min(p => p.X) >= YatayCizgiMinXAraligi);
+                int yataySayisi = parcalar.Count(c =>
+                {
+                    if (c.Noktalar.Count < 2) return false;
+                    double xr = c.Noktalar.Max(p => p.X) - c.Noktalar.Min(p => p.X);
+                    if (xr < 0.01) return false;
+                    double yr = c.Noktalar.Max(p => p.Y) - c.Noktalar.Min(p => p.Y);
+                    return yr / xr <= DikeyOranEsigi;
+                });
                 int dikeySayisi = parcalar.Count - yataySayisi;
 
                 if (parcalar.Count == 1)
@@ -431,6 +464,22 @@ namespace Metraj.Services.YolEnkesit
             var zeminNkt = RolNoktalariniAl(kesit, CizgiRolu.Zemin);
             var siyirmaNkt = RolNoktalariniAl(kesit, CizgiRolu.SiyirmaTaban);
             var ustyapiAltNkt = RolNoktalariniAl(kesit, CizgiRolu.UstyapiAltKotu);
+
+            // UstyapiAltKotu fallback (tanilama icin)
+            if (ustyapiAltNkt == null)
+            {
+                var fbSirasi = new[] { CizgiRolu.KirmatasTaban, CizgiRolu.AltTemelTaban, CizgiRolu.PlentmiksTaban,
+                    CizgiRolu.BitumluTemelTaban, CizgiRolu.BinderTaban, CizgiRolu.AsinmaTaban };
+                foreach (var fb in fbSirasi)
+                {
+                    ustyapiAltNkt = RolNoktalariniAl(kesit, fb);
+                    if (ustyapiAltNkt != null)
+                    {
+                        sb.AppendLine($"  ** UstyapiAltKotu YOK -> fallback: {fb}");
+                        break;
+                    }
+                }
+            }
 
             // Siyirma
             CiftHesapLog(sb, "Siyirma", zeminNkt, siyirmaNkt, CizgiRolu.Zemin, CizgiRolu.SiyirmaTaban);
