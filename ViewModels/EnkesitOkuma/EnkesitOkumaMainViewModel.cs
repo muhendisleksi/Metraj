@@ -26,8 +26,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
         private readonly ITabloOkumaService _tabloService;
         private readonly IEditorService _editorService;
 
-        private int _aktifAdim = 1;
-        private string _durumMesaji = "Hazir";
+        private string _durumMesaji = "Hazır";
         private List<ObjectId> _secilenEntityler;
         private List<AnchorNokta> _anchorlar;
         private KesitPenceresi _pencere;
@@ -54,27 +53,15 @@ namespace Metraj.ViewModels.EnkesitOkuma
             _tabloService = tabloService;
             _editorService = editorService;
 
-            EntitySecCommand = new RelayCommand(EntitySec, () => AktifAdim == 1 && !_taramaDevamEdiyor);
-            PencereBelirleCommand = new RelayCommand(PencereBelirle, () => AktifAdim == 1 && _anchorlar != null && !_taramaDevamEdiyor);
-            KalibrasyonAcCommand = new RelayCommand(KalibrasyonAc, () => AktifAdim == 2 && !_taramaDevamEdiyor);
-            SablonYukleCommand = new RelayCommand(SablonYukle, () => AktifAdim == 2 && !_taramaDevamEdiyor);
-            DogrulamaAcCommand = new RelayCommand(DogrulamaAc, () => AktifAdim == 3 && _kesitler != null && !_taramaDevamEdiyor);
-            ExcelAktarCommand = new RelayCommand(ExcelAktar, () => AktifAdim == 3 && _kesitler != null && !_taramaDevamEdiyor);
-            JsonKaydetCommand = new RelayCommand(JsonKaydet, () => AktifAdim == 3 && !_taramaDevamEdiyor);
-            HesaplaCommand = new RelayCommand(Hesapla, () => AktifAdim == 3 && _kesitler != null && !_taramaDevamEdiyor);
+            EntitySecCommand = new RelayCommand(EntitySec, () => !_taramaDevamEdiyor);
+            PencereBelirleCommand = new RelayCommand(PencereBelirle, () => _anchorlar != null && !_taramaDevamEdiyor);
+            KalibrasyonAcCommand = new RelayCommand(KalibrasyonAc, () => _anchorlar != null && _pencere != null && !_taramaDevamEdiyor);
+            SablonYukleCommand = new RelayCommand(SablonYukle, () => _anchorlar != null && _pencere != null && !_taramaDevamEdiyor);
+            DogrulamaAcCommand = new RelayCommand(DogrulamaAc, () => _kesitler != null && _kesitler.Count > 0 && !_taramaDevamEdiyor);
+            ExcelAktarCommand = new RelayCommand(ExcelAktar, () => _kesitler != null && _kesitler.Count > 0 && !_taramaDevamEdiyor);
+            JsonKaydetCommand = new RelayCommand(JsonKaydet, () => !_taramaDevamEdiyor);
+            HesaplaCommand = new RelayCommand(Hesapla, () => _kesitler != null && _kesitler.Count > 0 && !_taramaDevamEdiyor);
             IptalCommand = new RelayCommand(IptalEt, () => _taramaDevamEdiyor);
-            IleriCommand = new RelayCommand(AdimIleri, () => AktifAdim < 3 && !_taramaDevamEdiyor);
-            GeriCommand = new RelayCommand(AdimGeri, () => AktifAdim > 1 && !_taramaDevamEdiyor);
-        }
-
-        public int AktifAdim
-        {
-            get => _aktifAdim;
-            set
-            {
-                if (SetProperty(ref _aktifAdim, value))
-                    OnPropertiesChanged(nameof(Adim1Aktif), nameof(Adim2Aktif), nameof(Adim3Aktif));
-            }
         }
 
         public string DurumMesaji { get => _durumMesaji; set => SetProperty(ref _durumMesaji, value); }
@@ -88,10 +75,6 @@ namespace Metraj.ViewModels.EnkesitOkuma
         public List<KesitGrubu> Kesitler { get => _kesitler; set => SetProperty(ref _kesitler, value); }
         public ReferansKesitSablonu Sablon { get => _sablon; set => SetProperty(ref _sablon, value); }
         public TopluTaramaSonucu TaramaSonucu { get => _taramaSonucu; set => SetProperty(ref _taramaSonucu, value); }
-
-        public bool Adim1Aktif => AktifAdim == 1;
-        public bool Adim2Aktif => AktifAdim == 2;
-        public bool Adim3Aktif => AktifAdim == 3;
 
         public string EntitySayisi => _secilenEntityler != null ? $"{_secilenEntityler.Count:N0} obje seçildi" : "";
         public string AnchorSayisi => _anchorlar != null ? $"{_anchorlar.Count} istasyon bulundu" : "";
@@ -108,6 +91,19 @@ namespace Metraj.ViewModels.EnkesitOkuma
             }
         }
 
+        public string KesitOzeti => _kesitler != null ? $"Kesit: {_kesitler.Count}" : "Kesit: —";
+
+        public string IstasyonAraligi
+        {
+            get
+            {
+                if (_anchorlar == null || _anchorlar.Count == 0) return "İstasyon: —";
+                string ilk = YolKesitService.IstasyonFormatla(_anchorlar.First().Istasyon);
+                string son = YolKesitService.IstasyonFormatla(_anchorlar.Last().Istasyon);
+                return $"{ilk} ... {son}";
+            }
+        }
+
         public ICommand EntitySecCommand { get; }
         public ICommand PencereBelirleCommand { get; }
         public ICommand KalibrasyonAcCommand { get; }
@@ -117,8 +113,6 @@ namespace Metraj.ViewModels.EnkesitOkuma
         public ICommand JsonKaydetCommand { get; }
         public ICommand HesaplaCommand { get; }
         public ICommand IptalCommand { get; }
-        public ICommand IleriCommand { get; }
-        public ICommand GeriCommand { get; }
 
         /// <summary>
         /// UI thread'ine nefes aldirir — bekleyen render/input event'lerini isler.
@@ -132,6 +126,11 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.Background);
             }
             catch { }
+        }
+
+        private void ButonDurumGuncelle()
+        {
+            CommandManager.InvalidateRequerySuggested();
         }
 
         private void IptalEt()
@@ -179,13 +178,14 @@ namespace Metraj.ViewModels.EnkesitOkuma
                     Pencere = KesitPenceresi.CL_Bazli(ilkAnchor.CL_MinY, ilkAnchor.CL_MaxY, platformYariGenislik);
 
                     DurumMesaji = $"{Anchorlar.Count} kesit bulundu ({ilk} ... {son})";
-                    OnPropertiesChanged(nameof(AnchorSayisi), nameof(PencereBilgisi));
+                    OnPropertiesChanged(nameof(AnchorSayisi), nameof(PencereBilgisi), nameof(IstasyonAraligi));
                 }
                 else
                 {
                     DurumMesaji = "CL+Km eşleşmesi bulunamadı";
                 }
                 OnPropertyChanged(nameof(AnchorSayisi));
+                ButonDurumGuncelle();
             }
             catch (System.Exception ex)
             {
@@ -224,6 +224,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
 
                 DurumMesaji = $"Pencere: {Pencere.Genislik:F1} x {Pencere.Yukseklik:F1} birim";
                 OnPropertyChanged(nameof(PencereBilgisi));
+                ButonDurumGuncelle();
             }
             catch (System.Exception ex)
             {
@@ -327,6 +328,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 IlerlemeYuzde = 0;
                 IlerlemeDetay = "Entity gruplama...";
                 DurumMesaji = "Tarama başlıyor...";
+                ButonDurumGuncelle();
                 UIGuncelle();
 
                 // Faz 1: Entity gruplama (tek Transaction — AutoCAD API)
@@ -417,8 +419,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 }
 
                 TaramaBitir($"{toplam} kesit tarandı -- {uyumlu} uyumlu, {uyari} uyari, {sorunlu} sorunlu");
-                OnPropertiesChanged(nameof(KesitSayisi), nameof(SonucBilgisi));
-                AktifAdim = 3;
+                OnPropertiesChanged(nameof(KesitSayisi), nameof(SonucBilgisi), nameof(KesitOzeti));
             }
             catch (System.Exception ex)
             {
@@ -433,6 +434,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
             _iptalIstendi = false;
             DurumMesaji = mesaj;
             IlerlemeDetay = "";
+            ButonDurumGuncelle();
         }
 
         private void DogrulamaAc()
@@ -556,16 +558,6 @@ namespace Metraj.ViewModels.EnkesitOkuma
             if (window.ShowDialog() == true)
                 return window.SecilenIndex;
             return null;
-        }
-
-        private void AdimIleri()
-        {
-            if (AktifAdim < 3) AktifAdim++;
-        }
-
-        private void AdimGeri()
-        {
-            if (AktifAdim > 1) AktifAdim--;
         }
     }
 }

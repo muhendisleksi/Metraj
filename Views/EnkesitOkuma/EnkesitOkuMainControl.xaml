@@ -71,126 +71,115 @@
     <Grid Margin="8">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Baslik -->
+        <!-- Başlık -->
         <TextBlock Grid.Row="0" Text="Enkesit Okuma" Foreground="#FF4EC9B0" FontWeight="Bold"
                    FontSize="16" Margin="0,0,0,10"/>
 
-        <!-- 3 Adimli Step Indicator -->
-        <Border Grid.Row="1" Background="#FF2D2D44" CornerRadius="4" Padding="10,8" Margin="0,0,0,12">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                <!-- Adim 1 -->
-                <StackPanel Orientation="Horizontal">
-                    <Ellipse Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,4,0"
-                             Fill="{Binding Adim1Aktif, Converter={StaticResource BoolToVis}, FallbackValue=#FF555566}"/>
-                    <TextBlock Text="Hazırlık" VerticalAlignment="Center" FontSize="12"
-                               Foreground="{Binding Adim1Aktif, Converter={StaticResource BoolToVis}, FallbackValue=#FF8888AA}"/>
-                </StackPanel>
-                <TextBlock Text="  >  " Foreground="#FF555566" VerticalAlignment="Center"/>
-                <!-- Adim 2 -->
-                <StackPanel Orientation="Horizontal">
-                    <Ellipse Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,4,0"
-                             Fill="{Binding Adim2Aktif, Converter={StaticResource BoolToVis}, FallbackValue=#FF555566}"/>
-                    <TextBlock Text="Kalibrasyon" VerticalAlignment="Center" FontSize="12"
-                               Foreground="{Binding Adim2Aktif, Converter={StaticResource BoolToVis}, FallbackValue=#FF8888AA}"/>
-                </StackPanel>
-                <TextBlock Text="  >  " Foreground="#FF555566" VerticalAlignment="Center"/>
-                <!-- Adim 3 -->
-                <StackPanel Orientation="Horizontal">
-                    <Ellipse Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,4,0"
-                             Fill="{Binding Adim3Aktif, Converter={StaticResource BoolToVis}, FallbackValue=#FF555566}"/>
-                    <TextBlock Text="Sonuç" VerticalAlignment="Center" FontSize="12"
-                               Foreground="{Binding Adim3Aktif, Converter={StaticResource BoolToVis}, FallbackValue=#FF8888AA}"/>
-                </StackPanel>
-            </StackPanel>
-        </Border>
+        <!-- İçerik -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Durum paneli -->
+                <Border Background="#FF252535" CornerRadius="4" Padding="10,8" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="DURUM" FontSize="11" Foreground="#FF8888AA" FontWeight="Normal"/>
+                        <TextBlock Text="{Binding DurumMesaji}" FontSize="13" Foreground="#FFCCCCDD"
+                                   Margin="0,4,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
 
-        <!-- Icerik -->
-        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-            <Grid>
-                <!-- Adim 1: Hazirlik -->
-                <StackPanel Visibility="{Binding Adim1Aktif, Converter={StaticResource BoolToVis}}">
-                    <Button Content="Enkesitleri Seç" Command="{Binding EntitySecCommand}"
-                            Style="{StaticResource DarkBtn}" Height="36"/>
-                    <TextBlock Text="{Binding EntitySayisi}" Foreground="#FF4EC9B0"
-                               Margin="0,6,0,0" FontSize="12"/>
-                    <TextBlock Text="{Binding AnchorSayisi}" Foreground="#FF4EC9B0"
-                               Margin="0,2,0,0" FontSize="12"/>
-                    <TextBlock Text="{Binding PencereBilgisi}" Foreground="#FF4EC9B0"
-                               Margin="0,2,0,8" FontSize="11"/>
+                <!-- VERİ TOPLAMA grubu -->
+                <TextBlock Text="VERİ TOPLAMA" FontSize="11" Foreground="#FF8888AA" FontWeight="Normal"
+                           Margin="0,12,0,6"/>
 
-                    <!-- Fallback: CL bulunamazsa manuel pencere -->
-                    <Button Content="Manuel Pencere (Yedek)" Command="{Binding PencereBelirleCommand}"
-                            Style="{StaticResource DarkBtn}" Height="28" FontSize="11" Padding="4"
-                            Foreground="#FF8888AA"/>
-                </StackPanel>
+                <Button Content="Enkesitleri Seç" Command="{Binding EntitySecCommand}"
+                        Style="{StaticResource PrimBtn}" Height="36"/>
 
-                <!-- Adim 2: Kalibrasyon -->
-                <StackPanel Visibility="{Binding Adim2Aktif, Converter={StaticResource BoolToVis}}">
-                    <Button Content="Kalibrasyon Aç" Command="{Binding KalibrasyonAcCommand}"
-                            Style="{StaticResource AccentBtn}" Height="36"/>
-                    <Button Content="Şablon Yükle (.json)" Command="{Binding SablonYukleCommand}"
-                            Style="{StaticResource DarkBtn}" Height="32" Margin="0,8,0,0"/>
+                <TextBlock Text="{Binding EntitySayisi}" Foreground="#FF4EC9B0"
+                           Margin="0,4,0,0" FontSize="11"/>
+                <TextBlock Text="{Binding AnchorSayisi}" Foreground="#FF4EC9B0"
+                           Margin="0,2,0,0" FontSize="11"/>
 
-                    <!-- Ilerleme -->
-                    <ProgressBar Value="{Binding IlerlemeYuzde}" Height="6" Margin="0,12,0,0"
-                                 Background="#FF333333" Foreground="#FF4EC9B0"/>
-                    <TextBlock Text="{Binding IlerlemeDetay}" Foreground="#FF8888AA"
-                               Margin="0,4,0,0" FontSize="11"/>
-                    <TextBlock Text="{Binding KesitSayisi}" Foreground="#FF4EC9B0"
-                               Margin="0,2,0,0" FontSize="12"/>
-
-                    <!-- Iptal butonu -->
-                    <Button Content="İptal" Command="{Binding IptalCommand}"
-                            Visibility="{Binding IptalGorunur, Converter={StaticResource BoolToVis}}"
-                            Height="28" Margin="0,8,0,0" Padding="4"
-                            Background="#44E24B4A" Foreground="#FFE24B4A" BorderBrush="#FFE24B4A"
-                            BorderThickness="1" Cursor="Hand">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border Background="{TemplateBinding Background}"
-                                        BorderBrush="{TemplateBinding BorderBrush}"
-                                        BorderThickness="{TemplateBinding BorderThickness}"
-                                        CornerRadius="4" Padding="{TemplateBinding Padding}">
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                            </ControlTemplate>
-                        </Button.Template>
-                    </Button>
-                </StackPanel>
-
-                <!-- Adim 3: Sonuc -->
-                <StackPanel Visibility="{Binding Adim3Aktif, Converter={StaticResource BoolToVis}}">
-                    <Button Content="Doğrulama Aç" Command="{Binding DogrulamaAcCommand}"
-                            Style="{StaticResource PrimBtn}" Height="36"/>
-                    <TextBlock Text="{Binding SonucBilgisi}" Foreground="#FF4EC9B0"
-                               Margin="0,6,0,12" FontSize="12"/>
-
-                    <Button Content="Hesapla" Command="{Binding HesaplaCommand}"
+                <Grid Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="0" Content="Kalibrasyon Aç" Command="{Binding KalibrasyonAcCommand}"
                             Style="{StaticResource DarkBtn}" Height="32"/>
-                    <Button Content="Excel Aktar" Command="{Binding ExcelAktarCommand}"
-                            Style="{StaticResource PrimBtn}" Height="36" Margin="0,8,0,0"/>
-                    <Button Content="JSON Kaydet" Command="{Binding JsonKaydetCommand}"
-                            Style="{StaticResource DarkBtn}" Height="32" Margin="0,8,0,0"/>
-                </StackPanel>
-            </Grid>
+                    <Button Grid.Column="2" Content="Şablon Yükle" Command="{Binding SablonYukleCommand}"
+                            Style="{StaticResource DarkBtn}" Height="32"/>
+                </Grid>
+
+                <!-- SONUÇLAR grubu -->
+                <TextBlock Text="SONUÇLAR" FontSize="11" Foreground="#FF8888AA" FontWeight="Normal"
+                           Margin="0,12,0,6"/>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="0" Content="Doğrulama Aç" Command="{Binding DogrulamaAcCommand}"
+                            Style="{StaticResource AccentBtn}" Height="32"/>
+                    <Button Grid.Column="2" Content="Hesapla" Command="{Binding HesaplaCommand}"
+                            Style="{StaticResource DarkBtn}" Height="32"/>
+                </Grid>
+
+                <Grid Margin="0,6,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="6"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="0" Content="Excel Aktar" Command="{Binding ExcelAktarCommand}"
+                            Style="{StaticResource PrimBtn}" Height="32"/>
+                    <Button Grid.Column="2" Content="JSON Kaydet" Command="{Binding JsonKaydetCommand}"
+                            Style="{StaticResource DarkBtn}" Height="32"/>
+                </Grid>
+
+                <!-- İlerleme paneli -->
+                <Border Background="#FF252535" CornerRadius="4" Padding="10,8" Margin="0,12,0,0">
+                    <StackPanel>
+                        <ProgressBar Value="{Binding IlerlemeYuzde}" Height="4"
+                                     Background="#FF333333" Foreground="#FF4EC9B0"/>
+                        <TextBlock Text="{Binding IlerlemeDetay}" Foreground="#FF8888AA"
+                                   Margin="0,4,0,0" FontSize="11"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- İptal butonu — sadece tarama sırasında görünür -->
+                <Button Content="İptal" Command="{Binding IptalCommand}"
+                        Visibility="{Binding IptalGorunur, Converter={StaticResource BoolToVis}}"
+                        Height="28" Margin="0,8,0,0" Padding="4"
+                        Background="#44E24B4A" Foreground="#FFE24B4A" BorderBrush="#FFE24B4A"
+                        BorderThickness="1" Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </StackPanel>
         </ScrollViewer>
 
-        <!-- Alt: Durum -->
-        <Border Grid.Row="3" Background="#FF2D2D44" CornerRadius="4" Padding="8" Margin="0,8,0,0">
+        <!-- Alt bilgi paneli -->
+        <Border Grid.Row="2" Background="#FF252535" CornerRadius="4" Padding="8" Margin="0,8,0,0">
             <DockPanel>
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button Content="Geri" Command="{Binding GeriCommand}"
-                            Style="{StaticResource DarkBtn}" Width="60" Height="26" Padding="4"/>
-                    <Button Content="İleri" Command="{Binding IleriCommand}"
-                            Style="{StaticResource PrimBtn}" Width="60" Height="26" Margin="6,0,0,0" Padding="4"/>
-                </StackPanel>
-                <TextBlock Text="{Binding DurumMesaji}" Foreground="#FF8888AA"
-                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" FontSize="11"/>
+                <TextBlock Text="{Binding KesitOzeti}" Foreground="#FF8888AA"
+                           VerticalAlignment="Center" FontSize="11"/>
+                <TextBlock Text="{Binding IstasyonAraligi}" Foreground="#FF8888AA"
+                           VerticalAlignment="Center" FontSize="11" HorizontalAlignment="Right"/>
             </DockPanel>
         </Border>
     </Grid>
