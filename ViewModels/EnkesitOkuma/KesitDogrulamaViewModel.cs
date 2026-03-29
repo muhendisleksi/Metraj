@@ -13,7 +13,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
         private List<KesitGrubu> _tumKesitler;
         private List<KesitGrubu> _filtrelenmisKesitler;
         private KesitGrubu _aktifKesit;
-        private int _aktifIndex;
+        private int _aktifIndex = -1;
         private bool _sadeceSorunluGoster;
         private CizgiTanimi _secilenCizgi;
         private CizgiRolu _yeniRol;

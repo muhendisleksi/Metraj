@@ -1,7 +1,7 @@
 <UserControl x:Class="Metraj.Views.EnkesitOkuma.EnkesitOkuMainControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Background="#FF1E1E2E" MinWidth="340">
+             Background="#FF1E1E2E" MinWidth="360">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -110,9 +110,9 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Button Grid.Column="0" Content="Kalibrasyon Aç" Command="{Binding KalibrasyonAcCommand}"
-                            Style="{StaticResource DarkBtn}" Height="32"/>
+                            Style="{StaticResource DarkBtn}" Height="32" FontSize="12" Padding="6,6"/>
                     <Button Grid.Column="2" Content="Şablon Yükle" Command="{Binding SablonYukleCommand}"
-                            Style="{StaticResource DarkBtn}" Height="32"/>
+                            Style="{StaticResource DarkBtn}" Height="32" FontSize="12" Padding="6,6"/>
                 </Grid>
 
                 <!-- SONUÇLAR grubu -->
@@ -126,9 +126,9 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Button Grid.Column="0" Content="Doğrulama Aç" Command="{Binding DogrulamaAcCommand}"
-                            Style="{StaticResource AccentBtn}" Height="32"/>
+                            Style="{StaticResource AccentBtn}" Height="32" FontSize="12" Padding="6,6"/>
                     <Button Grid.Column="2" Content="Hesapla" Command="{Binding HesaplaCommand}"
-                            Style="{StaticResource DarkBtn}" Height="32"/>
+                            Style="{StaticResource DarkBtn}" Height="32" FontSize="12" Padding="6,6"/>
                 </Grid>
 
                 <Grid Margin="0,6,0,0">
@@ -138,9 +138,9 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Button Grid.Column="0" Content="Excel Aktar" Command="{Binding ExcelAktarCommand}"
-                            Style="{StaticResource PrimBtn}" Height="32"/>
+                            Style="{StaticResource PrimBtn}" Height="32" FontSize="12" Padding="6,6"/>
                     <Button Grid.Column="2" Content="JSON Kaydet" Command="{Binding JsonKaydetCommand}"
-                            Style="{StaticResource DarkBtn}" Height="32"/>
+                            Style="{StaticResource DarkBtn}" Height="32" FontSize="12" Padding="6,6"/>
                 </Grid>
 
                 <!-- İlerleme paneli -->
