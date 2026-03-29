@@ -53,9 +53,6 @@
             <TabItem Header="Yol Metraj">
                 <local:YolMetrajControl x:Name="YolMetrajTab"/>
             </TabItem>
-            <TabItem Header="İhale Kontrol">
-                <local:IhaleKontrolControl x:Name="IhaleKontrolTab"/>
-            </TabItem>
         </TabControl>
 
         <!-- Bottom status bar -->

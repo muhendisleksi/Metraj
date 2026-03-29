@@ -12,7 +12,6 @@ namespace Metraj.Commands
         Alan,
         Toplama,
         YolMetraj,
-        IhaleKontrol,
         EnkesitOku
     }
 
@@ -52,10 +51,6 @@ namespace Metraj.Commands
         public static readonly ModuleColorSet Kirmizi = new ModuleColorSet(
             Color.FromRgb(0xFF, 0x8A, 0x65), Color.FromRgb(0xE8, 0x59, 0x3C), Color.FromRgb(0xBF, 0x36, 0x0C));
 
-        // Koyu Kırmızı — İhale Kontrol
-        public static readonly ModuleColorSet KoyuKirmizi = new ModuleColorSet(
-            Color.FromRgb(0xFF, 0x7C, 0x7C), Color.FromRgb(0xE5, 0x39, 0x35), Color.FromRgb(0xC6, 0x28, 0x28));
-
         // Teal — Enkesit Oku
         public static readonly ModuleColorSet Teal = new ModuleColorSet(
             Color.FromRgb(0x80, 0xCB, 0xC4), Color.FromRgb(0x00, 0x96, 0x88), Color.FromRgb(0x00, 0x69, 0x5C));
@@ -69,7 +64,6 @@ namespace Metraj.Commands
                 case IconType.Alan:         return Yesil;
                 case IconType.Toplama:      return Turuncu;
                 case IconType.YolMetraj:    return Kirmizi;
-                case IconType.IhaleKontrol: return KoyuKirmizi;
                 case IconType.EnkesitOku:   return Teal;
                 default:                    return Mavi;
             }
@@ -119,7 +113,6 @@ namespace Metraj.Commands
                 case IconType.Alan:         DrawAlanIcon(dc, baseBrush, contourBrush, accentBrush, size, isLarge); break;
                 case IconType.Toplama:      DrawToplamaIcon(dc, baseBrush, contourBrush, accentBrush, size, isLarge); break;
                 case IconType.YolMetraj:    DrawYolMetrajIcon(dc, baseBrush, contourBrush, accentBrush, size, isLarge); break;
-                case IconType.IhaleKontrol: DrawIhaleKontrolIcon(dc, baseBrush, contourBrush, accentBrush, size, isLarge); break;
                 case IconType.EnkesitOku:   DrawEnkesitOkuIcon(dc, baseBrush, contourBrush, accentBrush, size, isLarge); break;
             }
         }

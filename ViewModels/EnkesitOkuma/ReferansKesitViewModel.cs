@@ -414,7 +414,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 { cizgi.Rol = CizgiRolu.Diger; cizgi.OtomatikAtanmis = true; continue; }
 
                 if (upper.Contains("PROJE") || upper.Contains("KIRMIZI"))
-                { cizgi.Rol = CizgiRolu.ProjeKotu; cizgi.OtomatikAtanmis = true; continue; }
+                { cizgi.Rol = CizgiRolu.ProjeCizgisi; cizgi.OtomatikAtanmis = true; continue; }
 
                 if (upper.Contains("EKSEN") || upper.Contains("CL") || upper.Contains("AXIS"))
                 { cizgi.Rol = CizgiRolu.Diger; cizgi.OtomatikAtanmis = true; continue; }
@@ -456,7 +456,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 {
                     case 3: cizgi.Rol = CizgiRolu.Zemin; cizgi.OtomatikAtanmis = true; break;
                     case 5: cizgi.Rol = CizgiRolu.Siyirma; cizgi.OtomatikAtanmis = true; break;
-                    case 1: cizgi.Rol = CizgiRolu.ProjeKotu; cizgi.OtomatikAtanmis = true; break;
+                    case 1: cizgi.Rol = CizgiRolu.ProjeCizgisi; cizgi.OtomatikAtanmis = true; break;
                 }
             }
 

@@ -43,10 +43,5 @@ namespace Metraj.Models
         // Hatch ayarları JSON dosyası
         public const string HatchAyarlariDosyaAdi = "MetrajHatchAyarlari.json";
 
-        // İhale Kontrol
-        public const string LayerIhaleKontrol = "METRAJ-IHALE";
-        public const short RenkIhaleKontrol = 1;  // Red
-        public const string ReferansKesitDosyaAdi = "MetrajReferansKesit.json";
-        public const string IhaleKontrolKlasor = "IhaleKontrol";
     }
 }

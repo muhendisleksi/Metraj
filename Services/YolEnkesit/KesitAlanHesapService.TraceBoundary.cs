@@ -81,7 +81,7 @@ namespace Metraj.Services.YolEnkesit
                 LoggingService.Info($"=== KAPALI ENTITY ALAN: {kesit.Anchor?.IstasyonMetni} ===");
 
             // Rol → malzeme eslesmesi: SADECE tabaka rolleri
-            // Sinir cizgisi rolleri (Zemin, ProjeKotu, UstyapiAltKotu) DAHIL DEGIL
+            // Sinir cizgisi rolleri (Zemin, ProjeCizgisi, UstyapiAltKotu) DAHIL DEGIL
             // — bunlar alan tasiyan entity olsalar bile baska malzemelere eklenmemeli
             var rolMalzeme = new Dictionary<CizgiRolu, string>
             {
@@ -100,7 +100,7 @@ namespace Metraj.Services.YolEnkesit
             // Sinir cizgisi rolleri — alan tasissalar bile hesaba dahil etme
             var sinirRolleri = new HashSet<CizgiRolu>
             {
-                CizgiRolu.Zemin, CizgiRolu.ProjeKotu
+                CizgiRolu.Zemin, CizgiRolu.ProjeCizgisi
             };
 
             int kapaliSayisi = 0;
@@ -292,7 +292,7 @@ namespace Metraj.Services.YolEnkesit
             TBMalzemeHesapla(kesit, CizgiRolu.Zemin, CizgiRolu.Siyirma, "Siyirma", clX, sonuclar, detayliLog);
 
             // 2. Ustyapi tabakalari
-            TBMalzemeHesapla(kesit, CizgiRolu.ProjeKotu, CizgiRolu.Asinma, "Asinma", clX, sonuclar, detayliLog);
+            TBMalzemeHesapla(kesit, CizgiRolu.ProjeCizgisi, CizgiRolu.Asinma, "Asinma", clX, sonuclar, detayliLog);
             TBMalzemeHesapla(kesit, CizgiRolu.Asinma, CizgiRolu.Binder, "Binder", clX, sonuclar, detayliLog);
             TBMalzemeHesapla(kesit, CizgiRolu.Binder, CizgiRolu.BitumluTemel, "Bitumlu Temel", clX, sonuclar, detayliLog);
             TBMalzemeHesapla(kesit, CizgiRolu.BitumluTemel, CizgiRolu.Plentmiks, "Plentmiks", clX, sonuclar, detayliLog);
@@ -611,7 +611,7 @@ namespace Metraj.Services.YolEnkesit
             var ciftler = new[]
             {
                 (ust: CizgiRolu.Zemin, alt: CizgiRolu.Siyirma, ad: "Siyirma"),
-                (ust: CizgiRolu.ProjeKotu, alt: CizgiRolu.Asinma, ad: "Asinma"),
+                (ust: CizgiRolu.ProjeCizgisi, alt: CizgiRolu.Asinma, ad: "Asinma"),
                 (ust: CizgiRolu.Asinma, alt: CizgiRolu.Binder, ad: "Binder"),
                 (ust: CizgiRolu.Binder, alt: CizgiRolu.BitumluTemel, ad: "Bitumlu Temel"),
                 (ust: CizgiRolu.BitumluTemel, alt: CizgiRolu.Plentmiks, ad: "Plentmiks"),

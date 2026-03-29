@@ -18,7 +18,7 @@ namespace Metraj.Models.YolEnkesit
 
         // Sinir cizgileri (acik cizgi, geometrik fallback hesap icin)
         Zemin,
-        ProjeKotu,
+        ProjeCizgisi,
 
         // Filtre / sistem
         CerceveCizgisi,

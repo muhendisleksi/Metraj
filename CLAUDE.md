@@ -107,7 +107,7 @@ Plan dokümanı: `docs/YolEnkesitOkuma_Plan.md`
 | Dolgu | UstyapiAltKotu | SiyirmaTaban | UstyapiAlt > SıyırmaTaban olduğu X aralığı |
 | B.T. Yerine Konan | Sıyırma alanı | — | Dolgu bölgesindeki sıyırma |
 | B.T. Yerine Konmayan | Sıyırma alanı | — | Yarma bölgesindeki sıyırma |
-| Üstyapı tabakaları | Üst tabaka çizgisi | Alt tabaka çizgisi | ProjeKotu→Aşınma→Binder→Bitümlü→Plentmiks→Alttemel→Kırmataş |
+| Üstyapı tabakaları | Üst tabaka çizgisi | Alt tabaka çizgisi | ProjeCizgisi→Aşınma→Binder→Bitümlü→Plentmiks→Alttemel→Kırmataş |
 
 ### Geliştirme Fazları
 - Faz 1: Models + AnchorTaramaService + unit testler

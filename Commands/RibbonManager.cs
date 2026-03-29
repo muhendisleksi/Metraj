@@ -82,8 +82,6 @@ namespace Metraj.Commands
                 "Toplama", "Toplama modülünü ayrı pencerede aç"));
             source.Items.Add(CreateButton("Yol\nMetraj", IconType.YolMetraj, "YOLMETRAJPANEL",
                 "Yol Metraj", "Yol Metraj modülünü ayrı pencerede aç"));
-            source.Items.Add(CreateButton("İhale\nKontrol", IconType.IhaleKontrol, "IHALEKONTROLPANEL",
-                "İhale Kontrol", "İhale dosyası enkesit kontrol modülü"));
             source.Items.Add(CreateButton("Enkesit\nOku", IconType.EnkesitOku, "YOLENKESITOKU",
                 "Enkesit Oku", "İhale DWG'den enkesit okuma ve alan hesabı"));
         }

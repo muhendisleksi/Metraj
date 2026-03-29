@@ -3,8 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Metraj.Infrastructure.AutoCAD;
 using Metraj.Services;
 using Metraj.Services.Interfaces;
-using Metraj.Services.IhaleKontrol;
-using Metraj.Services.IhaleKontrol.Interfaces;
 using Metraj.Services.YolEnkesit;
 using Metraj.ViewModels;
 using Metraj.ViewModels.EnkesitOkuma;
@@ -66,13 +64,6 @@ namespace Metraj.Infrastructure
             services.AddTransient<IYolKesitService, YolKesitService>();
             services.AddTransient<IYolKubajService, YolKubajService>();
 
-            // İhale Kontrol services
-            services.AddTransient<ITabloParseService, TabloParseService>();
-            services.AddTransient<IReferansKesitService, ReferansKesitService>();
-            services.AddTransient<IKesitTespitService, KesitTespitService>();
-            services.AddTransient<IGeometrikAlanService, GeometrikAlanService>();
-            services.AddTransient<IKarsilastirmaService, KarsilastirmaService>();
-
             // Yol Enkesit Okuma services
             services.AddTransient<IAnchorTaramaService, AnchorTaramaService>();
             services.AddTransient<IKesitGruplamaService, KesitGruplamaService>();
@@ -86,7 +77,6 @@ namespace Metraj.Infrastructure
             services.AddSingleton<AlanViewModel>();
             services.AddSingleton<ToplamaViewModel>();
             services.AddSingleton<YolMetrajViewModel>();
-            services.AddSingleton<IhaleKontrolViewModel>();
             services.AddSingleton<EnkesitOkumaMainViewModel>();
             services.AddSingleton<ReferansKesitViewModel>();
             services.AddSingleton<KesitDogrulamaViewModel>();

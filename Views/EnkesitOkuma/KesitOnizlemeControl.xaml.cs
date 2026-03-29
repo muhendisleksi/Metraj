@@ -44,7 +44,7 @@ namespace Metraj.Views.EnkesitOkuma
         private static readonly Dictionary<CizgiRolu, Color> RolRenkleri = new Dictionary<CizgiRolu, Color>
         {
             { CizgiRolu.Zemin, Color.FromRgb(0x2E, 0x8B, 0x57) },
-            { CizgiRolu.ProjeKotu, Color.FromRgb(0xE2, 0x4B, 0x4A) },
+            { CizgiRolu.ProjeCizgisi, Color.FromRgb(0xE2, 0x4B, 0x4A) },
             { CizgiRolu.Siyirma, Color.FromRgb(0x37, 0x8A, 0xDD) },
             { CizgiRolu.Yarma, Color.FromRgb(0xE0, 0x7C, 0x24) },
             { CizgiRolu.Dolgu, Color.FromRgb(0x8B, 0x45, 0x13) },
@@ -395,7 +395,7 @@ namespace Metraj.Views.EnkesitOkuma
             double kalinlik;
             if (secili) kalinlik = 4;
             else if (highlighted) kalinlik = 3.5;
-            else if (cizgi.Rol == CizgiRolu.ProjeKotu && !soluk) kalinlik = 2.5;
+            else if (cizgi.Rol == CizgiRolu.ProjeCizgisi && !soluk) kalinlik = 2.5;
             else if (cerceve) kalinlik = 0.3;
             else if (soluk) kalinlik = 0.6;
             else kalinlik = 1.2;
@@ -439,7 +439,7 @@ namespace Metraj.Views.EnkesitOkuma
                 {
                     var tag = (s as WpfPolyline)?.Tag as CizgiTanimi;
                     if (tag != _secilenCizgi)
-                        (s as WpfPolyline).StrokeThickness = tag?.Rol == CizgiRolu.ProjeKotu ? 2.5 : 1.2;
+                        (s as WpfPolyline).StrokeThickness = tag?.Rol == CizgiRolu.ProjeCizgisi ? 2.5 : 1.2;
                 };
             }
 
@@ -494,7 +494,7 @@ namespace Metraj.Views.EnkesitOkuma
             switch (rol)
             {
                 case CizgiRolu.Zemin: return "zemin";
-                case CizgiRolu.ProjeKotu: return "proje kotu";
+                case CizgiRolu.ProjeCizgisi: return "proje çizgisi";
                 case CizgiRolu.Siyirma: return "siyirma";
                 case CizgiRolu.Yarma: return "yarma";
                 case CizgiRolu.Dolgu: return "dolgu";

@@ -92,7 +92,7 @@ public enum CizgiRolu
     // Ana referans çizgileri
     Zemin,              // Doğal zemin / siyah kot (yeşil çizgi)
     SiyirmaTaban,       // Sıyırma tabanı (mavi çizgi)
-    ProjeKotu,          // Kırmızı kot / platform üstü (kırmızı çizgi)
+    ProjeCizgisi,          // Kırmızı kot / platform üstü (kırmızı çizgi)
     UstyapiAltKotu,     // Üstyapı en alt seviyesi (kırmataş/formasyon tabanı)
 
     // Üstyapı tabakaları (yukarıdan aşağıya)
@@ -192,7 +192,7 @@ public class KesitGrubu
 
     // Kolay erişim
     public CizgiTanimi Zemin => Cizgiler?.FirstOrDefault(c => c.Rol == CizgiRolu.Zemin);
-    public CizgiTanimi ProjeKotu => Cizgiler?.FirstOrDefault(c => c.Rol == CizgiRolu.ProjeKotu);
+    public CizgiTanimi ProjeCizgisi => Cizgiler?.FirstOrDefault(c => c.Rol == CizgiRolu.ProjeCizgisi);
     public CizgiTanimi SiyirmaTaban => Cizgiler?.FirstOrDefault(c => c.Rol == CizgiRolu.SiyirmaTaban);
 }
 
@@ -303,7 +303,7 @@ Kazı (Yarma)         | SiyirmaTaban         | UstyapiAltKotu       | Sıyırma 
 Dolgu                | UstyapiAltKotu       | SiyirmaTaban         | Üstyapı alt > Sıyırma tabanı
 B.T. Yerine Konan    | [Sıyırma alanı]      | —                    | Dolgu bölgesindeki sıyırma
 B.T. Yerine Konmayan | [Sıyırma alanı]      | —                    | Yarma bölgesindeki sıyırma
-Aşınma               | ProjeKotu            | AsinmaTaban          | Her zaman
+Aşınma               | ProjeCizgisi            | AsinmaTaban          | Her zaman
 Binder               | AsinmaTaban          | BinderTaban          | Her zaman
 Bitümlü Temel        | BinderTaban          | BitumluTemelTaban    | Her zaman
 Plentmiks            | BitumluTemelTaban    | PlentmiksTaban       | Her zaman

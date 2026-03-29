@@ -200,43 +200,6 @@ namespace Metraj.Commands
             dc.DrawLine(pen, new Point(m + s * 0.05, baseY), new Point(m + s * 0.95, baseY));
         }
 
-        /// <summary>İhale Kontrol: gri belge/kağıt + renkli onay işareti (✓)</summary>
-        private static void DrawIhaleKontrolIcon(DrawingContext dc, Brush baseBrush, Brush contourBrush, Brush accentBrush, int size, bool isLarge)
-        {
-            double m = isLarge ? 3 : 1.5;
-            double s = size - 2 * m;
-            var pen = CreateSymbolPen(contourBrush, isLarge ? 2.5 : 1.8);
-
-            // Kağıt — gri dikdörtgen
-            double pw = s * 0.60;
-            double ph = s * 0.80;
-            double px = m + s * 0.10;
-            double py = m + s * 0.05;
-            dc.DrawRoundedRectangle(baseBrush, pen, new Rect(px, py, pw, ph), 2, 2);
-
-            // Metin satırları — gri
-            var thinPen = CreateSymbolPen(contourBrush, isLarge ? 1.5 : 1.0);
-            double tx1 = px + pw * 0.15;
-            double tx2 = px + pw * 0.85;
-            dc.DrawLine(thinPen, new Point(tx1, py + ph * 0.22), new Point(tx2, py + ph * 0.22));
-            dc.DrawLine(thinPen, new Point(tx1, py + ph * 0.40), new Point(tx2, py + ph * 0.40));
-            dc.DrawLine(thinPen, new Point(tx1, py + ph * 0.58), new Point(tx2 * 0.7, py + ph * 0.58));
-
-            // Onay işareti (✓) — renkli, sağ alt köşe
-            var accentPen = CreateSymbolPen(accentBrush, isLarge ? 3.0 : 2.2);
-            double cx = m + s * 0.75;
-            double cyy = m + s * 0.72;
-            double cr = s * 0.18;
-
-            // Daire arka plan
-            dc.DrawEllipse(accentBrush, null, new Point(cx, cyy), cr, cr);
-
-            // Beyaz ✓ işareti
-            var whitePen = CreateSymbolPen(Brushes.White, isLarge ? 2.5 : 1.8);
-            dc.DrawLine(whitePen, new Point(cx - cr * 0.5, cyy), new Point(cx - cr * 0.1, cyy + cr * 0.4));
-            dc.DrawLine(whitePen, new Point(cx - cr * 0.1, cyy + cr * 0.4), new Point(cx + cr * 0.5, cyy - cr * 0.4));
-        }
-
         /// <summary>Enkesit Oku: gri zemin profili + renkli enkesit çizgileri</summary>
         private static void DrawEnkesitOkuIcon(DrawingContext dc, Brush baseBrush, Brush contourBrush, Brush accentBrush, int size, bool isLarge)
         {

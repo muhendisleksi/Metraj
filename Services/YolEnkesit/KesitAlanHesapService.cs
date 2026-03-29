@@ -402,7 +402,7 @@ namespace Metraj.Services.YolEnkesit
         {
             var tabakalar = new[]
             {
-                (ust: CizgiRolu.ProjeKotu, alt: CizgiRolu.Asinma, ad: "Asinma"),
+                (ust: CizgiRolu.ProjeCizgisi, alt: CizgiRolu.Asinma, ad: "Asinma"),
                 (ust: CizgiRolu.Asinma, alt: CizgiRolu.Binder, ad: "Binder"),
                 (ust: CizgiRolu.Binder, alt: CizgiRolu.BitumluTemel, ad: "Bitumlu Temel"),
                 (ust: CizgiRolu.BitumluTemel, alt: CizgiRolu.Plentmiks, ad: "Plentmiks"),
@@ -608,7 +608,7 @@ namespace Metraj.Services.YolEnkesit
             sb.AppendLine("  [2] ROL DURUMU (birlestirme)");
             var tumRoller = new[]
             {
-                CizgiRolu.Zemin, CizgiRolu.Siyirma, CizgiRolu.ProjeKotu,
+                CizgiRolu.Zemin, CizgiRolu.Siyirma, CizgiRolu.ProjeCizgisi,
                 CizgiRolu.Asinma, CizgiRolu.Binder, CizgiRolu.BitumluTemel,
                 CizgiRolu.Plentmiks, CizgiRolu.AltTemel,
                 CizgiRolu.Yarma, CizgiRolu.Dolgu
@@ -698,7 +698,7 @@ namespace Metraj.Services.YolEnkesit
             // Ustyapi tabakalari
             var tabakalar = new[]
             {
-                (ust: CizgiRolu.ProjeKotu, alt: CizgiRolu.Asinma, ad: "Asinma"),
+                (ust: CizgiRolu.ProjeCizgisi, alt: CizgiRolu.Asinma, ad: "Asinma"),
                 (ust: CizgiRolu.Asinma, alt: CizgiRolu.Binder, ad: "Binder"),
                 (ust: CizgiRolu.Binder, alt: CizgiRolu.BitumluTemel, ad: "Bitumlu Temel"),
                 (ust: CizgiRolu.BitumluTemel, alt: CizgiRolu.Plentmiks, ad: "Plentmiks"),
