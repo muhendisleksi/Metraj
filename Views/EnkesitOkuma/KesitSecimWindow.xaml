@@ -1,7 +1,7 @@
 <Window x:Class="Metraj.Views.EnkesitOkuma.KesitSecimWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Referans Kesit Sec"
+        Title="Referans Kesit Seç"
         Width="340" Height="420" MinWidth="280" MinHeight="300"
         WindowStartupLocation="CenterScreen" WindowStyle="ToolWindow"
         Background="#FF1E1E2E" ResizeMode="CanResizeWithGrip">
@@ -51,7 +51,7 @@
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0" TextWrapping="Wrap" Foreground="#FF8888AA" FontSize="12" Margin="0,0,0,10"
-                   Text="Kalibrasyon icin bir kesit secin. Ortadaki kesitler daha temsil edicidir (ilk/son kesitler karmasik olabilir)."/>
+                   Text="Kalibrasyon için bir kesit seçin. Ortadaki kesitler daha temsil edicidir (ilk/son kesitler karmaşık olabilir)."/>
 
         <ListBox x:Name="KesitListBox" Grid.Row="1"
                  Background="#FF12121E"
@@ -59,9 +59,9 @@
                  MouseDoubleClick="ListBox_DoubleClick"/>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-            <Button Content="Sec" Click="BtnSec_Click" Style="{StaticResource PrimBtn}"
+            <Button Content="Seç" Click="BtnSec_Click" Style="{StaticResource PrimBtn}"
                     Width="80" Height="30"/>
-            <Button Content="Iptal" Click="BtnIptal_Click" Style="{StaticResource DarkBtn}"
+            <Button Content="İptal" Click="BtnIptal_Click" Style="{StaticResource DarkBtn}"
                     Width="70" Height="30" Margin="8,0,0,0"/>
         </StackPanel>
     </Grid>

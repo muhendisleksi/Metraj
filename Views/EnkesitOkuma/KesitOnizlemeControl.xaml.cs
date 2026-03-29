@@ -495,16 +495,16 @@ namespace Metraj.Views.EnkesitOkuma
             {
                 case CizgiRolu.Zemin: return "zemin";
                 case CizgiRolu.ProjeCizgisi: return "proje çizgisi";
-                case CizgiRolu.Siyirma: return "siyirma";
+                case CizgiRolu.Siyirma: return "sıyırma";
                 case CizgiRolu.Yarma: return "yarma";
                 case CizgiRolu.Dolgu: return "dolgu";
-                case CizgiRolu.Asinma: return "asinma";
+                case CizgiRolu.Asinma: return "aşınma";
                 case CizgiRolu.Binder: return "binder";
-                case CizgiRolu.BitumluTemel: return "bitumlu";
+                case CizgiRolu.BitumluTemel: return "bitümlü temel";
                 case CizgiRolu.Plentmiks: return "plentmiks";
                 case CizgiRolu.AltTemel: return "alttemel";
-                case CizgiRolu.BTYerineKonan: return "BT konan";
-                case CizgiRolu.BTYerineKonmayan: return "BT konmayan";
+                case CizgiRolu.BTYerineKonan: return "BT yerine konan";
+                case CizgiRolu.BTYerineKonmayan: return "BT yerine konmayan";
                 default: return rol.ToString();
             }
         }

@@ -87,7 +87,7 @@
                 <StackPanel Orientation="Horizontal">
                     <Ellipse Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,4,0"
                              Fill="{Binding Adim1Aktif, Converter={StaticResource BoolToVis}, FallbackValue=#FF555566}"/>
-                    <TextBlock Text="Hazirlik" VerticalAlignment="Center" FontSize="12"
+                    <TextBlock Text="Hazırlık" VerticalAlignment="Center" FontSize="12"
                                Foreground="{Binding Adim1Aktif, Converter={StaticResource BoolToVis}, FallbackValue=#FF8888AA}"/>
                 </StackPanel>
                 <TextBlock Text="  >  " Foreground="#FF555566" VerticalAlignment="Center"/>
@@ -103,7 +103,7 @@
                 <StackPanel Orientation="Horizontal">
                     <Ellipse Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,4,0"
                              Fill="{Binding Adim3Aktif, Converter={StaticResource BoolToVis}, FallbackValue=#FF555566}"/>
-                    <TextBlock Text="Sonuc" VerticalAlignment="Center" FontSize="12"
+                    <TextBlock Text="Sonuç" VerticalAlignment="Center" FontSize="12"
                                Foreground="{Binding Adim3Aktif, Converter={StaticResource BoolToVis}, FallbackValue=#FF8888AA}"/>
                 </StackPanel>
             </StackPanel>
@@ -114,7 +114,7 @@
             <Grid>
                 <!-- Adim 1: Hazirlik -->
                 <StackPanel Visibility="{Binding Adim1Aktif, Converter={StaticResource BoolToVis}}">
-                    <Button Content="Entity Sec" Command="{Binding EntitySecCommand}"
+                    <Button Content="Enkesitleri Seç" Command="{Binding EntitySecCommand}"
                             Style="{StaticResource DarkBtn}" Height="36"/>
                     <TextBlock Text="{Binding EntitySayisi}" Foreground="#FF4EC9B0"
                                Margin="0,6,0,0" FontSize="12"/>
@@ -124,16 +124,16 @@
                                Margin="0,2,0,8" FontSize="11"/>
 
                     <!-- Fallback: CL bulunamazsa manuel pencere -->
-                    <Button Content="Manuel Pencere (yedek)" Command="{Binding PencereBelirleCommand}"
+                    <Button Content="Manuel Pencere (Yedek)" Command="{Binding PencereBelirleCommand}"
                             Style="{StaticResource DarkBtn}" Height="28" FontSize="11" Padding="4"
                             Foreground="#FF8888AA"/>
                 </StackPanel>
 
                 <!-- Adim 2: Kalibrasyon -->
                 <StackPanel Visibility="{Binding Adim2Aktif, Converter={StaticResource BoolToVis}}">
-                    <Button Content="Kalibrasyon Ac" Command="{Binding KalibrasyonAcCommand}"
+                    <Button Content="Kalibrasyon Aç" Command="{Binding KalibrasyonAcCommand}"
                             Style="{StaticResource AccentBtn}" Height="36"/>
-                    <Button Content="Sablon Yukle (.json)" Command="{Binding SablonYukleCommand}"
+                    <Button Content="Şablon Yükle (.json)" Command="{Binding SablonYukleCommand}"
                             Style="{StaticResource DarkBtn}" Height="32" Margin="0,8,0,0"/>
 
                     <!-- Ilerleme -->
@@ -145,7 +145,7 @@
                                Margin="0,2,0,0" FontSize="12"/>
 
                     <!-- Iptal butonu -->
-                    <Button Content="Iptal" Command="{Binding IptalCommand}"
+                    <Button Content="İptal" Command="{Binding IptalCommand}"
                             Visibility="{Binding IptalGorunur, Converter={StaticResource BoolToVis}}"
                             Height="28" Margin="0,8,0,0" Padding="4"
                             Background="#44E24B4A" Foreground="#FFE24B4A" BorderBrush="#FFE24B4A"
@@ -165,7 +165,7 @@
 
                 <!-- Adim 3: Sonuc -->
                 <StackPanel Visibility="{Binding Adim3Aktif, Converter={StaticResource BoolToVis}}">
-                    <Button Content="Dogrulama Ac" Command="{Binding DogrulamaAcCommand}"
+                    <Button Content="Doğrulama Aç" Command="{Binding DogrulamaAcCommand}"
                             Style="{StaticResource PrimBtn}" Height="36"/>
                     <TextBlock Text="{Binding SonucBilgisi}" Foreground="#FF4EC9B0"
                                Margin="0,6,0,12" FontSize="12"/>
@@ -186,7 +186,7 @@
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <Button Content="Geri" Command="{Binding GeriCommand}"
                             Style="{StaticResource DarkBtn}" Width="60" Height="26" Padding="4"/>
-                    <Button Content="Ileri" Command="{Binding IleriCommand}"
+                    <Button Content="İleri" Command="{Binding IleriCommand}"
                             Style="{StaticResource PrimBtn}" Width="60" Height="26" Margin="6,0,0,0" Padding="4"/>
                 </StackPanel>
                 <TextBlock Text="{Binding DurumMesaji}" Foreground="#FF8888AA"

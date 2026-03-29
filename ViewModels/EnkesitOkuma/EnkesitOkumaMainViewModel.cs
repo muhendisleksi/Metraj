@@ -93,7 +93,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
         public bool Adim2Aktif => AktifAdim == 2;
         public bool Adim3Aktif => AktifAdim == 3;
 
-        public string EntitySayisi => _secilenEntityler != null ? $"{_secilenEntityler.Count:N0} entity secildi" : "";
+        public string EntitySayisi => _secilenEntityler != null ? $"{_secilenEntityler.Count:N0} obje seçildi" : "";
         public string AnchorSayisi => _anchorlar != null ? $"{_anchorlar.Count} istasyon bulundu" : "";
         public string PencereBilgisi => _pencere != null ? $"Pencere: {_pencere.Genislik:F1} x {_pencere.Yukseklik:F1}" : "";
         public string KesitSayisi => _kesitler != null ? $"{_kesitler.Count} kesit" : "";
@@ -104,7 +104,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 if (_kesitler == null) return "";
                 int onayli = _kesitler.Count(k => k.Durum == DogrulamaDurumu.Onaylandi);
                 int duzeltildi = _kesitler.Count(k => k.Durum == DogrulamaDurumu.Duzeltildi);
-                return $"{_kesitler.Count} kesit -- {onayli} onay, {duzeltildi} duzeltme";
+                return $"{_kesitler.Count} kesit -- {onayli} onay, {duzeltildi} düzeltme";
             }
         }
 
@@ -137,7 +137,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
         private void IptalEt()
         {
             _iptalIstendi = true;
-            DurumMesaji = "Iptal ediliyor...";
+            DurumMesaji = "İptal ediliyor...";
         }
 
         private void EntitySec()
@@ -150,7 +150,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 if (result.Status != PromptStatus.OK) return;
 
                 _secilenEntityler = new List<ObjectId>(result.Value.GetObjectIds());
-                DurumMesaji = $"{_secilenEntityler.Count:N0} entity secildi";
+                DurumMesaji = $"{_secilenEntityler.Count:N0} obje seçildi";
                 OnPropertyChanged(nameof(EntitySayisi));
                 LoggingService.Info(DurumMesaji);
 
@@ -158,7 +158,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "Entity secim hatasi: " + ex.Message;
+                DurumMesaji = "Seçim hatası: " + ex.Message;
                 LoggingService.Error("Entity secim hatasi", ex);
             }
         }
@@ -183,13 +183,13 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 }
                 else
                 {
-                    DurumMesaji = "CL+Km eslesmesi bulunamadi";
+                    DurumMesaji = "CL+Km eşleşmesi bulunamadı";
                 }
                 OnPropertyChanged(nameof(AnchorSayisi));
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "Anchor tarama hatasi: " + ex.Message;
+                DurumMesaji = "Anchor tarama hatası: " + ex.Message;
                 LoggingService.Error("Anchor tarama hatasi", ex);
             }
         }
@@ -227,7 +227,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "Pencere belirleme hatasi: " + ex.Message;
+                DurumMesaji = "Pencere belirleme hatası: " + ex.Message;
                 LoggingService.Error("Pencere belirleme hatasi", ex);
             }
         }
@@ -238,7 +238,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
             {
                 if (_anchorlar == null || _pencere == null || _secilenEntityler == null)
                 {
-                    DurumMesaji = "Once hazirlik adimini tamamlayin";
+                    DurumMesaji = "Önce hazırlık adımını tamamlayın";
                     return;
                 }
 
@@ -252,7 +252,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
 
                 if (secilenKesitler.Count == 0)
                 {
-                    DurumMesaji = "Secilen kesitte cizgi bulunamadi";
+                    DurumMesaji = "Seçilen kesitte çizgi bulunamadı";
                     return;
                 }
 
@@ -280,14 +280,14 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 if (window.ShowDialog() == true)
                 {
                     Sablon = vm.OlusturulanSablon;
-                    DurumMesaji = $"{Sablon.Kurallar.Count} cizgi rolu tanimlandi";
+                    DurumMesaji = $"{Sablon.Kurallar.Count} çizgi rolü tanımlandı";
 
                     TopluTara();
                 }
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "Kalibrasyon hatasi: " + ex.Message;
+                DurumMesaji = "Kalibrasyon hatası: " + ex.Message;
                 LoggingService.Error("Kalibrasyon hatasi", ex);
             }
         }
@@ -298,7 +298,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
             {
                 var dialog = new Microsoft.Win32.OpenFileDialog
                 {
-                    Filter = "JSON Dosyasi|*.json",
+                    Filter = "JSON Dosyası|*.json",
                     Title = "Sablon Yukle"
                 };
 
@@ -306,14 +306,14 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 {
                     string json = System.IO.File.ReadAllText(dialog.FileName);
                     Sablon = JsonConvert.DeserializeObject<ReferansKesitSablonu>(json);
-                    DurumMesaji = $"Sablon yuklendi: {Sablon.Kurallar.Count} kural";
+                    DurumMesaji = $"Şablon yüklendi: {Sablon.Kurallar.Count} kural";
 
                     TopluTara();
                 }
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "Sablon yukleme hatasi: " + ex.Message;
+                DurumMesaji = "Şablon yükleme hatası: " + ex.Message;
                 LoggingService.Error("Sablon yukleme hatasi", ex);
             }
         }
@@ -326,7 +326,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 _iptalIstendi = false;
                 IlerlemeYuzde = 0;
                 IlerlemeDetay = "Entity gruplama...";
-                DurumMesaji = "Tarama basliyor...";
+                DurumMesaji = "Tarama başlıyor...";
                 UIGuncelle();
 
                 // Faz 1: Entity gruplama (tek Transaction — AutoCAD API)
@@ -336,7 +336,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 if (_iptalIstendi) { TaramaBitir("Iptal edildi"); return; }
 
                 IlerlemeYuzde = 10;
-                IlerlemeDetay = $"{toplam} kesit bulundu, roller ataniyor...";
+                IlerlemeDetay = $"{toplam} kesit bulundu, roller atanıyor...";
                 UIGuncelle();
 
                 // Faz 2: Rol atama — kesit kesit, her 10 kesitte UI guncelle
@@ -416,7 +416,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                     LoggingService.Warning($"Tanilama raporu yazilamadi: {ex.Message}");
                 }
 
-                TaramaBitir($"{toplam} kesit tarandi -- {uyumlu} uyumlu, {uyari} uyari, {sorunlu} sorunlu");
+                TaramaBitir($"{toplam} kesit tarandı -- {uyumlu} uyumlu, {uyari} uyari, {sorunlu} sorunlu");
                 OnPropertiesChanged(nameof(KesitSayisi), nameof(SonucBilgisi));
                 AktifAdim = 3;
             }
@@ -460,12 +460,12 @@ namespace Metraj.ViewModels.EnkesitOkuma
 
                 int onayli = Kesitler.Count(k => k.Durum == DogrulamaDurumu.Onaylandi);
                 int duzeltildi = Kesitler.Count(k => k.Durum == DogrulamaDurumu.Duzeltildi);
-                DurumMesaji = $"{Kesitler.Count} kesit dogrulandi ({onayli} onay, {duzeltildi} duzeltme)";
+                DurumMesaji = $"{Kesitler.Count} kesit doğrulandı ({onayli} onay, {duzeltildi} düzeltme)";
                 OnPropertyChanged(nameof(SonucBilgisi));
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "Dogrulama hatasi: " + ex.Message;
+                DurumMesaji = "Doğrulama hatası: " + ex.Message;
                 LoggingService.Error("Dogrulama hatasi", ex);
             }
         }
@@ -475,7 +475,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
             if (_kesitler == null) return;
             _alanHesapService.TopluAlanHesapla(_kesitler);
             _tabloService.TopluKiyasla(_kesitler);
-            DurumMesaji = "Hesaplama tamamlandi";
+            DurumMesaji = "Hesaplama tamamlandı";
             OnPropertyChanged(nameof(SonucBilgisi));
         }
 
@@ -485,7 +485,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
             {
                 var dialog = new Microsoft.Win32.SaveFileDialog
                 {
-                    Filter = "Excel Dosyasi|*.xlsx",
+                    Filter = "Excel Dosyası|*.xlsx",
                     FileName = "YolEnkesitOkuma_Sonuc.xlsx"
                 };
 
@@ -493,12 +493,12 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 {
                     var exportService = ServiceContainer.GetRequiredService<Services.Interfaces.IExcelExportService>();
                     exportService.EnkesitOkumaExport(Kesitler, dialog.FileName);
-                    DurumMesaji = "Excel dosyasi kaydedildi";
+                    DurumMesaji = "Excel dosyası kaydedildi";
                 }
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "Excel aktarim hatasi: " + ex.Message;
+                DurumMesaji = "Excel aktarım hatası: " + ex.Message;
                 LoggingService.Error("Excel aktarim hatasi", ex);
             }
         }
@@ -509,7 +509,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
             {
                 var dialog = new Microsoft.Win32.SaveFileDialog
                 {
-                    Filter = "JSON Dosyasi|*.json",
+                    Filter = "JSON Dosyası|*.json",
                     FileName = "YolEnkesitOkuma_Veri.json"
                 };
 
@@ -523,7 +523,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
             }
             catch (System.Exception ex)
             {
-                DurumMesaji = "JSON kayit hatasi: " + ex.Message;
+                DurumMesaji = "JSON kayıt hatası: " + ex.Message;
                 LoggingService.Error("JSON kayit hatasi", ex);
             }
         }

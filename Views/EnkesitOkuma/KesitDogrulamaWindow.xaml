@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Metraj.Views.EnkesitOkuma"
-        Title="Kesit Dogrulama"
+        Title="Kesit Doğrulama"
         Width="1000" Height="650" MinWidth="800" MinHeight="500"
         WindowStartupLocation="CenterScreen" WindowStyle="ToolWindow"
         Background="#FF1E1E2E">
@@ -69,7 +69,7 @@
         <Border Grid.Row="0" Background="#FF2D2D44" Padding="8" CornerRadius="4" Margin="0,0,0,4">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="Onceki" Command="{Binding OncekiCommand}"
+                    <Button Content="Önceki" Command="{Binding OncekiCommand}"
                             Style="{StaticResource DarkButton}" Width="72" Height="26" Margin="0,0,4,0" Padding="4"/>
                     <Button Content="Sonraki" Command="{Binding SonrakiCommand}"
                             Style="{StaticResource DarkButton}" Width="72" Height="26" Margin="0,0,12,0" Padding="4"/>
@@ -84,7 +84,7 @@
                     <Border Background="#FF1D5C46" CornerRadius="4" Padding="6,2" Margin="0,0,4,0">
                         <TextBlock Foreground="#FF4EC9B0" FontSize="11">
                             <Run Text="{Binding OnayliSayisi, Mode=OneWay}"/>
-                            <Run Text=" onayli"/>
+                            <Run Text=" onaylı"/>
                         </TextBlock>
                     </Border>
                     <Border Background="#FF5C4D1D" CornerRadius="4" Padding="6,2" Margin="0,0,4,0">
@@ -101,7 +101,7 @@
                     </Border>
                     <CheckBox Content="Sadece sorunlu" IsChecked="{Binding SadeceSorunluGoster}"
                               Foreground="#FFCCCCDD" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <Button Content="Tumunu Onayla" Command="{Binding TumunuOnaylaCommand}"
+                    <Button Content="Tümünü Onayla" Command="{Binding TumunuOnaylaCommand}"
                             Style="{StaticResource SuccessButton}" Height="26" Padding="8,2"/>
                 </StackPanel>
             </DockPanel>
@@ -169,10 +169,10 @@
 
                     <!-- Cizgi Duzelt -->
                     <StackPanel Grid.Row="1" Margin="0,8,0,0">
-                        <TextBlock Text="Cizgi Duzelt:" Foreground="#FFCCCCDD" Margin="0,0,0,4" FontSize="12"/>
+                        <TextBlock Text="Çizgi Düzelt:" Foreground="#FFCCCCDD" Margin="0,0,0,4" FontSize="12"/>
                         <ComboBox ItemsSource="{Binding MevcutRoller}"
                                   SelectedItem="{Binding YeniRol}" Height="26"/>
-                        <Button Content="Rolu Degistir" Command="{Binding CizgiDuzeltCommand}"
+                        <Button Content="Rolü Değiştir" Command="{Binding CizgiDuzeltCommand}"
                                 Style="{StaticResource DarkButton}"
                                 Height="26" Margin="0,4,0,0" Padding="4"/>
                     </StackPanel>
