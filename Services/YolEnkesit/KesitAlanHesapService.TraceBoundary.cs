@@ -104,26 +104,63 @@ namespace Metraj.Services.YolEnkesit
             int kapaliSayisi = 0;
             int acikSayisi = 0;
             int atlanmisSayisi = 0;
+            // malzeme adi → toplam alan (layer bazli ayrimli)
             var malzemeAlanlari = new Dictionary<string, double>();
 
+            // Ilk pass: ayni roldeki entity'lerin layer dagilimini bul
+            // Bir rolde birden fazla farkli layer varsa, en cok entity'ye sahip layer "ana" layer
+            // Diger layer'lar banket/yardimci — hesap disi
+            var rolLayerSayisi = new Dictionary<CizgiRolu, Dictionary<string, int>>();
+            foreach (var c in kesit.Cizgiler)
+            {
+                if (!c.KapaliMi || c.EntityAlani <= 0.01) continue;
+                if (c.Rol == CizgiRolu.Tanimsiz || c.Rol == CizgiRolu.Diger) continue;
+                if (!rolMalzeme.ContainsKey(c.Rol)) continue;
+
+                if (!rolLayerSayisi.ContainsKey(c.Rol))
+                    rolLayerSayisi[c.Rol] = new Dictionary<string, int>();
+                var layerSayisi = rolLayerSayisi[c.Rol];
+                if (!layerSayisi.ContainsKey(c.LayerAdi)) layerSayisi[c.LayerAdi] = 0;
+                layerSayisi[c.LayerAdi]++;
+            }
+
+            // Her rol icin ana layer'i belirle (en cok entity'ye sahip olan)
+            var rolAnaLayer = new Dictionary<CizgiRolu, string>();
+            foreach (var (rol, layerler) in rolLayerSayisi)
+            {
+                if (layerler.Count <= 1)
+                {
+                    rolAnaLayer[rol] = layerler.Keys.First();
+                }
+                else
+                {
+                    // Birden fazla layer — en cok entity'ye sahip olan ana layer
+                    var anaLayer = layerler.OrderByDescending(kv => kv.Value).First().Key;
+                    rolAnaLayer[rol] = anaLayer;
+                    if (detayliLog)
+                    {
+                        string layerListesi = string.Join(", ", layerler.Select(kv => $"{kv.Key}:{kv.Value}"));
+                        LoggingService.Info($"  [LAYER-AYRIM] {rol}: {layerler.Count} farkli layer ({layerListesi}) -> ana={anaLayer}");
+                    }
+                }
+            }
+
+            // Ikinci pass: entity'leri hesapla
             foreach (var cizgi in kesit.Cizgiler)
             {
-                // Cerceve/grid/eksen atla
                 if (cizgi.Rol == CizgiRolu.CerceveCizgisi || cizgi.Rol == CizgiRolu.GridCizgisi
                     || cizgi.Rol == CizgiRolu.EksenCizgisi)
                     continue;
 
-                // [DIKEY] entity'ler HICBIR hesaba dahil edilmez — geometrik kontrol, rol'den bagimsiz
                 if (cizgi.DikeyVeyaSevMi)
                 {
                     if (detayliLog && cizgi.Rol != CizgiRolu.Tanimsiz)
-                        LoggingService.Info($"  DIKEY-ATLANDI: L={cizgi.LayerAdi}, Rol={cizgi.Rol}, Kapali={cizgi.KapaliMi}, Alan={cizgi.EntityAlani:F4}");
+                        LoggingService.Info($"  DIKEY-ATLANDI: L={cizgi.LayerAdi}, Rol={cizgi.Rol}, Alan={cizgi.EntityAlani:F4}");
                     continue;
                 }
 
                 if (cizgi.KapaliMi && cizgi.EntityAlani > 0.01)
                 {
-                    // Sinir cizgisi rolu — alan tasiyor ama baska malzemeye dahil etme
                     if (sinirRolleri.Contains(cizgi.Rol))
                     {
                         if (detayliLog)
@@ -133,29 +170,21 @@ namespace Metraj.Services.YolEnkesit
 
                     kapaliSayisi++;
 
-                    // Oncelik 1: Kalibrasyon rolu (tabaka rolleri)
+                    // Malzeme eslestirme
                     string malzeme = null;
                     if (cizgi.Rol != CizgiRolu.Tanimsiz && cizgi.Rol != CizgiRolu.Diger)
                         rolMalzeme.TryGetValue(cizgi.Rol, out malzeme);
-
-                    // Oncelik 2: Layer adi
                     if (malzeme == null)
                         malzeme = LayerdanMalzemeAdiCikar(cizgi.LayerAdi);
 
-                    // Banket kontrolu: entity'nin X merkezi platformun disindaysa banket
+                    // Layer bazli banket kontrolu: ayni rolde birden fazla layer varsa
+                    // sadece ana layer'daki entity'ler hesaba dahil, digerler banket
                     bool banket = false;
-                    if (malzeme != null && kesit.CL_X.HasValue && cizgi.Noktalar.Count >= 2)
+                    if (malzeme != null && cizgi.Rol != CizgiRolu.Tanimsiz
+                        && rolAnaLayer.TryGetValue(cizgi.Rol, out var anaL)
+                        && cizgi.LayerAdi != anaL)
                     {
-                        double entMinX = cizgi.Noktalar.Min(p => p.X);
-                        double entMaxX = cizgi.Noktalar.Max(p => p.X);
-                        double entMerkezX = (entMinX + entMaxX) / 2.0;
-                        double clX = kesit.CL_X.Value;
-
-                        // Platform yarim genisligi: ayni roldeki TUM entity'lerin kapsadigi
-                        // X araliginin CL'ye en yakin kismi. Basit yaklasim: CL'den +-4m platform.
-                        // Daha iyi: entity merkezi CL'den 5m'den uzaksa banket.
-                        if (Math.Abs(entMerkezX - clX) > 5.0)
-                            banket = true;
+                        banket = true;
                     }
 
                     if (malzeme != null && !banket)
