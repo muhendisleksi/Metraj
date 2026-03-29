@@ -1,13 +1,9 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using Autodesk.AutoCAD.Runtime;
 using Metraj.Infrastructure;
-using Metraj.Infrastructure.AutoCAD;
-using Metraj.Models;
 using Metraj.Services;
-using Metraj.Services.Interfaces;
 using Metraj.ViewModels;
 using Metraj.Views;
 
@@ -141,108 +137,6 @@ namespace Metraj.Commands
             catch (System.Exception ex)
             {
                 LoggingService.Error("METRAJTOPLA hatası", ex);
-            }
-        }
-
-        [CommandMethod("METRAJANNOTASYON")]
-        public static void YazAnnotasyon()
-        {
-            if (!_initialized) return;
-            try
-            {
-                var editorService = ServiceContainer.GetRequiredService<IEditorService>();
-                var annotationService = ServiceContainer.GetRequiredService<IAnnotationService>();
-                var ayarlarVm = ServiceContainer.GetRequiredService<AyarlarViewModel>();
-
-                var textResult = editorService.GetString("\nYazilacak metni girin: ");
-                if (textResult.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
-
-                var pointResult = editorService.GetPoint("\nYazi konumunu secin: ");
-                if (pointResult.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK) return;
-
-                annotationService.YaziYaz(pointResult.Value, textResult.StringResult, ayarlarVm.GetAnnotationAyarlari());
-                editorService.WriteMessage("\nAnnotasyon yazildi.\n");
-            }
-            catch (System.Exception ex)
-            {
-                LoggingService.Error("METRAJANNOTASYON hatasi", ex);
-            }
-        }
-
-        [CommandMethod("METRAJEXCEL")]
-        public static void ExportExcel()
-        {
-            if (!_initialized) return;
-            try
-            {
-                var uzunlukVm = ServiceContainer.GetRequiredService<UzunlukViewModel>();
-                var alanVm = ServiceContainer.GetRequiredService<AlanViewModel>();
-                var hacimVm = ServiceContainer.GetRequiredService<HacimViewModel>();
-                var toplamaVm = ServiceContainer.GetRequiredService<ToplamaViewModel>();
-                var excelService = ServiceContainer.GetRequiredService<IExcelExportService>();
-
-                var rapor = new MetrajRaporu
-                {
-                    UzunlukSonuclari = new List<UzunlukOlcumu>(uzunlukVm.Sonuclar),
-                    AlanSonuclari = new List<AlanOlcumu>(alanVm.Sonuclar),
-                    HacimSonucu = hacimVm.Sonuc,
-                    ToplamaSonuclari = new List<ToplamaOgesi>(toplamaVm.Ogeler)
-                };
-
-                var dosyaYolu = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                    "Metraj_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".xlsx");
-
-                var result = excelService.Export(rapor, dosyaYolu);
-                var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
-
-                if (result.Basarili)
-                    ed?.WriteMessage("\nExcel dosyasi olusturuldu: " + result.DosyaYolu + "\n");
-                else
-                    ed?.WriteMessage("\nExcel hatasi: " + result.HataMesaji + "\n");
-            }
-            catch (System.Exception ex)
-            {
-                LoggingService.Error("METRAJEXCEL hatasi", ex);
-            }
-        }
-
-        [CommandMethod("METRAJTEMIZLE")]
-        public static void TemizleAnnotasyonlar()
-        {
-            if (!_initialized) return;
-            try
-            {
-                var annotationService = ServiceContainer.GetRequiredService<IAnnotationService>();
-                annotationService.AnnotasyonlariTemizle(Constants.LayerUzunluk);
-                annotationService.AnnotasyonlariTemizle(Constants.LayerAlan);
-                annotationService.AnnotasyonlariTemizle(Constants.LayerHacim);
-                annotationService.AnnotasyonlariTemizle(Constants.LayerToplama);
-                annotationService.AnnotasyonlariTemizle(Constants.LayerEtiket);
-                annotationService.AnnotasyonlariTemizle(Constants.LayerYolMetraj);
-
-                var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
-                ed?.WriteMessage("\nMetraj annotasyonlari temizlendi.\n");
-            }
-            catch (System.Exception ex)
-            {
-                LoggingService.Error("METRAJTEMIZLE hatasi", ex);
-            }
-        }
-
-        [CommandMethod("METRAJENKESIT")]
-        public static void QuickEnKesit()
-        {
-            if (!_initialized) return;
-            try
-            {
-                _windowManager.Toggle();
-                var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
-                ed?.WriteMessage("\nEn Kesit Alan sekmesini kullanın.\n");
-            }
-            catch (System.Exception ex)
-            {
-                LoggingService.Error("METRAJENKESIT hatası", ex);
             }
         }
 
@@ -414,13 +308,6 @@ namespace Metraj.Commands
                 ServiceContainer.GetRequiredService<IhaleKontrolViewModel>());
         }
 
-        [CommandMethod("METRAJAYARLAR")]
-        public static void ToggleAyarlar()
-        {
-            var ed = Application.DocumentManager.MdiActiveDocument?.Editor;
-            ed?.WriteMessage("\nAyarlar sekmesine gecin.\n");
-        }
-
         // === Modul Pencere Komutlari ===
 
         [CommandMethod("METRAJUZUNLUKPANEL")]
@@ -439,24 +326,6 @@ namespace Metraj.Commands
             _windowManager.ToggleModul("Alan",
                 new AlanControl(),
                 ServiceContainer.GetRequiredService<AlanViewModel>());
-        }
-
-        [CommandMethod("METRAJKUBAJPANEL")]
-        public static void KubajPanel()
-        {
-            if (!_initialized) return;
-            _windowManager.ToggleModul("K\u00FCbaj",
-                new HacimControl(),
-                ServiceContainer.GetRequiredService<HacimViewModel>());
-        }
-
-        [CommandMethod("METRAJENKESITPANEL")]
-        public static void EnKesitPanel()
-        {
-            if (!_initialized) return;
-            _windowManager.ToggleModul("En Kesit",
-                new EnKesitAlanControl(),
-                ServiceContainer.GetRequiredService<EnKesitAlanViewModel>());
         }
 
         [CommandMethod("METRAJTOPLAMAPANEL")]

@@ -52,12 +52,10 @@ namespace Metraj.Infrastructure
             // Calculation services - transient
             services.AddTransient<IUzunlukHesapService, UzunlukHesapService>();
             services.AddTransient<IAlanHesapService, AlanHesapService>();
-            services.AddTransient<IHacimHesapService, HacimHesapService>();
             services.AddTransient<IToplamaService, ToplamaService>();
             services.AddTransient<IEnKesitAlanService, EnKesitAlanService>();
 
-            // Annotation & Export services
-            services.AddTransient<IAnnotationService, AnnotationService>();
+            // Export services
             services.AddTransient<IExcelExportService, ExcelExportService>();
             services.AddSingleton<ICivil3dService, Civil3dService>();
 
@@ -86,10 +84,7 @@ namespace Metraj.Infrastructure
             services.AddSingleton<MainViewModel>();
             services.AddSingleton<UzunlukViewModel>();
             services.AddSingleton<AlanViewModel>();
-            services.AddSingleton<HacimViewModel>();
             services.AddSingleton<ToplamaViewModel>();
-            services.AddSingleton<AyarlarViewModel>();
-            services.AddSingleton<EnKesitAlanViewModel>();
             services.AddSingleton<YolMetrajViewModel>();
             services.AddSingleton<IhaleKontrolViewModel>();
             services.AddSingleton<EnkesitOkumaMainViewModel>();

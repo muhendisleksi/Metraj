@@ -60,11 +60,7 @@ Large services split into partial files: ClassName.Aspect.cs
 | METRAJ | Toggle main panel |
 | METRAJUZUNLUK | Quick length measurement |
 | METRAJALAN | Quick area measurement |
-| METRAJHACIM | Volume tab |
 | METRAJTOPLA | Quick number sum |
-| METRAJANNOTASYON | Write annotation |
-| METRAJEXCEL | Export to Excel |
-| METRAJTEMIZLE | Clear annotations |
 
 ## Coding Standards
 

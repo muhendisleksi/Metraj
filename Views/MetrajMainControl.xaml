@@ -47,12 +47,6 @@
             <TabItem Header="Alan">
                 <local:AlanControl x:Name="AlanTab"/>
             </TabItem>
-            <TabItem Header="Kübaj">
-                <local:HacimControl x:Name="HacimTab"/>
-            </TabItem>
-            <TabItem Header="En Kesit">
-                <local:EnKesitAlanControl x:Name="EnKesitTab"/>
-            </TabItem>
             <TabItem Header="Toplama">
                 <local:ToplamaControl x:Name="ToplamaTab"/>
             </TabItem>
@@ -61,9 +55,6 @@
             </TabItem>
             <TabItem Header="İhale Kontrol">
                 <local:IhaleKontrolControl x:Name="IhaleKontrolTab"/>
-            </TabItem>
-            <TabItem Header="Ayarlar">
-                <local:AyarlarControl x:Name="AyarlarTab"/>
             </TabItem>
         </TabControl>
 

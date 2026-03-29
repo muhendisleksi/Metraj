@@ -41,10 +41,7 @@ namespace Metraj.Commands
             // Tab'lara ViewModel ata
             _mainControl.UzunlukTab.DataContext = ServiceContainer.GetRequiredService<UzunlukViewModel>();
             _mainControl.AlanTab.DataContext = ServiceContainer.GetRequiredService<AlanViewModel>();
-            _mainControl.HacimTab.DataContext = ServiceContainer.GetRequiredService<HacimViewModel>();
             _mainControl.ToplamaTab.DataContext = ServiceContainer.GetRequiredService<ToplamaViewModel>();
-            _mainControl.EnKesitTab.DataContext = ServiceContainer.GetRequiredService<EnKesitAlanViewModel>();
-            _mainControl.AyarlarTab.DataContext = ServiceContainer.GetRequiredService<AyarlarViewModel>();
             _mainControl.YolMetrajTab.DataContext = ServiceContainer.GetRequiredService<YolMetrajViewModel>();
             _mainControl.IhaleKontrolTab.DataContext = ServiceContainer.GetRequiredService<IhaleKontrolViewModel>();
 
