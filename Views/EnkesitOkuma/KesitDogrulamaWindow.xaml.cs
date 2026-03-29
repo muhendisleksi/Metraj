@@ -9,6 +9,7 @@ namespace Metraj.Views.EnkesitOkuma
         {
             InitializeComponent();
             Loaded += OnLoaded;
+            ContentRendered += OnContentRendered;
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -26,6 +27,14 @@ namespace Metraj.Views.EnkesitOkuma
 
                 OnizlemeControl.CizgiSecildi += (s, cizgi) => vm.SecilenCizgi = cizgi;
             }
+        }
+
+        private void OnContentRendered(object sender, System.EventArgs e)
+        {
+            // Loaded sirasinda Canvas henuz boyutlanmamis olabilir.
+            // ContentRendered'da layout kesinlikle tamamlanmistir — ilk kesiti tekrar ciz.
+            if (DataContext is KesitDogrulamaViewModel vm && vm.AktifKesit != null)
+                OnizlemeControl.CizgileriYukle(vm.AktifKesit);
         }
     }
 }

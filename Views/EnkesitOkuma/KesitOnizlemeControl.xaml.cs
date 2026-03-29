@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Metraj.Models.YolEnkesit;
 using WpfPolyline = System.Windows.Shapes.Polyline;
 
@@ -315,6 +316,15 @@ namespace Metraj.Views.EnkesitOkuma
             if (canvasW < 10 || canvasH < 10)
             {
                 _cizimBekliyor = true;
+                // SizeChanged tetiklenmezse diye Dispatcher ile tekrar dene
+                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+                {
+                    if (_cizimBekliyor && KesitCanvas.ActualWidth > 10 && KesitCanvas.ActualHeight > 10)
+                    {
+                        _cizimBekliyor = false;
+                        Ciz();
+                    }
+                }));
                 return;
             }
 
