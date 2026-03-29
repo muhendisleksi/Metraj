@@ -15,11 +15,30 @@ namespace Metraj.Services.YolEnkesit
             var sablon = new ReferansKesitSablonu
             {
                 OlusturmaTarihi = DateTime.Now,
-                Kurallar = new List<RolEslestirmeKurali>()
+                Kurallar = new List<RolEslestirmeKurali>(),
+                LayerRenkEslemeleri = new List<LayerRenkEsleme>()
             };
 
             double clY = BulEksenY(rolAtanmisCizgiler);
 
+            // Layer+Renk bazli tam esleme (birincil — dogrulamada oncelikli kullanilir)
+            var layerRenkGruplari = rolAtanmisCizgiler
+                .Where(c => c.Rol != CizgiRolu.Tanimsiz)
+                .GroupBy(c => new { Layer = c.LayerAdi ?? "", c.RenkIndex })
+                .ToList();
+
+            foreach (var grup in layerRenkGruplari)
+            {
+                // Gruptaki ilk cizginin rolunu al (ayni layer+renk'te ayni rol olmali)
+                sablon.LayerRenkEslemeleri.Add(new LayerRenkEsleme
+                {
+                    LayerAdi = grup.Key.Layer,
+                    RenkIndex = grup.Key.RenkIndex,
+                    Rol = grup.First().Rol
+                });
+            }
+
+            // Eski pattern bazli kurallar (fallback uyumluluk)
             foreach (var cizgi in rolAtanmisCizgiler)
             {
                 if (cizgi.Rol == CizgiRolu.Tanimsiz || cizgi.Rol == CizgiRolu.Diger) continue;
@@ -38,6 +57,27 @@ namespace Metraj.Services.YolEnkesit
 
         public void OtomatikRolAta(KesitGrubu kesit, ReferansKesitSablonu sablon)
         {
+            // Birincil: Layer+Renk tam esleme (kalibrasyondaki birebir atamalar)
+            var lrEslemeler = sablon.LayerRenkEslemeleri;
+            if (lrEslemeler != null && lrEslemeler.Count > 0)
+            {
+                foreach (var cizgi in kesit.Cizgiler)
+                {
+                    if (cizgi.Rol != CizgiRolu.Tanimsiz) continue;
+
+                    var esleme = lrEslemeler.FirstOrDefault(e =>
+                        string.Equals(e.LayerAdi, cizgi.LayerAdi, StringComparison.OrdinalIgnoreCase)
+                        && e.RenkIndex == cizgi.RenkIndex);
+
+                    if (esleme != null)
+                    {
+                        cizgi.Rol = esleme.Rol;
+                        cizgi.OtomatikAtanmis = true;
+                    }
+                }
+            }
+
+            // Fallback: pattern + renk + pozisyon bazli eski kurallar (henuz atanmayanlar icin)
             foreach (var cizgi in kesit.Cizgiler)
             {
                 if (cizgi.Rol != CizgiRolu.Tanimsiz) continue;
@@ -101,7 +141,7 @@ namespace Metraj.Services.YolEnkesit
 
         private RolEslestirmeKurali PozisyonIleEslestir(CizgiTanimi cizgi, List<RolEslestirmeKurali> kurallar, KesitGrubu kesit)
         {
-            var eksenCizgi = kesit.Cizgiler.FirstOrDefault(c => c.Rol == CizgiRolu.EksenCizgisi);
+            var eksenCizgi = kesit.Cizgiler.FirstOrDefault(c => c.Rol == CizgiRolu.Diger);
             if (eksenCizgi == null) return null;
 
             double clY = eksenCizgi.OrtalamaY;
@@ -126,7 +166,7 @@ namespace Metraj.Services.YolEnkesit
 
         private double BulEksenY(List<CizgiTanimi> cizgiler)
         {
-            var eksen = cizgiler.FirstOrDefault(c => c.Rol == CizgiRolu.EksenCizgisi);
+            var eksen = cizgiler.FirstOrDefault(c => c.Rol == CizgiRolu.Diger);
             return eksen?.OrtalamaY ?? 0;
         }
 

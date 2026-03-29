@@ -18,29 +18,37 @@ namespace Metraj.Views.EnkesitOkuma
             var vm = DataContext as ReferansKesitViewModel;
             if (vm == null) return;
 
-            // Ilk yukleme: filtrelenmis cizgileri Canvas'a gonder
-            OnizlemeControl.CizgileriYukle(new List<CizgiTanimi>(vm.GoruntulenenCizgiler));
+            // Kalibrasyon: hibrit mod — rol atanmis cizgiler rol rengi, atanmamislar orijinal
+            OnizlemeControl.RenkModu = OnizlemeRenkModu.HibritRenk;
 
-            // Canvas -> Liste senkronizasyonu
+            // Ilk yukleme: tum cizgileri Canvas'a gonder (dogrulama ile ayni veri)
+            OnizlemeControl.CizgileriYukle(new List<CizgiTanimi>(vm.Cizgiler));
+
+            // Canvas -> ViewModel senkronizasyonu
             OnizlemeControl.CizgiSecildi += (s, cizgi) => vm.SecilenCizgi = cizgi;
 
-            // Liste -> Canvas senkronizasyonu
-            vm.PropertyChanged += (s, args) =>
-            {
-                if (args.PropertyName == nameof(vm.SecilenCizgi) && vm.SecilenCizgi != null)
-                    OnizlemeControl.VurgulaCizgi(vm.SecilenCizgi);
-            };
-
-            // Filtre degisince Canvas'i guncelle
+            // Rol degistiginde onizlemeyi guncelle — zoom/pan/highlight korunur
             vm.FiltreDegisti += (s, ev) =>
             {
-                OnizlemeControl.CizgileriYukle(new List<CizgiTanimi>(vm.GoruntulenenCizgiler));
+                OnizlemeControl.CizgileriGuncelle(new List<CizgiTanimi>(vm.Cizgiler));
+            };
+
+            // Tablo satir secimi → onizlemede zoom + highlight
+            vm.PropertyChanged += (s, args) =>
+            {
+                if (args.PropertyName == nameof(vm.SecilenGrup))
+                {
+                    if (vm.SecilenGrup != null)
+                        OnizlemeControl.HighlightLayer(vm.SecilenGrup.LayerAdi, vm.SecilenGrup.RenkIndex);
+                    else
+                        OnizlemeControl.HighlightTemizle();
+                }
             };
 
             // Kesit degistirildiginde Canvas'i yeniden yukle
             vm.KesitDegistirildi += (s, ev) =>
             {
-                OnizlemeControl.CizgileriYukle(new List<CizgiTanimi>(vm.GoruntulenenCizgiler));
+                OnizlemeControl.CizgileriYukle(new List<CizgiTanimi>(vm.Cizgiler));
             };
         }
 

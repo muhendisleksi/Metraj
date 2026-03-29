@@ -91,6 +91,49 @@ namespace Metraj.Services.YolEnkesit
             return gruplar.OrderByDescending(g => g.Max(p => p.X) - g.Min(p => p.X)).First();
         }
 
+        /// <summary>
+        /// RolGruplariniAl ile ayni birlestirme mantigi AMA DikeyVeyaSevMi filtresi UYGULAMADAN.
+        /// Yarma/Dolgu icin sev segmentleri dahil tum noktalar gerekli.
+        /// </summary>
+        private List<Point2d> RolTumNoktalariniAl(KesitGrubu kesit, CizgiRolu rol)
+        {
+            var cizgiler = kesit.Cizgiler.Where(c => c.Rol == rol).ToList();
+            if (cizgiler.Count == 0) return null;
+            if (cizgiler.Count == 1) return cizgiler[0].Noktalar;
+
+            var zincirler = GeometrikZincirlemeYap(cizgiler);
+            var sonuc = new List<List<Point2d>>();
+            foreach (var zincir in zincirler)
+                sonuc.Add(zincir.Count == 1 ? zincir[0].Noktalar : ZincirNoktalariBirlestir(zincir));
+
+            if (sonuc.Count == 0) return null;
+            return sonuc.OrderByDescending(g => g.Max(p => p.X) - g.Min(p => p.X)).First();
+        }
+
+        /// <summary>
+        /// Yarma/Dolgu icin alt sinir noktalarini al — en alt ustyapi tabakasi.
+        /// Oncelik: AltTemel → Plentmiks → BitumluTemel → Binder → Asinma
+        /// </summary>
+        private List<Point2d> EnAltTabakaNoktalariniAl(KesitGrubu kesit)
+        {
+            var fallbackSirasi = new[]
+            {
+                CizgiRolu.AltTemel, CizgiRolu.Plentmiks,
+                CizgiRolu.BitumluTemel, CizgiRolu.Binder, CizgiRolu.Asinma
+            };
+            foreach (var fb in fallbackSirasi)
+            {
+                var nkt = RolNoktalariniAl(kesit, fb);
+                if (nkt != null)
+                {
+                    if (_logSayaci < 3) LoggingService.Info($"  [EN-ALT-TABAKA] {fb} kullanildi ({nkt.Count} pnt)");
+                    return nkt;
+                }
+            }
+
+            return null;
+        }
+
         // =============== GEOMETRIK ZINCIRLEME ===============
 
         /// <summary>
@@ -264,31 +307,13 @@ namespace Metraj.Services.YolEnkesit
                 }
             }
 
-            // Yarma/dolgu icin birlesik noktalar (en genis Y-grubu)
-            var siyirmaNkt = RolNoktalariniAl(kesit, CizgiRolu.SiyirmaTaban);
-            var ustyapiAltNkt = RolNoktalariniAl(kesit, CizgiRolu.UstyapiAltKotu);
-
-            if (ustyapiAltNkt == null)
-            {
-                var fallbackSirasi = new[]
-                {
-                    CizgiRolu.KirmatasTaban, CizgiRolu.AltTemelTaban, CizgiRolu.PlentmiksTaban,
-                    CizgiRolu.BitumluTemelTaban, CizgiRolu.BinderTaban, CizgiRolu.AsinmaTaban
-                };
-                foreach (var fb in fallbackSirasi)
-                {
-                    ustyapiAltNkt = RolNoktalariniAl(kesit, fb);
-                    if (ustyapiAltNkt != null)
-                    {
-                        if (detayliLog) LoggingService.Info($"  UstyapiAltKotu YOK -> fallback: {fb}");
-                        break;
-                    }
-                }
-            }
+            // Yarma/dolgu icin: Siyirma filtresiz (sev dahil), alt sinir en alt ustyapi tabakasi
+            var siyirmaNkt = RolTumNoktalariniAl(kesit, CizgiRolu.Siyirma);
+            var ustyapiAltNkt = EnAltTabakaNoktalariniAl(kesit);
 
             // Siyirma — coklu Y-grubu ile hesapla
             {
-                double siyirmaAlani = CokluGrupAlanHesapla(kesit, CizgiRolu.Zemin, CizgiRolu.SiyirmaTaban, "Siyirma");
+                double siyirmaAlani = CokluGrupAlanHesapla(kesit, CizgiRolu.Zemin, CizgiRolu.Siyirma, "Siyirma");
                 if (detayliLog) LoggingService.Info($"  Siyirma alani: {siyirmaAlani:F4} m2");
                 if (siyirmaAlani > 0.0001)
                 {
@@ -297,7 +322,7 @@ namespace Metraj.Services.YolEnkesit
                         MalzemeAdi = "Siyirma",
                         Alan = siyirmaAlani,
                         UstCizgiRolu = CizgiRolu.Zemin,
-                        AltCizgiRolu = CizgiRolu.SiyirmaTaban,
+                        AltCizgiRolu = CizgiRolu.Siyirma,
                         Aciklama = "Zemin - Siyirma tabani arasi"
                     });
                 }
@@ -356,10 +381,10 @@ namespace Metraj.Services.YolEnkesit
                 double dolguAlani = BolgeAlanHesapla(ustyapiAltNkt, siyirmaNkt, kesisimX.Value, maxX);
 
                 if (yarmaAlani > 0.0001)
-                    sonuclar.Add(new AlanHesapSonucu { MalzemeAdi = "Yarma", Alan = yarmaAlani, UstCizgiRolu = CizgiRolu.SiyirmaTaban, AltCizgiRolu = CizgiRolu.UstyapiAltKotu, Aciklama = "Siyirma tabani > Ustyapi alt kotu bolgesi" });
+                    sonuclar.Add(new AlanHesapSonucu { MalzemeAdi = "Yarma", Alan = yarmaAlani, UstCizgiRolu = CizgiRolu.Siyirma, AltCizgiRolu = CizgiRolu.AltTemel, Aciklama = "Siyirma > En alt tabaka bolgesi" });
 
                 if (dolguAlani > 0.0001)
-                    sonuclar.Add(new AlanHesapSonucu { MalzemeAdi = "Dolgu", Alan = dolguAlani, UstCizgiRolu = CizgiRolu.UstyapiAltKotu, AltCizgiRolu = CizgiRolu.SiyirmaTaban, Aciklama = "Ustyapi alt kotu > Siyirma tabani bolgesi" });
+                    sonuclar.Add(new AlanHesapSonucu { MalzemeAdi = "Dolgu", Alan = dolguAlani, UstCizgiRolu = CizgiRolu.AltTemel, AltCizgiRolu = CizgiRolu.Siyirma, Aciklama = "En alt tabaka > Siyirma bolgesi" });
             }
             else
             {
@@ -369,7 +394,7 @@ namespace Metraj.Services.YolEnkesit
                 double tamAlan = IkiCizgiArasiAlanHesapla(siyirmaNkt, ustyapiAltNkt, malzeme);
 
                 if (tamAlan > 0.0001)
-                    sonuclar.Add(new AlanHesapSonucu { MalzemeAdi = malzeme, Alan = tamAlan, UstCizgiRolu = siyirmaOrtY > ustyapiOrtY ? CizgiRolu.SiyirmaTaban : CizgiRolu.UstyapiAltKotu, AltCizgiRolu = siyirmaOrtY > ustyapiOrtY ? CizgiRolu.UstyapiAltKotu : CizgiRolu.SiyirmaTaban, Aciklama = $"{malzeme} - tam bolge" });
+                    sonuclar.Add(new AlanHesapSonucu { MalzemeAdi = malzeme, Alan = tamAlan, UstCizgiRolu = siyirmaOrtY > ustyapiOrtY ? CizgiRolu.Siyirma : CizgiRolu.AltTemel, AltCizgiRolu = siyirmaOrtY > ustyapiOrtY ? CizgiRolu.AltTemel : CizgiRolu.Siyirma, Aciklama = $"{malzeme} - tam bolge" });
             }
         }
 
@@ -377,12 +402,11 @@ namespace Metraj.Services.YolEnkesit
         {
             var tabakalar = new[]
             {
-                (ust: CizgiRolu.ProjeKotu, alt: CizgiRolu.AsinmaTaban, ad: "Asinma"),
-                (ust: CizgiRolu.AsinmaTaban, alt: CizgiRolu.BinderTaban, ad: "Binder"),
-                (ust: CizgiRolu.BinderTaban, alt: CizgiRolu.BitumluTemelTaban, ad: "Bitumlu Temel"),
-                (ust: CizgiRolu.BitumluTemelTaban, alt: CizgiRolu.PlentmiksTaban, ad: "Plentmiks"),
-                (ust: CizgiRolu.PlentmiksTaban, alt: CizgiRolu.AltTemelTaban, ad: "Alttemel"),
-                (ust: CizgiRolu.AltTemelTaban, alt: CizgiRolu.KirmatasTaban, ad: "Kirmatas"),
+                (ust: CizgiRolu.ProjeKotu, alt: CizgiRolu.Asinma, ad: "Asinma"),
+                (ust: CizgiRolu.Asinma, alt: CizgiRolu.Binder, ad: "Binder"),
+                (ust: CizgiRolu.Binder, alt: CizgiRolu.BitumluTemel, ad: "Bitumlu Temel"),
+                (ust: CizgiRolu.BitumluTemel, alt: CizgiRolu.Plentmiks, ad: "Plentmiks"),
+                (ust: CizgiRolu.Plentmiks, alt: CizgiRolu.AltTemel, ad: "Alttemel"),
             };
 
             foreach (var (ust, alt, ad) in tabakalar)
@@ -584,9 +608,10 @@ namespace Metraj.Services.YolEnkesit
             sb.AppendLine("  [2] ROL DURUMU (birlestirme)");
             var tumRoller = new[]
             {
-                CizgiRolu.Zemin, CizgiRolu.SiyirmaTaban, CizgiRolu.ProjeKotu, CizgiRolu.UstyapiAltKotu,
-                CizgiRolu.AsinmaTaban, CizgiRolu.BinderTaban, CizgiRolu.BitumluTemelTaban,
-                CizgiRolu.PlentmiksTaban, CizgiRolu.AltTemelTaban, CizgiRolu.KirmatasTaban
+                CizgiRolu.Zemin, CizgiRolu.Siyirma, CizgiRolu.ProjeKotu,
+                CizgiRolu.Asinma, CizgiRolu.Binder, CizgiRolu.BitumluTemel,
+                CizgiRolu.Plentmiks, CizgiRolu.AltTemel,
+                CizgiRolu.Yarma, CizgiRolu.Dolgu
             };
             foreach (var rol in tumRoller)
             {
@@ -623,27 +648,11 @@ namespace Metraj.Services.YolEnkesit
             sb.AppendLine("  [3] MALZEME HESAPLARI");
 
             var zeminNkt = RolNoktalariniAl(kesit, CizgiRolu.Zemin);
-            var siyirmaNkt = RolNoktalariniAl(kesit, CizgiRolu.SiyirmaTaban);
-            var ustyapiAltNkt = RolNoktalariniAl(kesit, CizgiRolu.UstyapiAltKotu);
-
-            // UstyapiAltKotu fallback (tanilama icin)
-            if (ustyapiAltNkt == null)
-            {
-                var fbSirasi = new[] { CizgiRolu.KirmatasTaban, CizgiRolu.AltTemelTaban, CizgiRolu.PlentmiksTaban,
-                    CizgiRolu.BitumluTemelTaban, CizgiRolu.BinderTaban, CizgiRolu.AsinmaTaban };
-                foreach (var fb in fbSirasi)
-                {
-                    ustyapiAltNkt = RolNoktalariniAl(kesit, fb);
-                    if (ustyapiAltNkt != null)
-                    {
-                        sb.AppendLine($"  ** UstyapiAltKotu YOK -> fallback: {fb}");
-                        break;
-                    }
-                }
-            }
+            var siyirmaNkt = RolTumNoktalariniAl(kesit, CizgiRolu.Siyirma);
+            var ustyapiAltNkt = EnAltTabakaNoktalariniAl(kesit);
 
             // Siyirma
-            CiftHesapLog(sb, "Siyirma", zeminNkt, siyirmaNkt, CizgiRolu.Zemin, CizgiRolu.SiyirmaTaban, kesit);
+            CiftHesapLog(sb, "Siyirma", zeminNkt, siyirmaNkt, CizgiRolu.Zemin, CizgiRolu.Siyirma, kesit);
 
             // Yarma/Dolgu
             if (siyirmaNkt != null && ustyapiAltNkt != null)
@@ -653,8 +662,8 @@ namespace Metraj.Services.YolEnkesit
                 double overlap = maxX - minX;
 
                 sb.AppendLine($"  --- Yarma/Dolgu ---");
-                sb.AppendLine($"      Ust: {CizgiRolu.SiyirmaTaban} X=[{siyirmaNkt.Min(p => p.X):F2}..{siyirmaNkt.Max(p => p.X):F2}]");
-                sb.AppendLine($"      Alt: {CizgiRolu.UstyapiAltKotu} X=[{ustyapiAltNkt.Min(p => p.X):F2}..{ustyapiAltNkt.Max(p => p.X):F2}]");
+                sb.AppendLine($"      Ust: {CizgiRolu.Siyirma} X=[{siyirmaNkt.Min(p => p.X):F2}..{siyirmaNkt.Max(p => p.X):F2}]");
+                sb.AppendLine($"      Alt: EnAltTabaka X=[{ustyapiAltNkt.Min(p => p.X):F2}..{ustyapiAltNkt.Max(p => p.X):F2}]");
                 sb.AppendLine($"      X overlap: [{minX:F2}..{maxX:F2}] = {overlap:F2} birim");
 
                 if (overlap <= 0)
@@ -683,18 +692,17 @@ namespace Metraj.Services.YolEnkesit
             else
             {
                 sb.AppendLine($"  --- Yarma/Dolgu ---");
-                sb.AppendLine($"      SONUC: {(siyirmaNkt == null ? "SiyirmaTaban" : "UstyapiAltKotu")} eksik, hesap yapilamadi.");
+                sb.AppendLine($"      SONUC: {(siyirmaNkt == null ? "Siyirma" : "EnAltTabaka")} eksik, hesap yapilamadi.");
             }
 
             // Ustyapi tabakalari
             var tabakalar = new[]
             {
-                (ust: CizgiRolu.ProjeKotu, alt: CizgiRolu.AsinmaTaban, ad: "Asinma"),
-                (ust: CizgiRolu.AsinmaTaban, alt: CizgiRolu.BinderTaban, ad: "Binder"),
-                (ust: CizgiRolu.BinderTaban, alt: CizgiRolu.BitumluTemelTaban, ad: "Bitumlu Temel"),
-                (ust: CizgiRolu.BitumluTemelTaban, alt: CizgiRolu.PlentmiksTaban, ad: "Plentmiks"),
-                (ust: CizgiRolu.PlentmiksTaban, alt: CizgiRolu.AltTemelTaban, ad: "Alttemel"),
-                (ust: CizgiRolu.AltTemelTaban, alt: CizgiRolu.KirmatasTaban, ad: "Kirmatas"),
+                (ust: CizgiRolu.ProjeKotu, alt: CizgiRolu.Asinma, ad: "Asinma"),
+                (ust: CizgiRolu.Asinma, alt: CizgiRolu.Binder, ad: "Binder"),
+                (ust: CizgiRolu.Binder, alt: CizgiRolu.BitumluTemel, ad: "Bitumlu Temel"),
+                (ust: CizgiRolu.BitumluTemel, alt: CizgiRolu.Plentmiks, ad: "Plentmiks"),
+                (ust: CizgiRolu.Plentmiks, alt: CizgiRolu.AltTemel, ad: "Alttemel"),
             };
 
             foreach (var (ust, alt, ad) in tabakalar)

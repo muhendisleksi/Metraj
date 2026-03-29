@@ -85,20 +85,22 @@ namespace Metraj.Services.YolEnkesit
             // — bunlar alan tasiyan entity olsalar bile baska malzemelere eklenmemeli
             var rolMalzeme = new Dictionary<CizgiRolu, string>
             {
-                { CizgiRolu.SiyirmaTaban, "Siyirma" },
-                { CizgiRolu.AsinmaTaban, "Asinma" },
-                { CizgiRolu.BinderTaban, "Binder" },
-                { CizgiRolu.BitumluTemelTaban, "Bitumlu Temel" },
-                { CizgiRolu.PlentmiksTaban, "Plentmiks" },
-                { CizgiRolu.AltTemelTaban, "Alttemel" },
-                { CizgiRolu.KirmatasTaban, "Kirmatas" },
+                { CizgiRolu.Siyirma, "Siyirma" },
+                { CizgiRolu.Yarma, "Yarma" },
+                { CizgiRolu.Dolgu, "Dolgu" },
+                { CizgiRolu.Asinma, "Asinma" },
+                { CizgiRolu.Binder, "Binder" },
+                { CizgiRolu.BitumluTemel, "Bitumlu Temel" },
+                { CizgiRolu.Plentmiks, "Plentmiks" },
+                { CizgiRolu.AltTemel, "Alttemel" },
+                { CizgiRolu.BTYerineKonan, "B.T. Yerine Konan" },
+                { CizgiRolu.BTYerineKonmayan, "B.T. Yerine Konmayan" },
             };
 
             // Sinir cizgisi rolleri — alan tasissalar bile hesaba dahil etme
             var sinirRolleri = new HashSet<CizgiRolu>
             {
-                CizgiRolu.Zemin, CizgiRolu.ProjeKotu, CizgiRolu.UstyapiAltKotu,
-                CizgiRolu.HendekCizgisi, CizgiRolu.SevCizgisi, CizgiRolu.BanketCizgisi
+                CizgiRolu.Zemin, CizgiRolu.ProjeKotu
             };
 
             int kapaliSayisi = 0;
@@ -149,10 +151,11 @@ namespace Metraj.Services.YolEnkesit
             foreach (var cizgi in kesit.Cizgiler)
             {
                 if (cizgi.Rol == CizgiRolu.CerceveCizgisi || cizgi.Rol == CizgiRolu.GridCizgisi
-                    || cizgi.Rol == CizgiRolu.EksenCizgisi)
+                    || cizgi.Rol == CizgiRolu.Diger)
                     continue;
 
-                if (cizgi.DikeyVeyaSevMi)
+                // Yarma/Dolgu kapali entity'leri sev bolgesini kapsayabilir — dikey filtre atla
+                if (cizgi.DikeyVeyaSevMi && cizgi.Rol != CizgiRolu.Yarma && cizgi.Rol != CizgiRolu.Dolgu)
                 {
                     if (detayliLog && cizgi.Rol != CizgiRolu.Tanimsiz)
                         LoggingService.Info($"  DIKEY-ATLANDI: L={cizgi.LayerAdi}, Rol={cizgi.Rol}, Alan={cizgi.EntityAlani:F4}");
@@ -244,12 +247,17 @@ namespace Metraj.Services.YolEnkesit
             if (string.IsNullOrEmpty(layerAdi)) return null;
             string upper = layerAdi.ToUpperInvariant();
 
+            if (upper.Contains("YERINE"))
+            {
+                if (upper.Contains("KONMAYAN")) return "B.T. Yerine Konmayan";
+                if (upper.Contains("KONAN")) return "B.T. Yerine Konan";
+            }
+
             if (upper.Contains("ASINMA") || upper.Contains("A\u015EINMA")) return "Asinma";
             if (upper.Contains("BINDER") || upper.Contains("B\u0130NDER")) return "Binder";
             if (upper.Contains("BITUMLU") || upper.Contains("B\u0130T\u00DCML\u00DC") || upper.Contains("BITUMEN")) return "Bitumlu Temel";
             if (upper.Contains("PLENTMIKS") || upper.Contains("PLENTM\u0130KS")) return "Plentmiks";
             if (upper.Contains("ALTTEMEL") || upper.Contains("ALT TEMEL") || upper.Contains("GRANULER") || upper.Contains("GRAN\u00DCLER")) return "Alttemel";
-            if (upper.Contains("KIRMATAS") || upper.Contains("KIRMATA\u015E")) return "Kirmatas";
             if (upper.Contains("SIYIRMA") || upper.Contains("S\u0130YIRMA") || upper.Contains("BITKISEL") || upper.Contains("B\u0130TK\u0130SEL")) return "Siyirma";
             if (upper.Contains("YARMA") || upper.Contains("KAZI")) return "Yarma";
             if (upper.Contains("DOLGU")) return "Dolgu";
@@ -280,19 +288,18 @@ namespace Metraj.Services.YolEnkesit
             if (detayliLog)
                 LoggingService.Info($"=== TRACE BOUNDARY ALAN HESAP: {kesit.Anchor?.IstasyonMetni}, CL_X={clX:F2} ===");
 
-            // 1. Siyirma: Zemin - SiyirmaTaban
-            TBMalzemeHesapla(kesit, CizgiRolu.Zemin, CizgiRolu.SiyirmaTaban, "Siyirma", clX, sonuclar, detayliLog);
+            // 1. Siyirma: Zemin - Siyirma
+            TBMalzemeHesapla(kesit, CizgiRolu.Zemin, CizgiRolu.Siyirma, "Siyirma", clX, sonuclar, detayliLog);
 
             // 2. Ustyapi tabakalari
-            TBMalzemeHesapla(kesit, CizgiRolu.ProjeKotu, CizgiRolu.AsinmaTaban, "Asinma", clX, sonuclar, detayliLog);
-            TBMalzemeHesapla(kesit, CizgiRolu.AsinmaTaban, CizgiRolu.BinderTaban, "Binder", clX, sonuclar, detayliLog);
-            TBMalzemeHesapla(kesit, CizgiRolu.BinderTaban, CizgiRolu.BitumluTemelTaban, "Bitumlu Temel", clX, sonuclar, detayliLog);
-            TBMalzemeHesapla(kesit, CizgiRolu.BitumluTemelTaban, CizgiRolu.PlentmiksTaban, "Plentmiks", clX, sonuclar, detayliLog);
-            TBMalzemeHesapla(kesit, CizgiRolu.PlentmiksTaban, CizgiRolu.AltTemelTaban, "Alttemel", clX, sonuclar, detayliLog);
-            TBMalzemeHesapla(kesit, CizgiRolu.AltTemelTaban, CizgiRolu.KirmatasTaban, "Kirmatas", clX, sonuclar, detayliLog);
+            TBMalzemeHesapla(kesit, CizgiRolu.ProjeKotu, CizgiRolu.Asinma, "Asinma", clX, sonuclar, detayliLog);
+            TBMalzemeHesapla(kesit, CizgiRolu.Asinma, CizgiRolu.Binder, "Binder", clX, sonuclar, detayliLog);
+            TBMalzemeHesapla(kesit, CizgiRolu.Binder, CizgiRolu.BitumluTemel, "Bitumlu Temel", clX, sonuclar, detayliLog);
+            TBMalzemeHesapla(kesit, CizgiRolu.BitumluTemel, CizgiRolu.Plentmiks, "Plentmiks", clX, sonuclar, detayliLog);
+            TBMalzemeHesapla(kesit, CizgiRolu.Plentmiks, CizgiRolu.AltTemel, "Alttemel", clX, sonuclar, detayliLog);
 
-            // 3. Yarma / Dolgu (ozel durum)
-            var siyirmaNkt = RolNoktalariniAl(kesit, CizgiRolu.SiyirmaTaban);
+            // 3. Yarma / Dolgu (ozel durum) — Siyirma filtresiz, alt sinir en alt ustyapi tabakasi
+            var siyirmaNkt = RolTumNoktalariniAl(kesit, CizgiRolu.Siyirma);
             var ustyapiAltNkt = UstyapiAltNoktalariniAl(kesit);
 
             if (siyirmaNkt != null && ustyapiAltNkt != null)
@@ -408,8 +415,8 @@ namespace Metraj.Services.YolEnkesit
                 {
                     MalzemeAdi = malzeme,
                     Alan = clAlan.Value,
-                    UstCizgiRolu = yarma ? CizgiRolu.SiyirmaTaban : CizgiRolu.UstyapiAltKotu,
-                    AltCizgiRolu = yarma ? CizgiRolu.UstyapiAltKotu : CizgiRolu.SiyirmaTaban,
+                    UstCizgiRolu = yarma ? CizgiRolu.Siyirma : CizgiRolu.AltTemel,
+                    AltCizgiRolu = yarma ? CizgiRolu.AltTemel : CizgiRolu.Siyirma,
                     Aciklama = $"TraceBoundary: {malzeme}"
                 });
 
@@ -465,8 +472,8 @@ namespace Metraj.Services.YolEnkesit
                 {
                     MalzemeAdi = "Yarma",
                     Alan = yarmaAlani,
-                    UstCizgiRolu = CizgiRolu.SiyirmaTaban,
-                    AltCizgiRolu = CizgiRolu.UstyapiAltKotu,
+                    UstCizgiRolu = CizgiRolu.Siyirma,
+                    AltCizgiRolu = CizgiRolu.AltTemel,
                     Aciklama = "TraceBoundary: Yarma (karisik kesit)"
                 });
             }
@@ -477,8 +484,8 @@ namespace Metraj.Services.YolEnkesit
                 {
                     MalzemeAdi = "Dolgu",
                     Alan = dolguAlani,
-                    UstCizgiRolu = CizgiRolu.UstyapiAltKotu,
-                    AltCizgiRolu = CizgiRolu.SiyirmaTaban,
+                    UstCizgiRolu = CizgiRolu.AltTemel,
+                    AltCizgiRolu = CizgiRolu.Siyirma,
                     Aciklama = "TraceBoundary: Dolgu (karisik kesit)"
                 });
             }
@@ -490,25 +497,21 @@ namespace Metraj.Services.YolEnkesit
         // =============== YARDIMCI METODLAR ===============
 
         /// <summary>
-        /// UstyapiAltKotu rolundeki cizgiyi al; yoksa en alt tabaka cizgisini fallback olarak kullan.
+        /// Yarma/Dolgu icin alt sinir noktalarini al.
+        /// En alt ustyapi tabakasini fallback sirasi ile arar.
         /// </summary>
         private List<Point2d> UstyapiAltNoktalariniAl(KesitGrubu kesit)
         {
-            var nkt = RolNoktalariniAl(kesit, CizgiRolu.UstyapiAltKotu);
-            if (nkt != null) return nkt;
-
             var fallbackSirasi = new[]
             {
-                CizgiRolu.KirmatasTaban, CizgiRolu.AltTemelTaban, CizgiRolu.PlentmiksTaban,
-                CizgiRolu.BitumluTemelTaban, CizgiRolu.BinderTaban, CizgiRolu.AsinmaTaban
+                CizgiRolu.AltTemel, CizgiRolu.Plentmiks,
+                CizgiRolu.BitumluTemel, CizgiRolu.Binder, CizgiRolu.Asinma
             };
-
             foreach (var fb in fallbackSirasi)
             {
-                nkt = RolNoktalariniAl(kesit, fb);
+                var nkt = RolNoktalariniAl(kesit, fb);
                 if (nkt != null) return nkt;
             }
-
             return null;
         }
 
@@ -607,13 +610,12 @@ namespace Metraj.Services.YolEnkesit
             // Standart malzeme ciftleri
             var ciftler = new[]
             {
-                (ust: CizgiRolu.Zemin, alt: CizgiRolu.SiyirmaTaban, ad: "Siyirma"),
-                (ust: CizgiRolu.ProjeKotu, alt: CizgiRolu.AsinmaTaban, ad: "Asinma"),
-                (ust: CizgiRolu.AsinmaTaban, alt: CizgiRolu.BinderTaban, ad: "Binder"),
-                (ust: CizgiRolu.BinderTaban, alt: CizgiRolu.BitumluTemelTaban, ad: "Bitumlu Temel"),
-                (ust: CizgiRolu.BitumluTemelTaban, alt: CizgiRolu.PlentmiksTaban, ad: "Plentmiks"),
-                (ust: CizgiRolu.PlentmiksTaban, alt: CizgiRolu.AltTemelTaban, ad: "Alttemel"),
-                (ust: CizgiRolu.AltTemelTaban, alt: CizgiRolu.KirmatasTaban, ad: "Kirmatas"),
+                (ust: CizgiRolu.Zemin, alt: CizgiRolu.Siyirma, ad: "Siyirma"),
+                (ust: CizgiRolu.ProjeKotu, alt: CizgiRolu.Asinma, ad: "Asinma"),
+                (ust: CizgiRolu.Asinma, alt: CizgiRolu.Binder, ad: "Binder"),
+                (ust: CizgiRolu.Binder, alt: CizgiRolu.BitumluTemel, ad: "Bitumlu Temel"),
+                (ust: CizgiRolu.BitumluTemel, alt: CizgiRolu.Plentmiks, ad: "Plentmiks"),
+                (ust: CizgiRolu.Plentmiks, alt: CizgiRolu.AltTemel, ad: "Alttemel"),
             };
 
             foreach (var (ustRol, altRol, ad) in ciftler)
@@ -632,9 +634,9 @@ namespace Metraj.Services.YolEnkesit
                 TBSampleDetayYaz(sb, ustNkt, altNkt, clX);
             }
 
-            // Yarma / Dolgu
-            sb.AppendLine($"      --- Yarma/Dolgu (SiyirmaTaban / UstyapiAltKotu) ---");
-            var siyirmaNkt = RolNoktalariniAl(kesit, CizgiRolu.SiyirmaTaban);
+            // Yarma / Dolgu — Siyirma filtresiz, alt sinir en alt ustyapi tabakasi
+            sb.AppendLine($"      --- Yarma/Dolgu (Siyirma / UstyapiAlt) ---");
+            var siyirmaNkt = RolTumNoktalariniAl(kesit, CizgiRolu.Siyirma);
             var ustyapiAltNkt = UstyapiAltNoktalariniAl(kesit);
 
             if (siyirmaNkt == null || ustyapiAltNkt == null)

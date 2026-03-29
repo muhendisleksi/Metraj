@@ -4,27 +4,23 @@ namespace Metraj.Models.YolEnkesit
     {
         Tanimsiz = 0,
 
-        // Ana referans çizgileri
+        // Malzemeler (kapali entity → .Area oku)
+        Siyirma,
+        Yarma,
+        Dolgu,
+        Asinma,
+        Binder,
+        BitumluTemel,
+        Plentmiks,
+        AltTemel,
+        BTYerineKonan,
+        BTYerineKonmayan,
+
+        // Sinir cizgileri (acik cizgi, geometrik fallback hesap icin)
         Zemin,
-        SiyirmaTaban,
         ProjeKotu,
-        UstyapiAltKotu,
 
-        // Üstyapı tabakaları (yukarıdan aşağıya)
-        AsinmaTaban,
-        BinderTaban,
-        BitumluTemelTaban,
-        PlentmiksTaban,
-        AltTemelTaban,
-        KirmatasTaban,
-
-        // Özel elemanlar
-        HendekCizgisi,
-        SevCizgisi,
-        BanketCizgisi,
-        EksenCizgisi,
-
-        // Filtrelenenler
+        // Filtre / sistem
         CerceveCizgisi,
         GridCizgisi,
         Diger

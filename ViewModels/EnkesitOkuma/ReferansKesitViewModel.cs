@@ -12,6 +12,72 @@ using Newtonsoft.Json;
 
 namespace Metraj.ViewModels.EnkesitOkuma
 {
+    public class LayerRenkGrubu : INotifyPropertyChanged
+    {
+        private CizgiRolu _atananRol;
+        private bool _onaylandi;
+
+        public string LayerAdi { get; set; }
+        public short RenkIndex { get; set; }
+        public int CizgiSayisi { get; set; }
+        public string XAraligi { get; set; }
+        public bool KapaliVar { get; set; }
+        public string OrnekBilgi { get; set; }
+
+        public CizgiRolu AtananRol
+        {
+            get => _atananRol;
+            set
+            {
+                if (_atananRol == value) return;
+                _atananRol = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AtananRol)));
+                // Kullanici ComboBox'tan secim yaptiginda otomatik onayla
+                Onaylandi = true;
+                RolDegisti?.Invoke(this);
+            }
+        }
+
+        public bool Onaylandi
+        {
+            get => _onaylandi;
+            set
+            {
+                if (_onaylandi == value) return;
+                _onaylandi = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Onaylandi)));
+                OnayDegisti?.Invoke();
+            }
+        }
+
+        /// <summary>ViewModel'in onay sayacini guncellemesi icin callback.</summary>
+        public Action OnayDegisti { get; set; }
+
+        /// <summary>Rol degistiginde ViewModel'in cizgileri aninda guncellemesi icin callback.</summary>
+        public Action<LayerRenkGrubu> RolDegisti { get; set; }
+
+        public System.Windows.Media.Color WpfRenk => AcadRenkCevir(RenkIndex);
+
+        public static System.Windows.Media.Color AcadRenkCevir(short idx)
+        {
+            switch (idx)
+            {
+                case 1: return System.Windows.Media.Color.FromRgb(0xFF, 0x00, 0x00); // Kirmizi
+                case 2: return System.Windows.Media.Color.FromRgb(0xFF, 0xFF, 0x00); // Sari
+                case 3: return System.Windows.Media.Color.FromRgb(0x00, 0xFF, 0x00); // Yesil
+                case 4: return System.Windows.Media.Color.FromRgb(0x00, 0xFF, 0xFF); // Cyan
+                case 5: return System.Windows.Media.Color.FromRgb(0x00, 0x00, 0xFF); // Mavi
+                case 6: return System.Windows.Media.Color.FromRgb(0xFF, 0x00, 0xFF); // Magenta
+                case 7: return System.Windows.Media.Color.FromRgb(0xFF, 0xFF, 0xFF); // Beyaz
+                case 8: return System.Windows.Media.Color.FromRgb(0x80, 0x80, 0x80); // Gri
+                case 9: return System.Windows.Media.Color.FromRgb(0xC0, 0xC0, 0xC0); // Acik gri
+                default: return System.Windows.Media.Color.FromRgb(0xAA, 0xAA, 0xAA);
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+    }
+
     public class LayerFiltreOgesi : INotifyPropertyChanged
     {
         private bool _gorunur = true;
@@ -40,6 +106,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
         private CizgiRolu _secilenRol;
         private ReferansKesitSablonu _olusturulanSablon;
         private bool _cerceveGoster;
+        private LayerRenkGrubu _secilenGrup;
 
         // Kesit navigasyonu
         private List<AnchorNokta> _tumAnchorlar;
@@ -50,7 +117,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
         private KesitSecimOgesi _secilenKesitOgesi;
 
         private static readonly HashSet<string> VarsayilanKapaliLayerler = new HashSet<string>(
-            StringComparer.OrdinalIgnoreCase) { "0", "1", "Defpoints" };
+            StringComparer.OrdinalIgnoreCase) { "Defpoints" };
 
         public ReferansKesitViewModel(ICizgiRolAtamaService rolAtamaService)
         {
@@ -64,6 +131,8 @@ namespace Metraj.ViewModels.EnkesitOkuma
             TumLayerKapat = new RelayCommand(() => { foreach (var l in LayerFiltresi) l.Gorunur = false; });
             OncekiKesitCommand = new RelayCommand(OncekiKesit, () => NavigasyonAktif && _aktifKesitIndex > 0);
             SonrakiKesitCommand = new RelayCommand(SonrakiKesit, () => NavigasyonAktif && _aktifKesitIndex < (_tumAnchorlar?.Count ?? 0) - 1);
+            TopluRolAtaCommand = new RelayCommand(TopluRolAtaUygula, () => TopluTumOnaylandi);
+            TumunuOnaylaCommand = new RelayCommand(TumunuOnayla);
 
             MevcutRoller = new ObservableCollection<CizgiRolu>(
                 Enum.GetValues(typeof(CizgiRolu)).Cast<CizgiRolu>());
@@ -72,6 +141,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
         public ObservableCollection<CizgiTanimi> Cizgiler { get; } = new ObservableCollection<CizgiTanimi>();
         public ObservableCollection<CizgiTanimi> GoruntulenenCizgiler { get; } = new ObservableCollection<CizgiTanimi>();
         public ObservableCollection<LayerFiltreOgesi> LayerFiltresi { get; } = new ObservableCollection<LayerFiltreOgesi>();
+        public ObservableCollection<LayerRenkGrubu> LayerRenkGruplari { get; } = new ObservableCollection<LayerRenkGrubu>();
         public ObservableCollection<CizgiRolu> MevcutRoller { get; }
 
         public event EventHandler FiltreDegisti;
@@ -135,17 +205,96 @@ namespace Metraj.ViewModels.EnkesitOkuma
         public ICommand TumLayerKapat { get; }
         public ICommand OncekiKesitCommand { get; }
         public ICommand SonrakiKesitCommand { get; }
+        public ICommand TopluRolAtaCommand { get; }
+        public ICommand TumunuOnaylaCommand { get; }
+
+        public bool TopluTumOnaylandi => LayerRenkGruplari.Count > 0 && LayerRenkGruplari.All(g => g.Onaylandi);
+
+        public string TopluOnayDurumu
+        {
+            get
+            {
+                int toplam = LayerRenkGruplari.Count;
+                if (toplam == 0) return "";
+                int onaylanan = LayerRenkGruplari.Count(g => g.Onaylandi);
+                return $"{onaylanan}/{toplam} onaylandi";
+            }
+        }
+
+        public string KaydetButonMetni
+        {
+            get
+            {
+                int toplam = LayerRenkGruplari.Count;
+                if (toplam == 0) return "Kaydet";
+                int onaylanan = LayerRenkGruplari.Count(g => g.Onaylandi);
+                return $"Kaydet ({onaylanan}/{toplam})";
+            }
+        }
+
+        public LayerRenkGrubu SecilenGrup
+        {
+            get => _secilenGrup;
+            set
+            {
+                if (SetProperty(ref _secilenGrup, value))
+                    FiltreDegisti?.Invoke(this, EventArgs.Empty);
+            }
+        }
 
         public void Yukle(KesitGrubu kesit)
         {
+            // Mevcut atamalari kaydet (kesit navigasyonunda korunmasi icin)
+            var oncekiAtamalar = new Dictionary<string, (CizgiRolu rol, bool onay)>();
+            foreach (var g in LayerRenkGruplari)
+                oncekiAtamalar[$"{g.LayerAdi}|{g.RenkIndex}"] = (g.AtananRol, g.Onaylandi);
+
             _referansKesit = kesit;
             Cizgiler.Clear();
             foreach (var c in kesit.Cizgiler.OrderByDescending(c => c.OrtalamaY))
                 Cizgiler.Add(c);
 
+            // OtomatikAta cizgilere roller atar, tablo bu sonuclardan doldurulur
             OtomatikAta();
             LayerFiltresiOlustur();
+            LayerRenkTablosuOlustur();
+
+            // Onceki atamalari yeni tabloya uygula
+            if (oncekiAtamalar.Count > 0)
+                OncekiAtamalariUygula(oncekiAtamalar);
+
             FiltreUygula();
+        }
+
+        private void OncekiAtamalariUygula(Dictionary<string, (CizgiRolu rol, bool onay)> oncekiAtamalar)
+        {
+            foreach (var g in LayerRenkGruplari)
+            {
+                string anahtar = $"{g.LayerAdi}|{g.RenkIndex}";
+                if (oncekiAtamalar.TryGetValue(anahtar, out var onceki))
+                {
+                    // AtananRol setter'i GrupRolDegisti + Onaylandi=true tetikler
+                    // Bunu gecici olarak devre disi birak, toplu uygulayalim
+                    g.RolDegisti = null;
+                    g.OnayDegisti = null;
+
+                    g.AtananRol = onceki.rol;
+                    g.Onaylandi = onceki.onay;
+
+                    // Callback'leri geri bagla
+                    g.RolDegisti = GrupRolDegisti;
+                    g.OnayDegisti = OnayDurumuGuncelle;
+
+                    // Cizgilere uygula
+                    foreach (var c in Cizgiler)
+                    {
+                        if ((c.LayerAdi ?? "(bos)") == g.LayerAdi && c.RenkIndex == g.RenkIndex)
+                            c.Rol = g.AtananRol;
+                    }
+                }
+            }
+
+            OnayDurumuGuncelle();
         }
 
         public void NavigasyonYukle(List<AnchorNokta> anchorlar, KesitPenceresi pencere,
@@ -220,13 +369,10 @@ namespace Metraj.ViewModels.EnkesitOkuma
 
         private void FiltreUygula()
         {
-            var gorunurLayerler = new HashSet<string>(
-                LayerFiltresi.Where(l => l.Gorunur).Select(l => l.LayerAdi));
-
             GoruntulenenCizgiler.Clear();
             foreach (var c in Cizgiler)
             {
-                if (!gorunurLayerler.Contains(c.LayerAdi ?? "(bos)")) continue;
+                // Sadece Cerceve/Grid gizlenebilir, diger tum layer'lar her zaman gorunur
                 if (!CerceveGoster && (c.Rol == CizgiRolu.CerceveCizgisi || c.Rol == CizgiRolu.GridCizgisi)) continue;
                 GoruntulenenCizgiler.Add(c);
             }
@@ -256,67 +402,60 @@ namespace Metraj.ViewModels.EnkesitOkuma
             {
                 if (cizgi.Rol != CizgiRolu.Tanimsiz) continue;
 
-                string upper = (cizgi.LayerAdi ?? "").ToUpperInvariant();
+                string upper = TurkceNormalize((cizgi.LayerAdi ?? "").ToUpperInvariant());
 
                 if (upper.Contains("ZEMIN") || upper.Contains("SIYAH") || upper.Contains("ARAZI"))
                 { cizgi.Rol = CizgiRolu.Zemin; cizgi.OtomatikAtanmis = true; continue; }
 
                 if (upper.Contains("SIYIRMA") || upper.Contains("SIYRIM"))
-                { cizgi.Rol = CizgiRolu.SiyirmaTaban; cizgi.OtomatikAtanmis = true; continue; }
+                { cizgi.Rol = CizgiRolu.Siyirma; cizgi.OtomatikAtanmis = true; continue; }
 
-                if (upper.Contains("PROJE") || upper.Contains("KIRMIZI") || upper.Contains("DESIGN") || upper.Contains("TASARIM"))
+                if (upper.Contains("DESIGN") || upper.Contains("TASARIM"))
+                { cizgi.Rol = CizgiRolu.Diger; cizgi.OtomatikAtanmis = true; continue; }
+
+                if (upper.Contains("PROJE") || upper.Contains("KIRMIZI"))
                 { cizgi.Rol = CizgiRolu.ProjeKotu; cizgi.OtomatikAtanmis = true; continue; }
 
                 if (upper.Contains("EKSEN") || upper.Contains("CL") || upper.Contains("AXIS"))
-                { cizgi.Rol = CizgiRolu.EksenCizgisi; cizgi.OtomatikAtanmis = true; continue; }
+                { cizgi.Rol = CizgiRolu.Diger; cizgi.OtomatikAtanmis = true; continue; }
 
-                // Cerceve / Palye (kesin cerceve)
-                if (upper.Contains("CERCEVE") || upper.Contains("FRAME") || upper.Contains("PALYE"))
+                // Cerceve / Palye / Pafta / EnKesit pafta → hepsi cerceve
+                if (upper.Contains("CERCEVE") || upper.Contains("FRAME") || upper.Contains("PALYE")
+                    || upper.Contains("PAFTA") || upper.Contains("ENKESIT") || upper.Contains("EN KESIT"))
                 { cizgi.Rol = CizgiRolu.CerceveCizgisi; cizgi.OtomatikAtanmis = true; continue; }
-
-                // PAFTA: akilli ayirim — kisa/dikey cizgiler cerceve, uzun yatay cizgiler tanimsiz birak
-                if (upper.Contains("PAFTA"))
-                {
-                    if (CizgiKisaMi(cizgi))
-                    { cizgi.Rol = CizgiRolu.CerceveCizgisi; cizgi.OtomatikAtanmis = true; }
-                    continue;
-                }
 
                 if (upper.Contains("GRID") || upper.Contains("OLCEK"))
                 { cizgi.Rol = CizgiRolu.GridCizgisi; cizgi.OtomatikAtanmis = true; continue; }
 
                 if (upper.Contains("HENDEK"))
-                { cizgi.Rol = CizgiRolu.HendekCizgisi; cizgi.OtomatikAtanmis = true; continue; }
+                { cizgi.Rol = CizgiRolu.Diger; cizgi.OtomatikAtanmis = true; continue; }
 
                 if (upper.Contains("SEV"))
-                { cizgi.Rol = CizgiRolu.SevCizgisi; cizgi.OtomatikAtanmis = true; continue; }
+                { cizgi.Rol = CizgiRolu.Diger; cizgi.OtomatikAtanmis = true; continue; }
 
                 if (upper.Contains("BANKET") || upper.Contains("BORDUR"))
-                { cizgi.Rol = CizgiRolu.BanketCizgisi; cizgi.OtomatikAtanmis = true; continue; }
+                { cizgi.Rol = CizgiRolu.Diger; cizgi.OtomatikAtanmis = true; continue; }
 
                 if (upper.Contains("ASINMA"))
-                { cizgi.Rol = CizgiRolu.AsinmaTaban; cizgi.OtomatikAtanmis = true; continue; }
+                { cizgi.Rol = CizgiRolu.Asinma; cizgi.OtomatikAtanmis = true; continue; }
 
                 if (upper.Contains("BINDER"))
-                { cizgi.Rol = CizgiRolu.BinderTaban; cizgi.OtomatikAtanmis = true; continue; }
+                { cizgi.Rol = CizgiRolu.Binder; cizgi.OtomatikAtanmis = true; continue; }
 
                 if (upper.Contains("BITUMEN") || upper.Contains("BITUMLU") || upper.Contains("BITUM"))
-                { cizgi.Rol = CizgiRolu.BitumluTemelTaban; cizgi.OtomatikAtanmis = true; continue; }
+                { cizgi.Rol = CizgiRolu.BitumluTemel; cizgi.OtomatikAtanmis = true; continue; }
 
                 if (upper.Contains("GRANULER") || upper.Contains("ALTTEMEL") || upper.Contains("ALT TEMEL"))
-                { cizgi.Rol = CizgiRolu.AltTemelTaban; cizgi.OtomatikAtanmis = true; continue; }
+                { cizgi.Rol = CizgiRolu.AltTemel; cizgi.OtomatikAtanmis = true; continue; }
 
                 if (upper.Contains("PLENT"))
-                { cizgi.Rol = CizgiRolu.PlentmiksTaban; cizgi.OtomatikAtanmis = true; continue; }
-
-                if (upper.Contains("KIRMA"))
-                { cizgi.Rol = CizgiRolu.KirmatasTaban; cizgi.OtomatikAtanmis = true; continue; }
+                { cizgi.Rol = CizgiRolu.Plentmiks; cizgi.OtomatikAtanmis = true; continue; }
 
                 // Renk bazli
                 switch (cizgi.RenkIndex)
                 {
                     case 3: cizgi.Rol = CizgiRolu.Zemin; cizgi.OtomatikAtanmis = true; break;
-                    case 5: cizgi.Rol = CizgiRolu.SiyirmaTaban; cizgi.OtomatikAtanmis = true; break;
+                    case 5: cizgi.Rol = CizgiRolu.Siyirma; cizgi.OtomatikAtanmis = true; break;
                     case 1: cizgi.Rol = CizgiRolu.ProjeKotu; cizgi.OtomatikAtanmis = true; break;
                 }
             }
@@ -329,8 +468,8 @@ namespace Metraj.ViewModels.EnkesitOkuma
 
             var tabakaSirasi = new[]
             {
-                CizgiRolu.AsinmaTaban, CizgiRolu.BinderTaban, CizgiRolu.BitumluTemelTaban,
-                CizgiRolu.PlentmiksTaban, CizgiRolu.AltTemelTaban, CizgiRolu.KirmatasTaban
+                CizgiRolu.Asinma, CizgiRolu.Binder, CizgiRolu.BitumluTemel,
+                CizgiRolu.Plentmiks, CizgiRolu.AltTemel
             };
 
             for (int i = 0; i < Math.Min(gizliTabakalar.Count, tabakaSirasi.Length); i++)
@@ -352,7 +491,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
         private void CokluTabakaDuzelt(CizgiRolu[] tabakaSirasi)
         {
             // Ayni layer'da birden fazla cizgi ayni tabaka rolune atanmis olabilir
-            // (ornek: "Granuler" layerindaki 3 cizgi hepsi AltTemelTaban olarak atandi)
+            // (ornek: "Granuler" layerindaki 3 cizgi hepsi AltTemel olarak atandi)
             // Bunlari Y pozisyonuna gore siralayip farkli rollere yay
             var cokluGruplar = Cizgiler
                 .Where(c => c.OtomatikAtanmis && Array.IndexOf(tabakaSirasi, c.Rol) >= 0)
@@ -366,7 +505,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 var atananRol = cizgilerSirali[0].Rol;
                 int rolIdx = Array.IndexOf(tabakaSirasi, atananRol);
 
-                // Merkez rolunden yayil: 3 cizgi + AltTemelTaban(4) -> [3,4,5]
+                // Merkez rolunden yayil: 3 cizgi + AltTemel(4) -> [3,4,5]
                 int baslangic = Math.Max(0, rolIdx - (cizgilerSirali.Count - 1) / 2);
 
                 // Baska layer'a atanmis rolleri atla
@@ -387,6 +526,26 @@ namespace Metraj.ViewModels.EnkesitOkuma
             }
         }
 
+        /// <summary>
+        /// Turkce ozel karakterleri ASCII karsiliklarina donusturur.
+        /// DWG layer adlarinda İ/Ş/Ü/Ö/Ç/Ğ kullanilabilir — ToUpperInvariant bunlari normalize etmez.
+        /// </summary>
+        private static string TurkceNormalize(string s)
+        {
+            return s.Replace('\u0130', 'I')  // İ -> I
+                    .Replace('\u0131', 'I')  // ı -> I
+                    .Replace('\u015E', 'S')  // Ş -> S
+                    .Replace('\u015F', 'S')  // ş -> S
+                    .Replace('\u00DC', 'U')  // Ü -> U
+                    .Replace('\u00FC', 'U')  // ü -> U
+                    .Replace('\u00D6', 'O')  // Ö -> O
+                    .Replace('\u00F6', 'O')  // ö -> O
+                    .Replace('\u00C7', 'C')  // Ç -> C
+                    .Replace('\u00E7', 'C')  // ç -> C
+                    .Replace('\u011E', 'G')  // Ğ -> G
+                    .Replace('\u011F', 'G'); // ğ -> G
+        }
+
         private bool CizgiKisaMi(CizgiTanimi cizgi)
         {
             if (cizgi.Noktalar.Count < 2) return true;
@@ -405,6 +564,116 @@ namespace Metraj.ViewModels.EnkesitOkuma
         private void SablonKaydet()
         {
             _olusturulanSablon = _rolAtamaService.KalibrasyonOlustur(_referansKesit, Cizgiler.ToList());
+        }
+
+        private void OnayDurumuGuncelle()
+        {
+            OnPropertiesChanged(nameof(TopluTumOnaylandi), nameof(TopluOnayDurumu), nameof(KaydetButonMetni));
+            System.Windows.Input.CommandManager.InvalidateRequerySuggested();
+        }
+
+        private void GrupRolDegisti(LayerRenkGrubu grup)
+        {
+            // Bu layer+renk grubundaki tum cizgilere rolu aninda ata
+            foreach (var c in Cizgiler)
+            {
+                if ((c.LayerAdi ?? "(bos)") == grup.LayerAdi && c.RenkIndex == grup.RenkIndex)
+                    c.Rol = grup.AtananRol;
+            }
+            FiltreUygula();
+        }
+
+        private void TumunuOnayla()
+        {
+            foreach (var g in LayerRenkGruplari)
+                g.Onaylandi = true;
+        }
+
+        private void LayerRenkTablosuOlustur()
+        {
+            LayerRenkGruplari.Clear();
+
+            var gruplar = Cizgiler
+                .Where(c => c.Rol != CizgiRolu.CerceveCizgisi && c.Rol != CizgiRolu.GridCizgisi)
+                .GroupBy(c => new { Layer = c.LayerAdi ?? "(bos)", c.RenkIndex })
+                .OrderBy(g => g.Key.Layer)
+                .ThenBy(g => g.Key.RenkIndex);
+
+            foreach (var grup in gruplar)
+            {
+                double minX = grup.SelectMany(c => c.Noktalar).Min(p => p.X);
+                double maxX = grup.SelectMany(c => c.Noktalar).Max(p => p.X);
+                int kapaliSayisi = grup.Count(c => c.KapaliMi);
+                int acikSayisi = grup.Count(c => !c.KapaliMi);
+
+                // Mevcut OtomatikAta sonuclarindan onerilen rolu al
+                var onerilen = grup.First().Rol;
+
+                // Genel layer'lara otomatik rol onerme — kullanici secsin
+                bool genelLayer = VarsayilanKapaliLayerler.Contains(grup.Key.Layer);
+                if (genelLayer)
+                    onerilen = CizgiRolu.Tanimsiz;
+
+                var oge = new LayerRenkGrubu
+                {
+                    LayerAdi = grup.Key.Layer,
+                    RenkIndex = grup.Key.RenkIndex,
+                    CizgiSayisi = grup.Count(),
+                    XAraligi = $"{minX:F2}..{maxX:F2}",
+                    KapaliVar = kapaliSayisi > 0,
+                    OrnekBilgi = kapaliSayisi > 0 && acikSayisi > 0
+                        ? $"{kapaliSayisi} kapali, {acikSayisi} acik"
+                        : kapaliSayisi > 0 ? $"{kapaliSayisi} kapali" : $"{acikSayisi} acik",
+                    AtananRol = onerilen,
+                    OnayDegisti = OnayDurumuGuncelle,
+                    RolDegisti = GrupRolDegisti
+                };
+                // Genel layer'lar hicbir zaman otomatik onayli gelmesin
+                // AtananRol setter'i Onaylandi=true yapar, bunu geri al
+                oge.Onaylandi = false;
+
+                LayerRenkGruplari.Add(oge);
+            }
+
+            OnayDurumuGuncelle();
+        }
+
+        private void TopluRolAtaUygula()
+        {
+            var tabakaSirasi = new[]
+            {
+                CizgiRolu.Asinma, CizgiRolu.Binder, CizgiRolu.BitumluTemel,
+                CizgiRolu.Plentmiks, CizgiRolu.AltTemel
+            };
+
+            foreach (var grup in LayerRenkGruplari)
+            {
+                if (grup.AtananRol == CizgiRolu.Tanimsiz) continue;
+
+                var eslesen = Cizgiler
+                    .Where(c => (c.LayerAdi ?? "(bos)") == grup.LayerAdi && c.RenkIndex == grup.RenkIndex)
+                    .ToList();
+
+                foreach (var c in eslesen)
+                {
+                    c.Rol = grup.AtananRol;
+                    c.OtomatikAtanmis = false;
+                }
+            }
+
+            // Coklu tabaka duzeltmesi
+            var tabakaSirasiArr = new[]
+            {
+                CizgiRolu.Asinma, CizgiRolu.Binder, CizgiRolu.BitumluTemel,
+                CizgiRolu.Plentmiks, CizgiRolu.AltTemel
+            };
+            CokluTabakaDuzelt(tabakaSirasiArr);
+
+            // Listeyi yenile
+            var temp = Cizgiler.ToList();
+            Cizgiler.Clear();
+            foreach (var c in temp) Cizgiler.Add(c);
+            FiltreUygula();
         }
 
         private void SablonDosyayaKaydetUygula()

@@ -98,103 +98,112 @@
                           VerticalAlignment="Stretch" Background="#FF3D3D5C"
                           Cursor="SizeWE" ResizeBehavior="PreviousAndNext"/>
 
-        <!-- Sag: Cizgi Rolleri -->
+        <!-- Sag: Malzeme Eslestirme -->
         <Border Grid.Column="2" Background="#FF2D2D44" Margin="4" CornerRadius="4" Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <!-- Row 0: Baslik -->
-                <TextBlock Grid.Row="0" Text="Cizgi rolleri" Foreground="#FFCCCCDD" FontWeight="Bold"
-                           FontSize="14" Margin="0,0,0,4"/>
+                <TextBlock Grid.Row="0" Text="Malzeme Eslestirme" Foreground="#FFCCCCDD" FontWeight="Bold"
+                           FontSize="14" Margin="0,0,0,6"/>
 
-                <!-- Row 1: Secili cizgi bilgisi + Cerceve toggle -->
-                <StackPanel Grid.Row="1" Margin="0,0,0,4">
-                    <TextBlock Text="{Binding SecilenCizgiBilgi}" Foreground="#FF8888AA"
-                               FontSize="10" TextWrapping="Wrap"/>
-                    <CheckBox Content="Cerceve / Grid cizgilerini goster"
-                              IsChecked="{Binding CerceveGoster}"
-                              Foreground="#FF8888AA" FontSize="10" Margin="0,4,0,0"/>
-                </StackPanel>
-
-                <!-- Row 2: Layer Filtresi -->
-                <Expander Grid.Row="2" Header="Layer Filtresi" IsExpanded="False"
-                          Foreground="#FFCCCCDD" FontSize="11" Margin="0,0,0,4">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,2,0,4">
-                            <Button Content="Tumu Ac" Command="{Binding TumLayerAc}"
-                                    Style="{StaticResource DarkBtn}" Height="20" Padding="6,1" FontSize="10"/>
-                            <Button Content="Tumu Kapat" Command="{Binding TumLayerKapat}"
-                                    Style="{StaticResource DarkBtn}" Height="20" Padding="6,1" FontSize="10" Margin="4,0,0,0"/>
-                        </StackPanel>
-                        <ScrollViewer MaxHeight="90" VerticalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding LayerFiltresi}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <CheckBox IsChecked="{Binding Gorunur}" Margin="2,1"
-                                                  Foreground="#FFCCCCDD" FontSize="10">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding LayerAdi}"/>
-                                                <TextBlock Foreground="#FF8888AA" Margin="4,0,0,0">
-                                                    <Run Text="("/>
-                                                    <Run Text="{Binding CizgiSayisi, Mode=OneWay}"/>
-                                                    <Run Text=")"/>
-                                                </TextBlock>
-                                            </StackPanel>
-                                        </CheckBox>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </StackPanel>
-                </Expander>
-
-                <!-- Row 3: Cizgi Listesi (filtrelenmis) -->
-                <ListBox Grid.Row="3" ItemsSource="{Binding GoruntulenenCizgiler}"
-                         SelectedItem="{Binding SecilenCizgi}"
+                <!-- Row 1: Tablo — her satir bir Layer+Renk grubu -->
+                <ListBox Grid.Row="1" ItemsSource="{Binding LayerRenkGruplari}"
+                         SelectedItem="{Binding SecilenGrup}"
                          Background="#FF1E1E2E" BorderBrush="#FF3D3D5C" BorderThickness="1"
-                         Margin="0,0,0,6">
+                         Margin="0,0,0,6" HorizontalContentAlignment="Stretch"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="0"/>
+                            <Setter Property="Margin" Value="0"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="Bd" Background="Transparent" Padding="1">
+                                            <ContentPresenter/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="#30FFFFFF"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal" Margin="2,1">
-                                <Ellipse Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center"
-                                         Fill="#FF757575"/>
-                                <TextBlock Text="{Binding Rol}" Width="85" Foreground="#FFCCCCDD" FontSize="12"
-                                           VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding LayerAdi}" Foreground="#FF8888AA" FontSize="10"
-                                           VerticalAlignment="Center"/>
-                            </StackPanel>
+                            <Border x:Name="SatirBorder" BorderThickness="1" Padding="3,4"
+                                    BorderBrush="#FF8B6914" Background="#30806000">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="14"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="95"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Renk Ellipse -->
+                                    <Ellipse Grid.Column="0" Width="10" Height="10" VerticalAlignment="Center">
+                                        <Ellipse.Fill>
+                                            <SolidColorBrush Color="{Binding WpfRenk}"/>
+                                        </Ellipse.Fill>
+                                    </Ellipse>
+
+                                    <!-- Layer Adi + Bilgi -->
+                                    <StackPanel Grid.Column="1" Margin="4,0,4,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding LayerAdi}" Foreground="#FFCCCCDD" FontSize="10"
+                                                   FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Foreground="#FF8888AA" FontSize="9">
+                                            <Run Text="{Binding CizgiSayisi, Mode=OneWay, StringFormat='{}{0} ciz'}"/>
+                                            <Run Text=" | "/>
+                                            <Run Text="{Binding OrnekBilgi, Mode=OneWay}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+
+                                    <!-- X Araligi -->
+                                    <TextBlock Grid.Column="2" Text="{Binding XAraligi}" Foreground="#FF8888AA"
+                                               FontSize="8" VerticalAlignment="Center" Margin="0,0,4,0"/>
+
+                                    <!-- Malzeme ComboBox -->
+                                    <ComboBox Grid.Column="3" ItemsSource="{Binding DataContext.MevcutRoller, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              SelectedItem="{Binding AtananRol}"
+                                              Height="22" FontSize="10"
+                                              Background="#FF1E1E2E" Foreground="#FFCCCCDD" BorderBrush="#FF3D3D5C"/>
+                                </Grid>
+                            </Border>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding Onaylandi}" Value="True">
+                                    <Setter TargetName="SatirBorder" Property="BorderBrush" Value="#FF2D8B57"/>
+                                    <Setter TargetName="SatirBorder" Property="Background" Value="#20008040"/>
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
 
-                <!-- Row 4: Rol Secimi -->
-                <StackPanel Grid.Row="4" Margin="0,0,0,6">
-                    <TextBlock Text="Rol Ata:" Foreground="#FFCCCCDD" Margin="0,0,0,3" FontSize="12"/>
-                    <ComboBox ItemsSource="{Binding MevcutRoller}"
-                              SelectedItem="{Binding SecilenRol}"
-                              Height="26" FontSize="11"/>
-                    <Button Content="Rolu Ata" Command="{Binding RolAta}"
-                            Style="{StaticResource PrimBtn}" Margin="0,4,0,0" Height="26" Padding="4"/>
+                <!-- Row 2: Tumunu Onayla + Durum -->
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,6">
+                    <Button Content="Tumunu Onayla" Command="{Binding TumunuOnaylaCommand}"
+                            Style="{StaticResource DarkBtn}" Height="24" Padding="8,2" FontSize="10"
+                            Margin="0,0,6,0"/>
+                    <TextBlock Text="{Binding TopluOnayDurumu}" Foreground="#FF8888AA" FontSize="11"
+                               VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <!-- Row 5: Otomatik Ata -->
-                <Button Grid.Row="5" Content="Tumunu Otomatik Ata"
-                        Command="{Binding TumunuOtomatikAta}"
-                        Style="{StaticResource DarkBtn}" Height="26" Margin="0,0,0,6" Padding="4"
-                        Background="#FF2D5A4A" Foreground="#FF4EC9B0" BorderBrush="#FF4EC9B0"/>
-
-                <!-- Row 6: Kaydet / Iptal -->
-                <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="Kaydet" x:Name="BtnKaydet" Click="BtnKaydet_Click"
-                            Style="{StaticResource PrimBtn}" Width="80" Height="28" Padding="4"/>
+                <!-- Row 3: Kaydet / Iptal -->
+                <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="{Binding KaydetButonMetni}" x:Name="BtnKaydet" Click="BtnKaydet_Click"
+                            IsEnabled="{Binding TopluTumOnaylandi}"
+                            Style="{StaticResource PrimBtn}" Width="100" Height="28" Padding="4"/>
                     <Button Content="Iptal" x:Name="BtnIptal" Click="BtnIptal_Click"
                             Style="{StaticResource DarkBtn}" Width="60" Height="28" Margin="6,0,0,0" Padding="4"/>
                 </StackPanel>

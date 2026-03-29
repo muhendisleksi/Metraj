@@ -383,7 +383,7 @@ namespace Metraj.Services.YolEnkesit
 
             if (enIyiCL != null)
             {
-                enIyiCL.Rol = CizgiRolu.EksenCizgisi;
+                enIyiCL.Rol = CizgiRolu.Diger;
                 enIyiCL.OtomatikAtanmis = true;
                 kesit.CL_X = enIyiCL.Noktalar.Average(p => p.X);
             }

@@ -29,9 +29,7 @@ namespace Metraj.Models.YolEnkesit
         // Birlesik shortcut property'ler — ayni roldeki tum yatay parcalari birlestir
         public CizgiTanimi Zemin => BirlesikCizgiAl(CizgiRolu.Zemin);
         public CizgiTanimi ProjeKotu => BirlesikCizgiAl(CizgiRolu.ProjeKotu);
-        public CizgiTanimi SiyirmaTaban => BirlesikCizgiAl(CizgiRolu.SiyirmaTaban);
-        public CizgiTanimi UstyapiAltKotu => BirlesikCizgiAl(CizgiRolu.UstyapiAltKotu);
-        public CizgiTanimi EksenCizgisi => Cizgiler?.FirstOrDefault(c => c.Rol == CizgiRolu.EksenCizgisi);
+        public CizgiTanimi Siyirma => BirlesikCizgiAl(CizgiRolu.Siyirma);
 
         /// <summary>
         /// Ayni roldeki tum yatay cizgileri birlestirerek tek CizgiTanimi dondurur.

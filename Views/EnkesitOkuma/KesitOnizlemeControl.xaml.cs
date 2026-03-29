@@ -10,6 +10,13 @@ using WpfPolyline = System.Windows.Shapes.Polyline;
 
 namespace Metraj.Views.EnkesitOkuma
 {
+    public enum OnizlemeRenkModu
+    {
+        OrijinalRenk,
+        RolRenk,
+        HibritRenk
+    }
+
     public partial class KesitOnizlemeControl : UserControl
     {
         private List<CizgiTanimi> _cizgiler;
@@ -21,35 +28,53 @@ namespace Metraj.Views.EnkesitOkuma
         private CizgiTanimi _secilenCizgi;
         private DateTime _sonOrtaTiklama = DateTime.MinValue;
         private double _icerikW, _icerikH; // Son cizimde icerik boyutu (canvas px)
+        private OnizlemeRenkModu _renkModu = OnizlemeRenkModu.RolRenk;
 
         public event EventHandler<CizgiTanimi> CizgiSecildi;
+
+        public OnizlemeRenkModu RenkModu
+        {
+            get => _renkModu;
+            set { _renkModu = value; Ciz(); }
+        }
+
+        private static readonly Color FallbackRenk = Color.FromRgb(0xAA, 0xAA, 0xAA);
 
         private static readonly Dictionary<CizgiRolu, Color> RolRenkleri = new Dictionary<CizgiRolu, Color>
         {
             { CizgiRolu.Zemin, Color.FromRgb(0x2E, 0x8B, 0x57) },
-            { CizgiRolu.SiyirmaTaban, Color.FromRgb(0x37, 0x8A, 0xDD) },
             { CizgiRolu.ProjeKotu, Color.FromRgb(0xE2, 0x4B, 0x4A) },
-            { CizgiRolu.UstyapiAltKotu, Color.FromRgb(0x88, 0x88, 0x88) },
-            { CizgiRolu.AsinmaTaban, Color.FromRgb(0xD8, 0x5A, 0x30) },
-            { CizgiRolu.BinderTaban, Color.FromRgb(0xEF, 0x9F, 0x27) },
-            { CizgiRolu.BitumluTemelTaban, Color.FromRgb(0x7F, 0x77, 0xDD) },
-            { CizgiRolu.PlentmiksTaban, Color.FromRgb(0x5D, 0xCA, 0xA5) },
-            { CizgiRolu.AltTemelTaban, Color.FromRgb(0x97, 0xC4, 0x59) },
-            { CizgiRolu.KirmatasTaban, Color.FromRgb(0xB4, 0xB2, 0xA9) },
-            { CizgiRolu.EksenCizgisi, Color.FromRgb(0x99, 0x99, 0x99) },
-            { CizgiRolu.HendekCizgisi, Color.FromRgb(0xD8, 0x5A, 0x30) },
-            { CizgiRolu.SevCizgisi, Color.FromRgb(0x8B, 0x45, 0x13) },
-            { CizgiRolu.BanketCizgisi, Color.FromRgb(0xE9, 0x1E, 0x63) },
+            { CizgiRolu.Siyirma, Color.FromRgb(0x37, 0x8A, 0xDD) },
+            { CizgiRolu.Yarma, Color.FromRgb(0xE0, 0x7C, 0x24) },
+            { CizgiRolu.Dolgu, Color.FromRgb(0x8B, 0x45, 0x13) },
+            { CizgiRolu.Asinma, Color.FromRgb(0xD8, 0x5A, 0x30) },
+            { CizgiRolu.Binder, Color.FromRgb(0xEF, 0x9F, 0x27) },
+            { CizgiRolu.BitumluTemel, Color.FromRgb(0x7F, 0x77, 0xDD) },
+            { CizgiRolu.Plentmiks, Color.FromRgb(0x5D, 0xCA, 0xA5) },
+            { CizgiRolu.AltTemel, Color.FromRgb(0x97, 0xC4, 0x59) },
+            { CizgiRolu.BTYerineKonan, Color.FromRgb(0xE9, 0x1E, 0x63) },
+            { CizgiRolu.BTYerineKonmayan, Color.FromRgb(0xF4, 0x8F, 0xB1) },
             { CizgiRolu.CerceveCizgisi, Color.FromRgb(0x42, 0x42, 0x42) },
             { CizgiRolu.GridCizgisi, Color.FromRgb(0x37, 0x37, 0x37) },
             { CizgiRolu.Tanimsiz, Color.FromRgb(0xAA, 0xAA, 0xAA) },
             { CizgiRolu.Diger, Color.FromRgb(0x61, 0x61, 0x61) },
         };
 
+        private bool _cizimBekliyor;
+
         public KesitOnizlemeControl()
         {
             InitializeComponent();
             SizeChanged += (s, e) => Ciz();
+            // Canvas layout tamamlandiginda bekleyen cizimi yap
+            KesitCanvas.SizeChanged += (s, e) =>
+            {
+                if (_cizimBekliyor && KesitCanvas.ActualWidth > 10 && KesitCanvas.ActualHeight > 10)
+                {
+                    _cizimBekliyor = false;
+                    Ciz();
+                }
+            };
         }
 
         public void CizgileriYukle(List<CizgiTanimi> cizgiler)
@@ -58,6 +83,15 @@ namespace Metraj.Views.EnkesitOkuma
             _kesit = null;
             _zoom = 1.0;
             _pan = new Point(0, 0);
+            _highlightLayer = null;
+            Ciz();
+        }
+
+        /// <summary>Cizgi listesini guncelle ama zoom/pan/highlight'i koru.</summary>
+        public void CizgileriGuncelle(List<CizgiTanimi> cizgiler)
+        {
+            _cizgiler = cizgiler;
+            _kesit = null;
             Ciz();
         }
 
@@ -82,21 +116,168 @@ namespace Metraj.Views.EnkesitOkuma
         public void VurgulaCizgi(CizgiTanimi cizgi)
         {
             _secilenCizgi = cizgi;
+            _highlightLayer = null;
+            Ciz();
+        }
+
+        private string _highlightLayer;
+        private short _highlightRenk;
+
+        /// <summary>
+        /// Belirtilen layer+renk grubunun cizgilerini highlight'la ve bounding box'a zoom yap.
+        /// null/bos ile cagrilirsa highlight ve zoom sifirlanir.
+        /// </summary>
+        public void HighlightLayer(string layerAdi, short renkIndex)
+        {
+            // Ayni layer'a tekrar tiklandiysa (toggle) → sifirla
+            if (_highlightLayer == layerAdi && _highlightRenk == renkIndex)
+            {
+                _highlightLayer = null;
+                _zoom = 1.0;
+                _pan = new Point(0, 0);
+                Ciz();
+                return;
+            }
+
+            _highlightLayer = layerAdi;
+            _highlightRenk = renkIndex;
+
+            // Highlight'li cizgilerin bounding box'ina zoom
+            if (_cizgiler != null && layerAdi != null)
+            {
+                var hedefNoktalar = _cizgiler
+                    .Where(c => c.LayerAdi == layerAdi && c.RenkIndex == renkIndex)
+                    .SelectMany(c => c.Noktalar)
+                    .ToList();
+
+                if (hedefNoktalar.Count > 0)
+                    ZoomToBounds(hedefNoktalar);
+                else
+                    Ciz();
+            }
+            else
+            {
+                Ciz();
+            }
+        }
+
+        /// <summary>Highlight ve zoom'u sifirla, tum kesiti goster.</summary>
+        public void HighlightTemizle()
+        {
+            _highlightLayer = null;
+            _zoom = 1.0;
+            _pan = new Point(0, 0);
+            Ciz();
+        }
+
+        /// <summary>Verilen noktalarin bounding box'ina %120 margin ile zoom yapar.</summary>
+        private void ZoomToBounds(List<Autodesk.AutoCAD.Geometry.Point2d> noktalar)
+        {
+            if (noktalar.Count == 0) { Ciz(); return; }
+
+            double canvasW = KesitCanvas.ActualWidth;
+            double canvasH = KesitCanvas.ActualHeight;
+            if (canvasW < 10 || canvasH < 10) { Ciz(); return; }
+
+            // Tum cizgilerin genel fit bounds'u (Ciz() ile ayni mantik)
+            var anlamliCizgiler = _cizgiler.Where(c =>
+                c.Rol != CizgiRolu.CerceveCizgisi && c.Rol != CizgiRolu.GridCizgisi).ToList();
+            var fitNoktalar = (anlamliCizgiler.Count > 0 ? anlamliCizgiler : _cizgiler)
+                .SelectMany(c => c.Noktalar).ToList();
+            if (fitNoktalar.Count == 0) { Ciz(); return; }
+
+            double globalMinX = fitNoktalar.Min(p => p.X);
+            double globalMaxX = fitNoktalar.Max(p => p.X);
+            var yDeg = fitNoktalar.Select(p => p.Y).OrderBy(y => y).ToList();
+            int tA = (int)(yDeg.Count * 0.05);
+            int tU = Math.Min((int)(yDeg.Count * 0.95), yDeg.Count - 1);
+            if (tA >= tU) { tA = 0; tU = yDeg.Count - 1; }
+            double globalMinY = yDeg[tA] - (yDeg[tU] - yDeg[tA]) * 0.10;
+            double globalMaxY = yDeg[tU] + (yDeg[tU] - yDeg[tA]) * 0.10;
+            double globalRangeX = Math.Max(globalMaxX - globalMinX, 0.01);
+            double globalRangeY = Math.Max(globalMaxY - globalMinY, 0.01);
+
+            // Hedef bounds (%120 margin)
+            double tMinX = noktalar.Min(p => p.X);
+            double tMaxX = noktalar.Max(p => p.X);
+            double tMinY = noktalar.Min(p => p.Y);
+            double tMaxY = noktalar.Max(p => p.Y);
+            double marjX = Math.Max((tMaxX - tMinX) * 0.10, globalRangeX * 0.02);
+            double marjY = Math.Max((tMaxY - tMinY) * 0.10, globalRangeY * 0.02);
+            tMinX -= marjX; tMaxX += marjX;
+            tMinY -= marjY; tMaxY += marjY;
+            double tRangeX = Math.Max(tMaxX - tMinX, 0.01);
+            double tRangeY = Math.Max(tMaxY - tMinY, 0.01);
+
+            // Zoom: hedef bounds'u canvas'a sigdirmak icin gereken zoom orani
+            double padding = 30;
+            double baseScaleX = (canvasW - padding * 2) / globalRangeX;
+            double baseScaleY = (canvasH - padding * 2) / globalRangeY;
+            double baseScale = Math.Min(baseScaleX, baseScaleY);
+
+            double neededScaleX = (canvasW - padding * 2) / tRangeX;
+            double neededScaleY = (canvasH - padding * 2) / tRangeY;
+            double neededScale = Math.Min(neededScaleX, neededScaleY);
+
+            _zoom = Math.Max(1.0, neededScale / baseScale);
+
+            // Pan: hedef merkezi canvas merkezine getir
+            double scale = baseScale * _zoom;
+            double tCenterX = (tMinX + tMaxX) / 2.0;
+            double tCenterY = (tMinY + tMaxY) / 2.0;
+            double canvasCenterX = canvasW / 2.0;
+            double canvasCenterY = canvasH / 2.0;
+            double drawCenterX = (tCenterX - globalMinX) * scale + padding;
+            double drawCenterY = canvasH - ((tCenterY - globalMinY) * scale + padding);
+            _pan = new Point(canvasCenterX - drawCenterX, canvasCenterY - drawCenterY);
+
             Ciz();
         }
 
         private Brush CizgiRengiBelirle(CizgiTanimi cizgi)
         {
-            if (cizgi.Rol != CizgiRolu.Tanimsiz && RolRenkleri.ContainsKey(cizgi.Rol))
+            Color renk;
+
+            if (_renkModu == OnizlemeRenkModu.OrijinalRenk)
             {
-                var c = RolRenkleri[cizgi.Rol];
-                // Cerceve/Grid: %20-30 opacity
-                if (cizgi.Rol == CizgiRolu.CerceveCizgisi || cizgi.Rol == CizgiRolu.GridCizgisi)
-                    return new SolidColorBrush(Color.FromArgb(0x40, c.R, c.G, c.B));
-                return new SolidColorBrush(c);
+                renk = AcadRenkCevir(cizgi.RenkIndex);
+            }
+            else if (_renkModu == OnizlemeRenkModu.HibritRenk)
+            {
+                // Rol atanmis → rol rengi, atanmamis → orijinal AutoCAD rengi
+                bool rolAtanmis = cizgi.Rol != CizgiRolu.Tanimsiz && cizgi.Rol != CizgiRolu.Diger;
+                renk = rolAtanmis && RolRenkleri.TryGetValue(cizgi.Rol, out var rr)
+                    ? rr
+                    : AcadRenkCevir(cizgi.RenkIndex);
+            }
+            else
+            {
+                renk = RolRenkleri.TryGetValue(cizgi.Rol, out var rr) ? rr : FallbackRenk;
             }
 
-            return AcadRenkBrush(cizgi.RenkIndex);
+            // Cerceve/Grid: soluk goster
+            if (cizgi.Rol == CizgiRolu.CerceveCizgisi || cizgi.Rol == CizgiRolu.GridCizgisi)
+                return new SolidColorBrush(Color.FromArgb(0x40, renk.R, renk.G, renk.B));
+
+            return new SolidColorBrush(renk);
+        }
+
+        /// <summary>AutoCAD ACI renk index'ini WPF Color'a cevirir.</summary>
+        private static Color AcadRenkCevir(short colorIndex)
+        {
+            switch (colorIndex)
+            {
+                case 1: return Color.FromRgb(0xFF, 0x00, 0x00); // Kirmizi
+                case 2: return Color.FromRgb(0xFF, 0xFF, 0x00); // Sari
+                case 3: return Color.FromRgb(0x00, 0xFF, 0x00); // Yesil
+                case 4: return Color.FromRgb(0x00, 0xFF, 0xFF); // Cyan
+                case 5: return Color.FromRgb(0x00, 0x00, 0xFF); // Mavi
+                case 6: return Color.FromRgb(0xFF, 0x00, 0xFF); // Magenta
+                case 7: return Color.FromRgb(0xFF, 0xFF, 0xFF); // Beyaz
+                case 8: return Color.FromRgb(0x80, 0x80, 0x80); // Gri
+                case 9: return Color.FromRgb(0xC0, 0xC0, 0xC0); // Acik gri
+                default: return Color.FromRgb(0xAA, 0xAA, 0xAA); // Fallback
+            }
         }
 
         private Brush AcadRenkBrush(short colorIndex)
@@ -131,7 +312,11 @@ namespace Metraj.Views.EnkesitOkuma
 
             double canvasW = KesitCanvas.ActualWidth;
             double canvasH = KesitCanvas.ActualHeight;
-            if (canvasW < 10 || canvasH < 10) return;
+            if (canvasW < 10 || canvasH < 10)
+            {
+                _cizimBekliyor = true;
+                return;
+            }
 
             // Fit-to-view: cerceve/grid HARIC, diger tum cizgilerle fit hesapla
             var anlamliCizgiler = _cizgiler.Where(c =>
@@ -192,16 +377,24 @@ namespace Metraj.Views.EnkesitOkuma
 
             bool secili = cizgi == _secilenCizgi;
             bool cerceve = cizgi.Rol == CizgiRolu.CerceveCizgisi || cizgi.Rol == CizgiRolu.GridCizgisi;
+            bool highlighted = _highlightLayer != null && cizgi.LayerAdi == _highlightLayer && cizgi.RenkIndex == _highlightRenk;
+            bool highlightAktif = _highlightLayer != null;
+            bool soluk = highlightAktif && !highlighted && !secili;
 
             // Kalinlik belirleme
             double kalinlik;
             if (secili) kalinlik = 4;
-            else if (cizgi.Rol == CizgiRolu.ProjeKotu) kalinlik = 2.5;
+            else if (highlighted) kalinlik = 3.5;
+            else if (cizgi.Rol == CizgiRolu.ProjeKotu && !soluk) kalinlik = 2.5;
             else if (cerceve) kalinlik = 0.3;
+            else if (soluk) kalinlik = 0.6;
             else kalinlik = 1.2;
 
             var polyline = new WpfPolyline();
-            polyline.Stroke = CizgiRengiBelirle(cizgi);
+            var stroke = CizgiRengiBelirle(cizgi);
+            if (soluk && stroke is SolidColorBrush scb)
+                stroke = new SolidColorBrush(Color.FromArgb(0x33, scb.Color.R, scb.Color.G, scb.Color.B));
+            polyline.Stroke = stroke;
             polyline.StrokeThickness = kalinlik;
             polyline.StrokeLineJoin = PenLineJoin.Round;
             polyline.StrokeStartLineCap = PenLineCap.Round;
@@ -209,7 +402,7 @@ namespace Metraj.Views.EnkesitOkuma
             polyline.Cursor = cerceve ? Cursors.Arrow : Cursors.Hand;
 
             // Sadece SiyirmaTaban kesikli cizilir
-            if (cizgi.Rol == CizgiRolu.SiyirmaTaban)
+            if (cizgi.Rol == CizgiRolu.Siyirma)
                 polyline.StrokeDashArray = new System.Windows.Media.DoubleCollection(new[] { 6.0, 3.0 });
 
             if (secili)
@@ -243,6 +436,27 @@ namespace Metraj.Views.EnkesitOkuma
             polyline.ToolTip = $"{cizgi.Rol} | {cizgi.LayerAdi} | Renk:{cizgi.RenkIndex}";
             KesitCanvas.Children.Add(polyline);
 
+            // Kapali entity'ler icin yari-seffaf dolgu polygon
+            bool malzemeRolu = cizgi.Rol == CizgiRolu.Siyirma || cizgi.Rol == CizgiRolu.Yarma
+                || cizgi.Rol == CizgiRolu.Dolgu || cizgi.Rol == CizgiRolu.Asinma
+                || cizgi.Rol == CizgiRolu.Binder || cizgi.Rol == CizgiRolu.BitumluTemel
+                || cizgi.Rol == CizgiRolu.Plentmiks || cizgi.Rol == CizgiRolu.AltTemel
+                || cizgi.Rol == CizgiRolu.BTYerineKonan || cizgi.Rol == CizgiRolu.BTYerineKonmayan;
+            if (cizgi.KapaliMi && malzemeRolu && polyline.Points.Count >= 3)
+            {
+                var dolguRenk = (CizgiRengiBelirle(cizgi) as SolidColorBrush)?.Color ?? FallbackRenk;
+                byte dolguAlpha = soluk ? (byte)0x10 : (byte)0x30;
+                var polygon = new System.Windows.Shapes.Polygon
+                {
+                    Fill = new SolidColorBrush(Color.FromArgb(dolguAlpha, dolguRenk.R, dolguRenk.G, dolguRenk.B)),
+                    Stroke = null,
+                    IsHitTestVisible = false
+                };
+                foreach (var pt in polyline.Points)
+                    polygon.Points.Add(pt);
+                KesitCanvas.Children.Add(polygon);
+            }
+
             // Cizgi etiketi (ana roller icin, cerceve/grid haric)
             if (!cerceve && cizgi.Rol != CizgiRolu.Tanimsiz && cizgi.Rol != CizgiRolu.Diger
                 && cizgi.Noktalar.Count > 0)
@@ -270,19 +484,17 @@ namespace Metraj.Views.EnkesitOkuma
             switch (rol)
             {
                 case CizgiRolu.Zemin: return "zemin";
-                case CizgiRolu.SiyirmaTaban: return "siyirma";
                 case CizgiRolu.ProjeKotu: return "proje kotu";
-                case CizgiRolu.UstyapiAltKotu: return "ustyapi alt";
-                case CizgiRolu.AsinmaTaban: return "asinma";
-                case CizgiRolu.BinderTaban: return "binder";
-                case CizgiRolu.BitumluTemelTaban: return "bitumlu";
-                case CizgiRolu.PlentmiksTaban: return "plentmiks";
-                case CizgiRolu.AltTemelTaban: return "alttemel";
-                case CizgiRolu.KirmatasTaban: return "kirmatas";
-                case CizgiRolu.EksenCizgisi: return "CL";
-                case CizgiRolu.HendekCizgisi: return "hendek";
-                case CizgiRolu.SevCizgisi: return "sev";
-                case CizgiRolu.BanketCizgisi: return "banket";
+                case CizgiRolu.Siyirma: return "siyirma";
+                case CizgiRolu.Yarma: return "yarma";
+                case CizgiRolu.Dolgu: return "dolgu";
+                case CizgiRolu.Asinma: return "asinma";
+                case CizgiRolu.Binder: return "binder";
+                case CizgiRolu.BitumluTemel: return "bitumlu";
+                case CizgiRolu.Plentmiks: return "plentmiks";
+                case CizgiRolu.AltTemel: return "alttemel";
+                case CizgiRolu.BTYerineKonan: return "BT konan";
+                case CizgiRolu.BTYerineKonmayan: return "BT konmayan";
                 default: return rol.ToString();
             }
         }
@@ -344,9 +556,17 @@ namespace Metraj.Views.EnkesitOkuma
 
         private void Canvas_MouseDown(object sender, MouseButtonEventArgs e)
         {
+            // Sol cift tiklama: highlight temizle + fit-to-view
+            if (e.LeftButton == MouseButtonState.Pressed && e.ClickCount == 2)
+            {
+                HighlightTemizle();
+                e.Handled = true;
+                return;
+            }
+
             if (e.MiddleButton == MouseButtonState.Pressed)
             {
-                // Cift tiklama: fit-to-view (AutoCAD zoom extents)
+                // Orta cift tiklama: fit-to-view (AutoCAD zoom extents)
                 var simdi = DateTime.Now;
                 if ((simdi - _sonOrtaTiklama).TotalMilliseconds < 400)
                 {
@@ -409,7 +629,7 @@ namespace Metraj.Views.EnkesitOkuma
 
         private void BtnSigdir_Click(object sender, RoutedEventArgs e)
         {
-            Sigdir();
+            HighlightTemizle();
         }
     }
 }
