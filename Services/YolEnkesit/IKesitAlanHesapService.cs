@@ -11,5 +11,10 @@ namespace Metraj.Services.YolEnkesit
 
         /// <summary>5 orneklem kesit icin detayli tanilama raporu yazar (dosyaya).</summary>
         string TanilamaRaporuYaz(List<KesitGrubu> kesitler);
+
+        /// <summary>Debug: hesap geometrisini DWG'ye cizer (METRAJ_DEBUG layer).</summary>
+        void DebugModuAc();
+        void DebugModuKapat();
+        void DebugKatmaniTemizle();
     }
 }

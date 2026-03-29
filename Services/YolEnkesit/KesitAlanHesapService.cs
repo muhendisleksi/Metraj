@@ -12,95 +12,235 @@ namespace Metraj.Services.YolEnkesit
     public partial class KesitAlanHesapService : IKesitAlanHesapService
     {
         private readonly IEnKesitAlanService _enKesitAlanService;
+        private readonly ITabloOkumaService _tabloOkumaService;
         private int _logSayaci;
 
         // Dikey cizgi esigi: Y/X orani bundan buyukse dikey kabul edilir
         private const double DikeyOranEsigi = 5.0;
-        // Nokta birlesme esigi: bu mesafeden yakin noktalar tek noktaya dusurulur
-        private const double NoktaBirlesmeToleransi = 0.01;
+        // Zincirleme toleransi: iki parcanin uc noktalari bu mesafeden yakinsa birlestirilebilir
+        // CL junction'lar ~0.01m, platform-banket farki ~0.4m → 0.2m iyi ayirir
+        private const double ZincirlemeToleranci = 0.2;
+        // Nokta cakisma esigi: bulusma noktasindaki cakisan noktalar ortalalanir
+        private const double NoktaCakismaEsigi = 0.01;
 
-        public KesitAlanHesapService(IEnKesitAlanService enKesitAlanService)
+        public KesitAlanHesapService(IEnKesitAlanService enKesitAlanService, ITabloOkumaService tabloOkumaService)
         {
             _enKesitAlanService = enKesitAlanService;
+            _tabloOkumaService = tabloOkumaService;
         }
 
         // =============== CIZGI BIRLESTIRME ===============
 
+        /// <summary>CizgiTanimi.DikeyVeyaSevMi property'sini kullan.</summary>
+        private static bool CizgiSevVeyaDikeyMi(CizgiTanimi c) => c.DikeyVeyaSevMi;
+
         /// <summary>
-        /// Ayni roldeki tum yatay cizgilerin noktalarini birlestirerek tek sureli cizgi olusturur.
-        /// Turk yol enkesitlerinde tabaka cizgileri CL'de ikiye bolunmus cizilir.
-        /// Bu metot sol ve sag yarilari birlestirip tam platform genisliginde cizgi dondurur.
-        /// Dikey cizgiler (hendek kenari vb.) filtrelenir.
+        /// Ayni roldeki cizgileri geometrik zincirleme ile gruplara ayirir.
+        /// Uc noktalari yakin olan parcalar (CL'de bulusan sol/sag yarilari) tek zincire eklenir.
+        /// Bulusmayan parcalar (banket, farkli Y seviyesi) ayri grup kalir.
+        /// Her zincir icinde noktalar soldan saga birlestirilir.
         /// </summary>
-        private List<Point2d> RolNoktalariniAl(KesitGrubu kesit, CizgiRolu rol)
+        private List<List<Point2d>> RolGruplariniAl(KesitGrubu kesit, CizgiRolu rol)
         {
             var cizgiler = kesit.Cizgiler.Where(c => c.Rol == rol).ToList();
-            if (cizgiler.Count == 0) return null;
-            if (cizgiler.Count == 1) return cizgiler[0].Noktalar;
+            if (cizgiler.Count == 0) return new List<List<Point2d>>();
 
-            // Dikey cizgileri filtrele (Y/X orani > 5 = dikey eleman, tabaka degil)
-            var yataylar = cizgiler.Where(c =>
-            {
-                if (c.Noktalar.Count < 2) return false;
-                double xRange = c.Noktalar.Max(p => p.X) - c.Noktalar.Min(p => p.X);
-                if (xRange < 0.01) return false;
-                double yRange = c.Noktalar.Max(p => p.Y) - c.Noktalar.Min(p => p.Y);
-                return yRange / xRange <= DikeyOranEsigi;
-            }).ToList();
+            // Sev/dikey cizgileri filtrele
+            var yataylar = cizgiler.Where(c => !CizgiSevVeyaDikeyMi(c)).ToList();
+            int filtrelenen = cizgiler.Count - yataylar.Count;
 
-            // Hepsi dikey ise, en genis X araligina sahip olani don
             if (yataylar.Count == 0)
-                return cizgiler.OrderByDescending(c => c.Noktalar.Max(p => p.X) - c.Noktalar.Min(p => p.X)).First().Noktalar;
-
-            if (yataylar.Count == 1) return yataylar[0].Noktalar;
-
-            // Birden fazla yatay cizgi: noktalarini birlestir
-            int oncekiToplamNokta = yataylar.Sum(c => c.Noktalar.Count);
-            var sonuc = NoktalariMerge(yataylar);
-
-            // Tanilama logu — birlesme oncesi/sonrasi nokta farki
-            if (_logSayaci < 3)
             {
-                LoggingService.Info($"  [MERGE-TANILAMA] {rol}: {cizgiler.Count} parca ({yataylar.Count} yatay + {cizgiler.Count - yataylar.Count} dikey)");
-                foreach (var c in yataylar)
-                    LoggingService.Info($"    parca: {c.Noktalar.Count} pnt, X=[{c.Noktalar.Min(p => p.X):F2}..{c.Noktalar.Max(p => p.X):F2}]");
-                LoggingService.Info($"    MERGE: {oncekiToplamNokta} -> {sonuc.Count} pnt, X=[{sonuc.Min(p => p.X):F2}..{sonuc.Max(p => p.X):F2}]");
-                if (oncekiToplamNokta - sonuc.Count > 2)
-                    LoggingService.Warning($"    UYARI: {oncekiToplamNokta - sonuc.Count} nokta kayboldu!");
+                if (_logSayaci < 3)
+                    LoggingService.Info($"  [ZINCIR] {rol}: {cizgiler.Count} parca — hepsi dikey/sev, rol YOK");
+                return new List<List<Point2d>>();
+            }
+            if (yataylar.Count == 1)
+                return new List<List<Point2d>> { yataylar[0].Noktalar };
+
+            // Geometrik zincirleme: uc noktalari yakin parcalari birlestir
+            var zincirler = GeometrikZincirlemeYap(yataylar);
+
+            // Her zinciri nokta listesine donustur
+            var sonuc = new List<List<Point2d>>();
+            foreach (var zincir in zincirler)
+                sonuc.Add(zincir.Count == 1 ? zincir[0].Noktalar : ZincirNoktalariBirlestir(zincir));
+
+            // Tanilama logu
+            if (_logSayaci < 3 && (zincirler.Count > 1 || filtrelenen > 0))
+            {
+                LoggingService.Info($"  [ZINCIR] {rol}: {cizgiler.Count} parca ({yataylar.Count} yatay + {filtrelenen} sev/dikey) -> {zincirler.Count} zincir");
+                for (int z = 0; z < sonuc.Count; z++)
+                {
+                    var pts = sonuc[z];
+                    LoggingService.Info($"    Zincir {z}: {zincirler[z].Count} parca -> {pts.Count} pnt, X=[{pts.Min(p => p.X):F2}..{pts.Max(p => p.X):F2}]");
+                }
             }
 
             return sonuc;
         }
 
         /// <summary>
-        /// Birden fazla cizginin noktalarini X'e gore siralayip yakin noktalari birlestirir.
-        /// CL'de uc uca eklenen sol/sag yarilari tek surekli cizgiye donusturur.
+        /// Ayni roldeki cizgilerin birlesik noktalarini dondurur (geriye uyumluluk).
+        /// Birden fazla zincir varsa en genis X araligina sahip zinciri dondurur.
         /// </summary>
-        private List<Point2d> NoktalariMerge(List<CizgiTanimi> cizgiler)
+        private List<Point2d> RolNoktalariniAl(KesitGrubu kesit, CizgiRolu rol)
         {
-            var tumNoktalar = cizgiler.SelectMany(c => c.Noktalar).OrderBy(p => p.X).ToList();
+            var gruplar = RolGruplariniAl(kesit, rol);
+            if (gruplar.Count == 0) return null;
+            return gruplar.OrderByDescending(g => g.Max(p => p.X) - g.Min(p => p.X)).First();
+        }
 
-            var birlesik = new List<Point2d>(tumNoktalar.Count);
-            birlesik.Add(tumNoktalar[0]);
+        // =============== GEOMETRIK ZINCIRLEME ===============
 
-            for (int i = 1; i < tumNoktalar.Count; i++)
+        /// <summary>
+        /// Parcalari uc nokta yakinligina gore zincirler.
+        /// Birinin sag ucu digerinin sol ucuna yakinsa → ayni zincir.
+        /// CL'de bulusan sol/sag yarilari otomatik birlesir.
+        /// Banket parcalari farkli Y seviyesinde → ayri zincir kalir.
+        /// </summary>
+        private static List<List<CizgiTanimi>> GeometrikZincirlemeYap(List<CizgiTanimi> parcalar)
+        {
+            var kalan = new List<CizgiTanimi>(parcalar);
+            var zincirler = new List<List<CizgiTanimi>>();
+
+            while (kalan.Count > 0)
             {
-                var son = birlesik[birlesik.Count - 1];
-                var yeni = tumNoktalar[i];
+                var zincir = new List<CizgiTanimi> { kalan[0] };
+                kalan.RemoveAt(0);
 
-                if (Math.Abs(yeni.X - son.X) < NoktaBirlesmeToleransi)
+                // Zinciri her iki yonde genislet
+                bool degisti = true;
+                while (degisti && kalan.Count > 0)
                 {
-                    // Ayni X — Y degerlerini ortala (CL bilesim noktasi)
-                    birlesik[birlesik.Count - 1] = new Point2d(
-                        (son.X + yeni.X) / 2,
-                        (son.Y + yeni.Y) / 2);
-                    continue;
+                    degisti = false;
+                    var sagUc = SagUcNokta(zincir[zincir.Count - 1]);
+                    var solUc = SolUcNokta(zincir[0]);
+
+                    for (int i = 0; i < kalan.Count; i++)
+                    {
+                        var pSol = SolUcNokta(kalan[i]);
+                        var pSag = SagUcNokta(kalan[i]);
+
+                        // Zincirin sagina baglanir mi?
+                        if (UcNoktaYakinMi(sagUc, pSol))
+                        {
+                            zincir.Add(kalan[i]);
+                            kalan.RemoveAt(i);
+                            degisti = true;
+                            break;
+                        }
+
+                        // Zincirin soluna baglanir mi?
+                        if (UcNoktaYakinMi(solUc, pSag))
+                        {
+                            zincir.Insert(0, kalan[i]);
+                            kalan.RemoveAt(i);
+                            degisti = true;
+                            break;
+                        }
+                    }
                 }
 
-                birlesik.Add(yeni);
+                zincirler.Add(zincir);
             }
 
-            return birlesik;
+            return zincirler;
+        }
+
+        /// <summary>Cizginin en soldaki noktasi (min X).</summary>
+        private static Point2d SolUcNokta(CizgiTanimi c)
+        {
+            Point2d en = c.Noktalar[0];
+            for (int i = 1; i < c.Noktalar.Count; i++)
+                if (c.Noktalar[i].X < en.X) en = c.Noktalar[i];
+            return en;
+        }
+
+        /// <summary>Cizginin en sagdaki noktasi (max X).</summary>
+        private static Point2d SagUcNokta(CizgiTanimi c)
+        {
+            Point2d en = c.Noktalar[0];
+            for (int i = 1; i < c.Noktalar.Count; i++)
+                if (c.Noktalar[i].X > en.X) en = c.Noktalar[i];
+            return en;
+        }
+
+        /// <summary>Iki uc noktanin geometrik olarak yakin olup olmadigini kontrol eder.</summary>
+        private static bool UcNoktaYakinMi(Point2d a, Point2d b)
+        {
+            double dx = a.X - b.X;
+            double dy = a.Y - b.Y;
+            return Math.Sqrt(dx * dx + dy * dy) < ZincirlemeToleranci;
+        }
+
+        /// <summary>
+        /// Zincirlenmis parcalarin noktalarini soldan saga birlestirir.
+        /// Her parcanin noktalarini X sirasina koyar, bulusma noktalarinda
+        /// cakisan noktalari ortalar. Profil geometrisi korunur.
+        /// </summary>
+        private static List<Point2d> ZincirNoktalariBirlestir(List<CizgiTanimi> zincir)
+        {
+            var sonuc = new List<Point2d>();
+
+            foreach (var parca in zincir)
+            {
+                var noktalar = parca.Noktalar.OrderBy(p => p.X).ToList();
+
+                if (sonuc.Count > 0 && noktalar.Count > 0)
+                {
+                    var son = sonuc[sonuc.Count - 1];
+                    var ilk = noktalar[0];
+                    double dx = Math.Abs(son.X - ilk.X);
+                    double dy = Math.Abs(son.Y - ilk.Y);
+
+                    // Bulusma noktasinda cakisan noktalari ortala
+                    if (dx < ZincirlemeToleranci && dy < ZincirlemeToleranci)
+                    {
+                        sonuc[sonuc.Count - 1] = new Point2d(
+                            (son.X + ilk.X) / 2, (son.Y + ilk.Y) / 2);
+                        noktalar.RemoveAt(0);
+                    }
+                }
+
+                sonuc.AddRange(noktalar);
+            }
+
+            return sonuc;
+        }
+
+        /// <summary>
+        /// Iki rol arasindaki alani tum Y-gruplari uzerinden hesaplar.
+        /// Her ust-grup x alt-grup cifti icin IkiCizgiArasiAlanHesapla cagirir
+        /// ve toplamlari dondurur. X overlap'i olmayan ciftler otomatik 0 verir.
+        /// </summary>
+        private double CokluGrupAlanHesapla(KesitGrubu kesit, CizgiRolu ustRol, CizgiRolu altRol, string malzemeAdi)
+        {
+            var ustGruplar = RolGruplariniAl(kesit, ustRol);
+            var altGruplar = RolGruplariniAl(kesit, altRol);
+
+            if (ustGruplar.Count == 0 || altGruplar.Count == 0) return 0;
+
+            // Debug: aktif rol bilgisini kaydet
+            _debugAktifUstRol = ustRol;
+            _debugAktifAltRol = altRol;
+
+            double toplamAlan = 0;
+
+            foreach (var ustGrup in ustGruplar)
+            {
+                foreach (var altGrup in altGruplar)
+                {
+                    double alan = IkiCizgiArasiAlanHesapla(ustGrup, altGrup, malzemeAdi);
+                    if (alan > 0.0001)
+                        toplamAlan += alan;
+                }
+            }
+
+            if (_logSayaci < 3 && (ustGruplar.Count > 1 || altGruplar.Count > 1))
+                LoggingService.Info($"  [COKLU-GRUP] {malzemeAdi}: {ustGruplar.Count} ust x {altGruplar.Count} alt grup = {toplamAlan:F4} m2");
+
+            return toplamAlan;
         }
 
         // =============== ALAN HESABI ===============
@@ -124,13 +264,10 @@ namespace Metraj.Services.YolEnkesit
                 }
             }
 
-            // Birlesik noktalar — ayni roldeki parcalari merge et
-            var zeminNkt = RolNoktalariniAl(kesit, CizgiRolu.Zemin);
+            // Yarma/dolgu icin birlesik noktalar (en genis Y-grubu)
             var siyirmaNkt = RolNoktalariniAl(kesit, CizgiRolu.SiyirmaTaban);
             var ustyapiAltNkt = RolNoktalariniAl(kesit, CizgiRolu.UstyapiAltKotu);
 
-            // UstyapiAltKotu fallback: yoksa en alt tabaka cizgisini kullan
-            // Yol platformunun alt siniri = en alttaki ustyapi tabakasi
             if (ustyapiAltNkt == null)
             {
                 var fallbackSirasi = new[]
@@ -149,26 +286,21 @@ namespace Metraj.Services.YolEnkesit
                 }
             }
 
-            if (detayliLog)
+            // Siyirma — coklu Y-grubu ile hesapla
             {
-                LogBirlesim(kesit, CizgiRolu.Zemin, zeminNkt);
-                LogBirlesim(kesit, CizgiRolu.SiyirmaTaban, siyirmaNkt);
-                LogBirlesim(kesit, CizgiRolu.UstyapiAltKotu, ustyapiAltNkt);
-            }
-
-            // Siyirma
-            if (zeminNkt != null && siyirmaNkt != null)
-            {
-                double siyirmaAlani = IkiCizgiArasiAlanHesapla(zeminNkt, siyirmaNkt, "Siyirma");
+                double siyirmaAlani = CokluGrupAlanHesapla(kesit, CizgiRolu.Zemin, CizgiRolu.SiyirmaTaban, "Siyirma");
                 if (detayliLog) LoggingService.Info($"  Siyirma alani: {siyirmaAlani:F4} m2");
-                sonuclar.Add(new AlanHesapSonucu
+                if (siyirmaAlani > 0.0001)
                 {
-                    MalzemeAdi = "Siyirma",
-                    Alan = siyirmaAlani,
-                    UstCizgiRolu = CizgiRolu.Zemin,
-                    AltCizgiRolu = CizgiRolu.SiyirmaTaban,
-                    Aciklama = "Zemin - Siyirma tabani arasi"
-                });
+                    sonuclar.Add(new AlanHesapSonucu
+                    {
+                        MalzemeAdi = "Siyirma",
+                        Alan = siyirmaAlani,
+                        UstCizgiRolu = CizgiRolu.Zemin,
+                        AltCizgiRolu = CizgiRolu.SiyirmaTaban,
+                        Aciklama = "Zemin - Siyirma tabani arasi"
+                    });
+                }
             }
 
             // Yarma / Dolgu
@@ -178,26 +310,26 @@ namespace Metraj.Services.YolEnkesit
             // Ustyapi tabakalari
             HesaplaUstyapiTabakalari(kesit, sonuclar, detayliLog);
 
-            kesit.HesaplananAlanlar = sonuclar;
-
             if (detayliLog)
             {
-                LoggingService.Info($"  TOPLAM: {sonuclar.Count} malzeme hesaplandi");
+                LoggingService.Info($"  Shoelace TOPLAM: {sonuclar.Count} malzeme");
                 foreach (var s in sonuclar)
                     LoggingService.Info($"    {s.MalzemeAdi} = {s.Alan:F4} m2");
             }
 
-            _logSayaci++;
+            // NOT: kesit.HesaplananAlanlar ve _logSayaci AlanHesapla'da yonetilir
             return sonuclar;
         }
 
         public void TopluAlanHesapla(List<KesitGrubu> kesitler)
         {
             _logSayaci = 0;
+            DebugVerileriSifirla();
+
             foreach (var kesit in kesitler)
                 AlanHesapla(kesit);
 
-            LoggingService.Info($"Toplu alan hesabi: {kesitler.Count} kesit hesaplandi");
+            LoggingService.Info($"Toplu alan hesabi: {kesitler.Count} kesit, {_debugVerileri.Count} debug polygon");
         }
 
         private void LogBirlesim(KesitGrubu kesit, CizgiRolu rol, List<Point2d> birlesik)
@@ -255,18 +387,8 @@ namespace Metraj.Services.YolEnkesit
 
             foreach (var (ust, alt, ad) in tabakalar)
             {
-                var ustNkt = RolNoktalariniAl(kesit, ust);
-                var altNkt = RolNoktalariniAl(kesit, alt);
-
-                if (ustNkt == null || altNkt == null) continue;
-
-                if (detayliLog)
-                {
-                    LogBirlesim(kesit, ust, ustNkt);
-                    LogBirlesim(kesit, alt, altNkt);
-                }
-
-                double alan = IkiCizgiArasiAlanHesapla(ustNkt, altNkt, ad);
+                // Coklu Y-grubu ile alan hesabi — platform + banket parcalarini ayri hesaplayip toplar
+                double alan = CokluGrupAlanHesapla(kesit, ust, alt, ad);
                 if (detayliLog) LoggingService.Info($"  {ad}: {alan:F4} m2 ({ust} -> {alt})");
 
                 if (alan > 0.0001)
@@ -299,7 +421,7 @@ namespace Metraj.Services.YolEnkesit
 
             double alan = _enKesitAlanService.ShoelaceAlan(polygon);
 
-            // Tanilama logu — birlesme oncesi/sonrasi nokta kaybi ve polygon bilgisi
+            // Tanilama logu
             if (_logSayaci < 3 && malzemeAdi != null)
             {
                 LoggingService.Info($"  [SH-TANILAMA] {malzemeAdi}:");
@@ -310,6 +432,13 @@ namespace Metraj.Services.YolEnkesit
                 LoggingService.Info($"    Polygon: {polygon.Count} pnt, X=[{polygon.Min(p => p.X):F2}..{polygon.Max(p => p.X):F2}], Y=[{polygon.Min(p => p.Y):F2}..{polygon.Max(p => p.Y):F2}]");
                 LoggingService.Info($"    Shoelace alan: {alan:F4} m2");
             }
+
+            // Debug verisi kaydet — METRAJDEBUG komutuyla sonra cizilebilir
+            if (malzemeAdi != null && alan > 0.0001)
+                DebugPolygonKaydet(malzemeAdi, alan,
+                    ustKesik.OrderBy(p => p.X).ToList(),
+                    altKesik.OrderBy(p => p.X).ToList(),
+                    polygon);
 
             return alan;
         }
@@ -418,33 +547,37 @@ namespace Metraj.Services.YolEnkesit
 
         private void TanilamaKesitYaz(StringBuilder sb, KesitGrubu kesit)
         {
-            // 1. Tum cizgiler
+            // 1. Tum cizgiler — kapali/acik durumu ve alan degeri dahil
             sb.AppendLine();
             sb.AppendLine("  [1] CIZGILER");
-            sb.AppendLine($"  {"Rol",-20} {"Layer",-25} {"Pnt",4} {"X min",10} {"X max",10} {"Y min",10} {"Y max",10} {"Ort Y",10}");
-            sb.AppendLine($"  {new string('-', 99)}");
+            sb.AppendLine($"  {"Rol",-20} {"Layer",-25} {"Pnt",4} {"Kapali",7} {"Alan",10} {"X min",10} {"X max",10} {"Ort Y",10}");
+            sb.AppendLine($"  {new string('-', 106)}");
 
             var anlamliCizgiler = kesit.Cizgiler
                 .Where(c => c.Rol != CizgiRolu.CerceveCizgisi && c.Rol != CizgiRolu.GridCizgisi)
                 .OrderByDescending(c => c.OrtalamaY)
                 .ToList();
 
+            int toplamKapali = 0, toplamAcik = 0;
             foreach (var c in anlamliCizgiler)
             {
                 double cMinX = c.Noktalar.Count > 0 ? c.Noktalar.Min(p => p.X) : 0;
                 double cMaxX = c.Noktalar.Count > 0 ? c.Noktalar.Max(p => p.X) : 0;
-                double cMinY = c.Noktalar.Count > 0 ? c.Noktalar.Min(p => p.Y) : 0;
-                double cMaxY = c.Noktalar.Count > 0 ? c.Noktalar.Max(p => p.Y) : 0;
                 double xAraligi = cMaxX - cMinX;
-                double yAraligi = cMaxY - cMinY;
-                string tip = (xAraligi < 0.01 || yAraligi / xAraligi > DikeyOranEsigi) ? " [DIKEY]" : "";
+                double yAraligi = c.Noktalar.Count > 1 ? c.Noktalar.Max(p => p.Y) - c.Noktalar.Min(p => p.Y) : 0;
+                string tip = c.DikeyVeyaSevMi ? " [DIKEY]" : "";
                 string oto = c.OtomatikAtanmis ? "" : " [MANUEL]";
-                sb.AppendLine($"  {c.Rol,-20} {(c.LayerAdi ?? "?"),-25} {c.Noktalar.Count,4} {cMinX,10:F2} {cMaxX,10:F2} {cMinY,10:F2} {cMaxY,10:F2} {c.OrtalamaY,10:F2}{oto}{tip}");
+                string kapaliStr = c.KapaliMi ? "KAPALI" : "acik";
+                string alanStr = c.EntityAlani > 0 ? $"{c.EntityAlani:F4}" : "0";
+
+                if (c.KapaliMi) toplamKapali++; else toplamAcik++;
+
+                sb.AppendLine($"  {c.Rol,-20} {(c.LayerAdi ?? "?"),-25} {c.Noktalar.Count,4} {kapaliStr,7} {alanStr,10} {cMinX,10:F2} {cMaxX,10:F2} {c.OrtalamaY,10:F2}{oto}{tip}");
             }
 
             int cerceveSayisi = kesit.Cizgiler.Count(c => c.Rol == CizgiRolu.CerceveCizgisi || c.Rol == CizgiRolu.GridCizgisi);
             int tanimsizSayisi = kesit.Cizgiler.Count(c => c.Rol == CizgiRolu.Tanimsiz);
-            sb.AppendLine($"  (+ {cerceveSayisi} cerceve/grid, {tanimsizSayisi} tanimsiz cizgi gizlendi)");
+            sb.AppendLine($"  Kapali: {toplamKapali}, Acik: {toplamAcik} (+ {cerceveSayisi} cerceve/grid, {tanimsizSayisi} tanimsiz gizlendi)");
 
             // 2. Rol durumu + birlesme bilgisi
             sb.AppendLine();
@@ -574,12 +707,11 @@ namespace Metraj.Services.YolEnkesit
             // 3b. TraceBoundary detay
             TBTanilamaKesitYaz(sb, kesit);
 
-            // 4. Tablo text durumu
+            // 4. Tablo text durumu — detayli icerik logu
             sb.AppendLine();
             sb.AppendLine("  [4] TABLO TEXT DURUMU");
             sb.AppendLine($"      Text objesi sayisi: {kesit.TextObjeler?.Count ?? 0}");
-            if (kesit.TextObjeler == null || kesit.TextObjeler.Count == 0)
-                sb.AppendLine($"      UYARI: Hic text bulunamadi — tablo okuma calismaz!");
+            _tabloOkumaService.TabloTanilamaYaz(kesit, sb);
 
             // 5. Hesap sonuclari vs tablo
             if (kesit.HesaplananAlanlar != null && kesit.HesaplananAlanlar.Count > 0)

@@ -112,16 +112,16 @@ namespace Metraj.Services.YolEnkesit
                     Point3d tabloMinPt, tabloMaxPt;
                     if (anchor.CL_Dogrulandi && pencere.OtomatikTespit)
                     {
-                        // Tablo: kesitin sag disinda, +15 birim saga, +5 birim yukari
+                        // Tablo: kesitin sag disinda — genisletilmis arama alani
                         double sagKenar = anchor.CL_X + pencere.PlatformYariGenislik;
-                        tabloMinPt = new Point3d(sagKenar, anchor.CL_MinY - 5, 0);
-                        tabloMaxPt = new Point3d(sagKenar + 15, anchor.CL_MaxY + 5, 0);
+                        tabloMinPt = new Point3d(sagKenar - 2, anchor.CL_MinY - 10, 0);
+                        tabloMaxPt = new Point3d(sagKenar + 25, anchor.CL_MaxY + 10, 0);
                     }
                     else
                     {
                         double sagKenar = anchor.X + pencere.OffsetSagX;
-                        tabloMinPt = new Point3d(sagKenar, anchor.Y - pencere.OffsetAltY - 5, 0);
-                        tabloMaxPt = new Point3d(sagKenar + 15, anchor.Y + pencere.OffsetUstY + 5, 0);
+                        tabloMinPt = new Point3d(sagKenar - 2, anchor.Y - pencere.OffsetAltY - 10, 0);
+                        tabloMaxPt = new Point3d(sagKenar + 25, anchor.Y + pencere.OffsetUstY + 10, 0);
                     }
 
                     foreach (var entId in tumEntityler)
@@ -129,7 +129,7 @@ namespace Metraj.Services.YolEnkesit
                         if (mevcutTextler.Contains(entId.Handle.Value)) continue;
 
                         var obj = tr.GetObject(entId, OpenMode.ForRead);
-                        if (!(obj is DBText) && !(obj is MText) && !(obj is Table)) continue;
+                        if (!(obj is DBText) && !(obj is MText) && !(obj is Table) && !(obj is BlockReference)) continue;
 
                         var ent = (Entity)obj;
                         Extents3d bounds;
@@ -186,13 +186,116 @@ namespace Metraj.Services.YolEnkesit
                 || ent is Solid3d       // 3D Solid
                 || ent is Spline
                 || ent is Arc
-                || ent is Ellipse;
+                || ent is Ellipse
+                || ent is Hatch;        // Hatch — kapali bolge, direkt alan okunabilir
         }
 
         private CizgiTanimi CizgiTanimiOlustur(Entity ent, ObjectId entId, Transaction tr)
         {
+            // Hatch ozel durum: noktasi olmayabilir ama alani var
+            if (ent is Hatch hatch)
+            {
+                double hatchAlan = 0;
+                try { hatchAlan = hatch.Area; } catch { return null; }
+                if (hatchAlan <= 0) return null;
+
+                Extents3d hb;
+                try { hb = hatch.GeometricExtents; } catch { return null; }
+
+                // Hatch icin boundary noktalarini kullan (goruntuleme icin)
+                var noktalarH = new List<Point2d>
+                {
+                    new Point2d(hb.MinPoint.X, hb.MinPoint.Y),
+                    new Point2d(hb.MaxPoint.X, hb.MinPoint.Y),
+                    new Point2d(hb.MaxPoint.X, hb.MaxPoint.Y),
+                    new Point2d(hb.MinPoint.X, hb.MaxPoint.Y)
+                };
+
+                return new CizgiTanimi
+                {
+                    EntityId = entId,
+                    LayerAdi = ent.Layer,
+                    RenkIndex = (short)ent.ColorIndex,
+                    Noktalar = noktalarH,
+                    OrtalamaY = (hb.MinPoint.Y + hb.MaxPoint.Y) / 2,
+                    KapaliMi = true,
+                    EntityAlani = hatchAlan
+                };
+            }
+
             var noktalar = _enKesitAlanService.PolylineNoktalariniAl(entId);
             if (noktalar == null || noktalar.Count < 2) return null;
+
+            // Kapali entity kontrolu ve alan okuma
+            bool kapali = false;
+            double alan = 0;
+            try
+            {
+                if (ent is Polyline pl)
+                {
+                    kapali = pl.Closed;
+                    // Kapali olsun olmasin .Area'yi dene (4 noktali kapali parcalar icin)
+                    try { alan = pl.Area; } catch { }
+                    // Polyline.Area acik cizgilerde 0 veya hata verir — sorun degil
+                }
+                else if (ent is Polyline2d pl2)
+                {
+                    kapali = pl2.Closed;
+                    try { alan = pl2.Area; } catch { }
+                }
+                else if (ent is Polyline3d pl3)
+                {
+                    kapali = pl3.Closed;
+                    try { alan = pl3.Area; } catch { }
+                }
+                else if (ent is Face face)
+                {
+                    // 3dFace: 3-4 vertex ile tanimlanan yuzey — her zaman alan tasir
+                    kapali = true;
+                    // Face.Area yok — Shoelace ile hesapla
+                    if (noktalar.Count >= 3)
+                    {
+                        double a = 0;
+                        for (int i = 0; i < noktalar.Count; i++)
+                        {
+                            var p1 = noktalar[i];
+                            var p2 = noktalar[(i + 1) % noktalar.Count];
+                            a += p1.X * p2.Y - p2.X * p1.Y;
+                        }
+                        alan = Math.Abs(a) / 2.0;
+                    }
+                }
+                else if (ent is Solid solid)
+                {
+                    // 2D Solid: 3-4 vertex
+                    kapali = true;
+                    if (noktalar.Count >= 3)
+                    {
+                        double a = 0;
+                        for (int i = 0; i < noktalar.Count; i++)
+                        {
+                            var p1 = noktalar[i];
+                            var p2 = noktalar[(i + 1) % noktalar.Count];
+                            a += p1.X * p2.Y - p2.X * p1.Y;
+                        }
+                        alan = Math.Abs(a) / 2.0;
+                    }
+                }
+                else if (ent is Spline sp)
+                {
+                    kapali = sp.Closed;
+                    if (kapali) try { alan = sp.Area; } catch { }
+                }
+                else if (ent is Ellipse el)
+                {
+                    kapali = true;
+                    try { alan = el.Area; } catch { }
+                }
+            }
+            catch { /* Alan okunamadiysa 0 kalir */ }
+
+            // Alan > 0 ise entity kapali kabul et (bazi Polyline'lar Closed=false ama Area > 0)
+            if (alan > 0.01 && !kapali) kapali = true;
 
             return new CizgiTanimi
             {
@@ -200,7 +303,9 @@ namespace Metraj.Services.YolEnkesit
                 LayerAdi = ent.Layer,
                 RenkIndex = (short)ent.ColorIndex,
                 Noktalar = noktalar,
-                OrtalamaY = noktalar.Average(p => p.Y)
+                OrtalamaY = noktalar.Average(p => p.Y),
+                KapaliMi = kapali,
+                EntityAlani = alan
             };
         }
 

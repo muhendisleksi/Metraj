@@ -20,51 +20,212 @@ namespace Metraj.Services.YolEnkesit
         // =============== ANA GIRIS NOKTASI ===============
 
         /// <summary>
-        /// Alan hesabi: Her malzeme icin TraceBoundary oncelikli, bulunamazsa Shoelace fallback.
-        /// Iki yontemin sonuclarini per-malzeme birlestirerek en iyi kapsami saglar.
+        /// Alan hesabi: Oncelik kapali entity alanlari, fallback Shoelace.
+        /// Kapali entity'ler (Polyline.Closed, 3dFace, Hatch) varsa direkt .Area kullanilir.
+        /// Yoksa eski Shoelace yontemine duser.
         /// </summary>
         public List<AlanHesapSonucu> AlanHesapla(KesitGrubu kesit)
         {
-            var tbSonuclar = TraceBoundaryAlanHesapla(kesit);
-            var shSonuclar = ShoelaceAlanHesapla(kesit);
-
-            // Per-malzeme birlestirme: TB varsa TB, yoksa Shoelace
-            var tbDict = new Dictionary<string, AlanHesapSonucu>();
-            foreach (var s in tbSonuclar)
-                tbDict[s.MalzemeAdi] = s;
-
-            var shDict = new Dictionary<string, AlanHesapSonucu>();
-            foreach (var s in shSonuclar)
-                shDict[s.MalzemeAdi] = s;
-
-            var tumMalzemeler = new HashSet<string>(tbDict.Keys);
-            foreach (var k in shDict.Keys)
-                tumMalzemeler.Add(k);
-
-            var birlesik = new List<AlanHesapSonucu>();
+            DebugAktifKesitAyarla(kesit);
             bool detayliLog = _logSayaci < 3;
 
+            var kapaliSonuclar = KapaliEntityAlanHesapla(kesit);
+            var shoelaceSonuclar = ShoelaceAlanHesapla(kesit);
+
+            // Per-malzeme birlestirme: kapali entity oncelikli, yoksa Shoelace
+            var kapaliDict = new Dictionary<string, AlanHesapSonucu>();
+            foreach (var s in kapaliSonuclar) kapaliDict[s.MalzemeAdi] = s;
+
+            var shDict = new Dictionary<string, AlanHesapSonucu>();
+            foreach (var s in shoelaceSonuclar) shDict[s.MalzemeAdi] = s;
+
+            var tumMalzemeler = new HashSet<string>(kapaliDict.Keys);
+            foreach (var k in shDict.Keys) tumMalzemeler.Add(k);
+
+            var birlesik = new List<AlanHesapSonucu>();
             foreach (var mal in tumMalzemeler)
             {
-                if (tbDict.TryGetValue(mal, out var tb))
+                if (kapaliDict.TryGetValue(mal, out var kp))
                 {
-                    birlesik.Add(tb);
-                    if (detayliLog) LoggingService.Info($"  {mal}: TB={tb.Alan:F4} m2");
+                    birlesik.Add(kp);
+                    if (detayliLog) LoggingService.Info($"  SONUC {mal}: {kp.Alan:F4} m2 [Kapali Entity]");
                 }
                 else if (shDict.TryGetValue(mal, out var sh))
                 {
-                    sh.Aciklama += " [Shoelace fallback]";
+                    sh.Aciklama += " [Shoelace]";
                     birlesik.Add(sh);
-                    if (detayliLog) LoggingService.Info($"  {mal}: Shoelace={sh.Alan:F4} m2 [fallback]");
+                    if (detayliLog) LoggingService.Info($"  SONUC {mal}: {sh.Alan:F4} m2 [Shoelace fallback]");
                 }
             }
 
             if (detayliLog)
-                LoggingService.Info($"Birlesik sonuc: {tbDict.Count} TB + {birlesik.Count - tbDict.Count} Shoelace = {birlesik.Count} malzeme");
+                LoggingService.Info($"  Birlesik: {kapaliDict.Count} kapali + {birlesik.Count - kapaliDict.Count} Shoelace = {birlesik.Count} malzeme");
 
             kesit.HesaplananAlanlar = birlesik;
             _logSayaci++;
             return birlesik;
+        }
+
+        // =============== KAPALI ENTITY ALAN HESABI ===============
+
+        /// <summary>
+        /// Kesitteki kapali entity'lerin .Area degerlerini okuyarak alan hesaplar.
+        /// Her entity'nin rol'une gore malzemeye eslestirir, ayni malzemedeki alanlari toplar.
+        /// </summary>
+        private List<AlanHesapSonucu> KapaliEntityAlanHesapla(KesitGrubu kesit)
+        {
+            var sonuclar = new List<AlanHesapSonucu>();
+            bool detayliLog = _logSayaci < 3;
+
+            if (detayliLog)
+                LoggingService.Info($"=== KAPALI ENTITY ALAN: {kesit.Anchor?.IstasyonMetni} ===");
+
+            // Rol → malzeme eslesmesi: SADECE tabaka rolleri
+            // Sinir cizgisi rolleri (Zemin, ProjeKotu, UstyapiAltKotu) DAHIL DEGIL
+            // — bunlar alan tasiyan entity olsalar bile baska malzemelere eklenmemeli
+            var rolMalzeme = new Dictionary<CizgiRolu, string>
+            {
+                { CizgiRolu.SiyirmaTaban, "Siyirma" },
+                { CizgiRolu.AsinmaTaban, "Asinma" },
+                { CizgiRolu.BinderTaban, "Binder" },
+                { CizgiRolu.BitumluTemelTaban, "Bitumlu Temel" },
+                { CizgiRolu.PlentmiksTaban, "Plentmiks" },
+                { CizgiRolu.AltTemelTaban, "Alttemel" },
+                { CizgiRolu.KirmatasTaban, "Kirmatas" },
+            };
+
+            // Sinir cizgisi rolleri — alan tasissalar bile hesaba dahil etme
+            var sinirRolleri = new HashSet<CizgiRolu>
+            {
+                CizgiRolu.Zemin, CizgiRolu.ProjeKotu, CizgiRolu.UstyapiAltKotu,
+                CizgiRolu.HendekCizgisi, CizgiRolu.SevCizgisi, CizgiRolu.BanketCizgisi
+            };
+
+            int kapaliSayisi = 0;
+            int acikSayisi = 0;
+            int atlanmisSayisi = 0;
+            var malzemeAlanlari = new Dictionary<string, double>();
+
+            foreach (var cizgi in kesit.Cizgiler)
+            {
+                // Cerceve/grid/eksen atla
+                if (cizgi.Rol == CizgiRolu.CerceveCizgisi || cizgi.Rol == CizgiRolu.GridCizgisi
+                    || cizgi.Rol == CizgiRolu.EksenCizgisi)
+                    continue;
+
+                // [DIKEY] entity'ler HICBIR hesaba dahil edilmez — geometrik kontrol, rol'den bagimsiz
+                if (cizgi.DikeyVeyaSevMi)
+                {
+                    if (detayliLog && cizgi.Rol != CizgiRolu.Tanimsiz)
+                        LoggingService.Info($"  DIKEY-ATLANDI: L={cizgi.LayerAdi}, Rol={cizgi.Rol}, Kapali={cizgi.KapaliMi}, Alan={cizgi.EntityAlani:F4}");
+                    continue;
+                }
+
+                if (cizgi.KapaliMi && cizgi.EntityAlani > 0.01)
+                {
+                    // Sinir cizgisi rolu — alan tasiyor ama baska malzemeye dahil etme
+                    if (sinirRolleri.Contains(cizgi.Rol))
+                    {
+                        if (detayliLog)
+                            LoggingService.Info($"  SINIR-ATLANDI: L={cizgi.LayerAdi}, Rol={cizgi.Rol}, Alan={cizgi.EntityAlani:F4}");
+                        continue;
+                    }
+
+                    kapaliSayisi++;
+
+                    // Oncelik 1: Kalibrasyon rolu (tabaka rolleri)
+                    string malzeme = null;
+                    if (cizgi.Rol != CizgiRolu.Tanimsiz && cizgi.Rol != CizgiRolu.Diger)
+                        rolMalzeme.TryGetValue(cizgi.Rol, out malzeme);
+
+                    // Oncelik 2: Layer adi
+                    if (malzeme == null)
+                        malzeme = LayerdanMalzemeAdiCikar(cizgi.LayerAdi);
+
+                    // Banket kontrolu: entity'nin X merkezi platformun disindaysa banket
+                    bool banket = false;
+                    if (malzeme != null && kesit.CL_X.HasValue && cizgi.Noktalar.Count >= 2)
+                    {
+                        double entMinX = cizgi.Noktalar.Min(p => p.X);
+                        double entMaxX = cizgi.Noktalar.Max(p => p.X);
+                        double entMerkezX = (entMinX + entMaxX) / 2.0;
+                        double clX = kesit.CL_X.Value;
+
+                        // Platform yarim genisligi: ayni roldeki TUM entity'lerin kapsadigi
+                        // X araliginin CL'ye en yakin kismi. Basit yaklasim: CL'den +-4m platform.
+                        // Daha iyi: entity merkezi CL'den 5m'den uzaksa banket.
+                        if (Math.Abs(entMerkezX - clX) > 5.0)
+                            banket = true;
+                    }
+
+                    if (malzeme != null && !banket)
+                    {
+                        if (!malzemeAlanlari.ContainsKey(malzeme))
+                            malzemeAlanlari[malzeme] = 0;
+                        malzemeAlanlari[malzeme] += cizgi.EntityAlani;
+                    }
+
+                    if (detayliLog)
+                    {
+                        string banketStr = banket ? " [BANKET]" : "";
+                        LoggingService.Info($"  KAPALI: L={cizgi.LayerAdi}, Rol={cizgi.Rol}, Alan={cizgi.EntityAlani:F4} -> {malzeme ?? "ESLESMEDI"}{banketStr}");
+                    }
+                }
+                else if (cizgi.KapaliMi && cizgi.EntityAlani <= 0.01 && cizgi.EntityAlani > 0)
+                {
+                    atlanmisSayisi++;
+                }
+                else if (!cizgi.KapaliMi)
+                {
+                    acikSayisi++;
+                    if (detayliLog && cizgi.Rol != CizgiRolu.Tanimsiz)
+                        LoggingService.Info($"  ACIK: L={cizgi.LayerAdi}, Rol={cizgi.Rol}, {cizgi.Noktalar.Count} pnt, Kapali={cizgi.KapaliMi}");
+                }
+            }
+
+            if (detayliLog)
+                LoggingService.Info($"  Ozet: {kapaliSayisi} kapali, {atlanmisSayisi} kucuk (< 0.01), {acikSayisi} acik");
+
+            foreach (var (malzeme, alan) in malzemeAlanlari)
+            {
+                if (alan > 0.01)
+                {
+                    sonuclar.Add(new AlanHesapSonucu
+                    {
+                        MalzemeAdi = malzeme,
+                        Alan = alan,
+                        Aciklama = $"Kapali entity: {malzeme}"
+                    });
+                }
+            }
+
+            if (detayliLog && sonuclar.Count > 0)
+            {
+                LoggingService.Info($"  Kapali entity sonuc: {sonuclar.Count} malzeme");
+                foreach (var s in sonuclar)
+                    LoggingService.Info($"    {s.MalzemeAdi} = {s.Alan:F4} m2");
+            }
+
+            return sonuclar;
+        }
+
+        /// <summary>Layer adindan malzeme adini cikarir.</summary>
+        private static string LayerdanMalzemeAdiCikar(string layerAdi)
+        {
+            if (string.IsNullOrEmpty(layerAdi)) return null;
+            string upper = layerAdi.ToUpperInvariant();
+
+            if (upper.Contains("ASINMA") || upper.Contains("A\u015EINMA")) return "Asinma";
+            if (upper.Contains("BINDER") || upper.Contains("B\u0130NDER")) return "Binder";
+            if (upper.Contains("BITUMLU") || upper.Contains("B\u0130T\u00DCML\u00DC") || upper.Contains("BITUMEN")) return "Bitumlu Temel";
+            if (upper.Contains("PLENTMIKS") || upper.Contains("PLENTM\u0130KS")) return "Plentmiks";
+            if (upper.Contains("ALTTEMEL") || upper.Contains("ALT TEMEL") || upper.Contains("GRANULER") || upper.Contains("GRAN\u00DCLER")) return "Alttemel";
+            if (upper.Contains("KIRMATAS") || upper.Contains("KIRMATA\u015E")) return "Kirmatas";
+            if (upper.Contains("SIYIRMA") || upper.Contains("S\u0130YIRMA") || upper.Contains("BITKISEL") || upper.Contains("B\u0130TK\u0130SEL")) return "Siyirma";
+            if (upper.Contains("YARMA") || upper.Contains("KAZI")) return "Yarma";
+            if (upper.Contains("DOLGU")) return "Dolgu";
+
+            return null;
         }
 
         // =============== TRACE BOUNDARY ===============

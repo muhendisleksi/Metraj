@@ -13,6 +13,7 @@ namespace Metraj.Views.EnkesitOkuma
     public partial class KesitOnizlemeControl : UserControl
     {
         private List<CizgiTanimi> _cizgiler;
+        private KesitGrubu _kesit; // Alan bilgisi icin
         private double _zoom = 1.0;
         private Point _pan = new Point(0, 0);
         private Point _sonMousePoz;
@@ -54,6 +55,17 @@ namespace Metraj.Views.EnkesitOkuma
         public void CizgileriYukle(List<CizgiTanimi> cizgiler)
         {
             _cizgiler = cizgiler;
+            _kesit = null;
+            _zoom = 1.0;
+            _pan = new Point(0, 0);
+            Ciz();
+        }
+
+        /// <summary>KesitGrubu ile yukle — alan bilgisi ve gorsel birlestirme icin.</summary>
+        public void CizgileriYukle(KesitGrubu kesit)
+        {
+            _cizgiler = kesit?.Cizgiler;
+            _kesit = kesit;
             _zoom = 1.0;
             _pan = new Point(0, 0);
             Ciz();
@@ -121,7 +133,7 @@ namespace Metraj.Views.EnkesitOkuma
             double canvasH = KesitCanvas.ActualHeight;
             if (canvasW < 10 || canvasH < 10) return;
 
-            // Fit-to-view: cerceve/grid cizgilerini HARIC tut, sadece anlamli cizgilere gore zoom yap
+            // Fit-to-view: cerceve/grid HARIC, diger tum cizgilerle fit hesapla
             var anlamliCizgiler = _cizgiler.Where(c =>
                 c.Rol != CizgiRolu.CerceveCizgisi && c.Rol != CizgiRolu.GridCizgisi).ToList();
 
@@ -166,9 +178,12 @@ namespace Metraj.Views.EnkesitOkuma
             foreach (var cizgi in _cizgiler.Where(c => c.Rol == CizgiRolu.CerceveCizgisi || c.Rol == CizgiRolu.GridCizgisi))
                 CizgiCiz(cizgi, scale, minX, minY, canvasH, padding);
 
-            // Diger cizgileri ustune ciz
-            foreach (var cizgi in _cizgiler.Where(c => c.Rol != CizgiRolu.CerceveCizgisi && c.Rol != CizgiRolu.GridCizgisi))
+            // Diger tum cizgileri ustune ciz (eskisi gibi — hesaptan bagimsiz)
+            foreach (var cizgi in _cizgiler.Where(c =>
+                c.Rol != CizgiRolu.CerceveCizgisi && c.Rol != CizgiRolu.GridCizgisi))
+            {
                 CizgiCiz(cizgi, scale, minX, minY, canvasH, padding);
+            }
         }
 
         private void CizgiCiz(CizgiTanimi cizgi, double scale, double minX, double minY, double canvasH, double padding)
@@ -277,19 +292,45 @@ namespace Metraj.Views.EnkesitOkuma
             if (sender is WpfPolyline pl && pl.Tag is CizgiTanimi cizgi)
             {
                 _secilenCizgi = cizgi;
-                BilgiText.Text = $"{cizgi.Rol} -- {cizgi.LayerAdi} -- Renk: {cizgi.RenkIndex} -- Y: {cizgi.OrtalamaY:F2}";
+                BilgiText.Text = CizgiBilgiMetniOlustur(cizgi);
                 CizgiSecildi?.Invoke(this, cizgi);
                 Ciz();
                 e.Handled = true;
             }
         }
 
+        /// <summary>
+        /// Tiklanan cizgi icin bilgi metni olusturur.
+        /// Rol atanmissa ilgili malzemelerin alan degerlerini gosterir.
+        /// </summary>
+        private string CizgiBilgiMetniOlustur(CizgiTanimi cizgi)
+        {
+            string temel = $"{cizgi.Rol} -- {cizgi.LayerAdi}";
+
+            // Alan bilgisi: bu rol hangi malzemelerde kullaniliyor?
+            if (_kesit?.HesaplananAlanlar != null && cizgi.Rol != CizgiRolu.Tanimsiz
+                && cizgi.Rol != CizgiRolu.CerceveCizgisi && cizgi.Rol != CizgiRolu.GridCizgisi)
+            {
+                var ilgiliAlanlar = _kesit.HesaplananAlanlar
+                    .Where(a => a.UstCizgiRolu == cizgi.Rol || a.AltCizgiRolu == cizgi.Rol)
+                    .ToList();
+
+                if (ilgiliAlanlar.Count > 0)
+                {
+                    var alanBilgi = string.Join(", ", ilgiliAlanlar.Select(a => $"{a.MalzemeAdi}: {a.Alan:F2} m\u00B2"));
+                    return $"{temel} -- {alanBilgi}";
+                }
+            }
+
+            return $"{temel} -- Renk: {cizgi.RenkIndex}";
+        }
+
         private void Canvas_MouseWheel(object sender, MouseWheelEventArgs e)
         {
             double eskiZoom = _zoom;
-            double factor = e.Delta > 0 ? 1.15 : 0.87;
+            double factor = e.Delta > 0 ? 1.2 : 0.83;
             _zoom *= factor;
-            _zoom = Math.Max(0.1, Math.Min(50, _zoom));
+            _zoom = Math.Max(0.01, Math.Min(500, _zoom));
 
             // Mouse pozisyonuna gore zoom — imlec noktasi sabit kalsin
             var mousePos = e.GetPosition(KesitCanvas);
@@ -298,7 +339,6 @@ namespace Metraj.Views.EnkesitOkuma
                 mousePos.X - (mousePos.X - _pan.X) * oranDeg,
                 mousePos.Y - (mousePos.Y - _pan.Y) * oranDeg);
 
-            PanSinirla();
             Ciz();
         }
 
@@ -338,7 +378,6 @@ namespace Metraj.Views.EnkesitOkuma
             var pos = e.GetPosition(KesitCanvas);
             _pan = new Point(_pan.X + pos.X - _sonMousePoz.X, _pan.Y + pos.Y - _sonMousePoz.Y);
             _sonMousePoz = pos;
-            PanSinirla();
             Ciz();
         }
 

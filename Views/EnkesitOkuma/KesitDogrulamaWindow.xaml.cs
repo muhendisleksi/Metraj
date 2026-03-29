@@ -18,11 +18,11 @@ namespace Metraj.Views.EnkesitOkuma
                 vm.PropertyChanged += (s, args) =>
                 {
                     if (args.PropertyName == nameof(vm.AktifKesit) && vm.AktifKesit != null)
-                        OnizlemeControl.CizgileriYukle(vm.AktifKesit.Cizgiler);
+                        OnizlemeControl.CizgileriYukle(vm.AktifKesit);
                 };
 
                 if (vm.AktifKesit != null)
-                    OnizlemeControl.CizgileriYukle(vm.AktifKesit.Cizgiler);
+                    OnizlemeControl.CizgileriYukle(vm.AktifKesit);
 
                 OnizlemeControl.CizgiSecildi += (s, cizgi) => vm.SecilenCizgi = cizgi;
             }
