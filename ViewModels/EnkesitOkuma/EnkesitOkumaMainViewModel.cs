@@ -246,6 +246,10 @@ namespace Metraj.ViewModels.EnkesitOkuma
                     return;
                 }
 
+                // Cache yoksa olustur (kalibrasyon TopluTara'dan once calisir)
+                if (_cacheService.Cache == null)
+                    _cacheService.CacheOlustur(_secilenEntityler);
+
                 // Kesit secim dialogu
                 int? secilenIdx = KesitSecimDialoguGoster();
                 if (!secilenIdx.HasValue) return;
@@ -426,17 +430,8 @@ namespace Metraj.ViewModels.EnkesitOkuma
                     SorunluKesit = sorunlu
                 };
 
-                // Tanilama raporu yaz (5 orneklem kesit, dosyaya)
-                try
-                {
-                    string raporYolu = _alanHesapService.TanilamaRaporuYaz(Kesitler);
-                    if (raporYolu != null)
-                        LoggingService.Info($"Tanilama raporu: {raporYolu}");
-                }
-                catch (System.Exception ex)
-                {
-                    LoggingService.Warning($"Tanilama raporu yazilamadi: {ex.Message}");
-                }
+                // NOT: TanilamaRaporuYaz buradan kaldirildi — TraceBoundary cagrisi
+                // UI'i dakikalarca kilitliyordu. Rapor gerektiginde ayri tetiklenir.
 
                 TaramaBitir($"{toplam2} kesit tarandi -- {uyumlu} uyumlu, {uyari} uyari, {sorunlu} sorunlu");
                 OnPropertiesChanged(nameof(KesitSayisi), nameof(SonucBilgisi), nameof(KesitOzeti));
