@@ -65,6 +65,7 @@ namespace Metraj.Infrastructure
             services.AddTransient<IYolKubajService, YolKubajService>();
 
             // Yol Enkesit Okuma services
+            services.AddSingleton<EntityCacheService>();
             services.AddTransient<IAnchorTaramaService, AnchorTaramaService>();
             services.AddTransient<IKesitGruplamaService, KesitGruplamaService>();
             services.AddTransient<ICizgiRolAtamaService, CizgiRolAtamaService>();

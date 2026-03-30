@@ -421,7 +421,7 @@ namespace Metraj.Services.YolEnkesit
         /// MText formatlama kodlarini temizleyerek duz metin dondurur.
         /// MText.Contents formatlar icerir: {\fArial|b0|i0;text}, \A1;, \P vb.
         /// </summary>
-        private static string MTextIcerikTemizle(string raw)
+        internal static string MTextIcerikTemizle(string raw)
         {
             if (string.IsNullOrWhiteSpace(raw)) return raw;
             // {\fFont|b0|i0;icerik} bloklarindan sadece icerigi al
