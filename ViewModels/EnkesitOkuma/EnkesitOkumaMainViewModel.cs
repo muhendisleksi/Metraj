@@ -67,6 +67,10 @@ namespace Metraj.ViewModels.EnkesitOkuma
             IptalCommand = new RelayCommand(IptalEt, () => _taramaDevamEdiyor);
         }
 
+        /// <summary>Secim oncesi panel gizleme, sonrasi gosterme icin.</summary>
+        public event Action PanelGizle;
+        public event Action PanelGoster;
+
         public string DurumMesaji { get => _durumMesaji; set => SetProperty(ref _durumMesaji, value); }
         public int IlerlemeYuzde { get => _ilerlemeYuzde; set => SetProperty(ref _ilerlemeYuzde, value); }
         public string IlerlemeDetay { get => _ilerlemeDetay; set => SetProperty(ref _ilerlemeDetay, value); }
@@ -146,9 +150,14 @@ namespace Metraj.ViewModels.EnkesitOkuma
         {
             try
             {
+                PanelGizle?.Invoke();
+
                 var doc = AcadApp.DocumentManager.MdiActiveDocument;
                 var ed = doc.Editor;
                 var result = ed.GetSelection();
+
+                PanelGoster?.Invoke();
+
                 if (result.Status != PromptStatus.OK) return;
 
                 _secilenEntityler = new List<ObjectId>(result.Value.GetObjectIds());
@@ -160,6 +169,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
             }
             catch (System.Exception ex)
             {
+                PanelGoster?.Invoke();
                 DurumMesaji = "Seçim hatası: " + ex.Message;
                 LoggingService.Error("Entity secim hatasi", ex);
             }

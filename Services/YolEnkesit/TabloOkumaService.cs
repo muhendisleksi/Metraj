@@ -227,7 +227,9 @@ namespace Metraj.Services.YolEnkesit
                         HesaplananAlan = hesap.Alan,
                         Fark = fark,
                         FarkYuzde = farkYuzde,
-                        Uyumlu = farkYuzde <= UyumToleransYuzde
+                        Uyumlu = farkYuzde <= UyumToleransYuzde,
+                        UstCizgiRolu = hesap.UstCizgiRolu,
+                        AltCizgiRolu = hesap.AltCizgiRolu
                     });
                 }
             }

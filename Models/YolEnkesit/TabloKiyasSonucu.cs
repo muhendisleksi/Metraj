@@ -11,6 +11,11 @@ namespace Metraj.Models.YolEnkesit
         public double FarkYuzde { get; set; }
         public bool Uyumlu { get; set; }
 
+        /// <summary>Bu malzemenin ust sinir cizgi rolu (AlanHesapSonucu'ndan).</summary>
+        public CizgiRolu UstCizgiRolu { get; set; }
+        /// <summary>Bu malzemenin alt sinir cizgi rolu (AlanHesapSonucu'ndan).</summary>
+        public CizgiRolu AltCizgiRolu { get; set; }
+
         /// <summary>Renk kodu: Yesil (≤%2), Sari (%2-5), Kirmizi (>%5), Gri (tablo yok)</summary>
         public Brush DurumRengi
         {

@@ -136,7 +136,8 @@
 
                     <!-- Kiyas Tablosu -->
                     <DataGrid Grid.Row="0" ItemsSource="{Binding AktifKesitKiyaslar}"
-                              AutoGenerateColumns="False" IsReadOnly="True"
+                              SelectedItem="{Binding SecilenKiyas}"
+                              AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
                               Background="#FF1E1E2E" Foreground="#FFCCCCDD"
                               HeadersVisibility="Column" BorderBrush="#FF3D3D5C" BorderThickness="1"
                               GridLinesVisibility="Horizontal" RowBackground="#FF1E1E2E"

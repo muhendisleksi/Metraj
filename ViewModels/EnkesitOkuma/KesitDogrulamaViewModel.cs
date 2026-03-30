@@ -16,7 +16,9 @@ namespace Metraj.ViewModels.EnkesitOkuma
         private int _aktifIndex = -1;
         private bool _sadeceSorunluGoster;
         private CizgiTanimi _secilenCizgi;
+        private List<CizgiTanimi> _secilenCizgiler = new List<CizgiTanimi>();
         private CizgiRolu _yeniRol;
+        private TabloKiyasSonucu _secilenKiyas;
 
         public KesitDogrulamaViewModel()
         {
@@ -24,7 +26,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
             SonrakiCommand = new RelayCommand(Sonraki, () => _filtrelenmisKesitler != null && AktifIndex < _filtrelenmisKesitler.Count - 1);
             OnaylaCommand = new RelayCommand(Onayla, () => AktifKesit != null);
             SorunluIsaretle = new RelayCommand(SorunluOlarakIsaretle, () => AktifKesit != null);
-            CizgiDuzeltCommand = new RelayCommand(CizgiDuzelt, () => SecilenCizgi != null);
+            CizgiDuzeltCommand = new RelayCommand(CizgiDuzelt, () => SecilenCizgi != null || (_secilenCizgiler != null && _secilenCizgiler.Count > 0));
             TumunuOnaylaCommand = new RelayCommand(TumunuOnayla);
 
             MevcutRoller = new ObservableCollection<CizgiRolu>(
@@ -65,7 +67,9 @@ namespace Metraj.ViewModels.EnkesitOkuma
         }
 
         public CizgiTanimi SecilenCizgi { get => _secilenCizgi; set => SetProperty(ref _secilenCizgi, value); }
+        public List<CizgiTanimi> SecilenCizgiler { get => _secilenCizgiler; set => SetProperty(ref _secilenCizgiler, value); }
         public CizgiRolu YeniRol { get => _yeniRol; set => SetProperty(ref _yeniRol, value); }
+        public TabloKiyasSonucu SecilenKiyas { get => _secilenKiyas; set => SetProperty(ref _secilenKiyas, value); }
         public ObservableCollection<CizgiRolu> MevcutRoller { get; }
 
         public string AktifKesitBilgi => AktifKesit?.Anchor != null
@@ -99,7 +103,9 @@ namespace Metraj.ViewModels.EnkesitOkuma
                         TabloAlani = 0,
                         Fark = 0,
                         FarkYuzde = 0,
-                        Uyumlu = false
+                        Uyumlu = false,
+                        UstCizgiRolu = a.UstCizgiRolu,
+                        AltCizgiRolu = a.AltCizgiRolu
                     }).ToList();
                 }
 
@@ -161,9 +167,19 @@ namespace Metraj.ViewModels.EnkesitOkuma
 
         private void CizgiDuzelt()
         {
-            if (SecilenCizgi == null) return;
-            SecilenCizgi.Rol = YeniRol;
-            SecilenCizgi.OtomatikAtanmis = false;
+            // Coklu secim varsa hepsine ayni rolu ata
+            var hedefler = _secilenCizgiler != null && _secilenCizgiler.Count > 0
+                ? _secilenCizgiler
+                : (SecilenCizgi != null ? new List<CizgiTanimi> { SecilenCizgi } : null);
+
+            if (hedefler == null || hedefler.Count == 0) return;
+
+            foreach (var cizgi in hedefler)
+            {
+                cizgi.Rol = YeniRol;
+                cizgi.OtomatikAtanmis = false;
+            }
+
             AktifKesit.Durum = DogrulamaDurumu.Duzeltildi;
             OnPropertyChanged(nameof(AktifKesitCizgiler));
             DurumGuncelle();

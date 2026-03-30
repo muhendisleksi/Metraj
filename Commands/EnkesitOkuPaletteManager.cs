@@ -33,6 +33,10 @@ namespace Metraj.Commands
             var vm = ServiceContainer.GetRequiredService<EnkesitOkumaMainViewModel>();
             _control.DataContext = vm;
 
+            // Secim sirasinda paneli gizle/goster
+            vm.PanelGizle += () => _window?.Hide();
+            vm.PanelGoster += () => { _window?.Show(); _window?.Activate(); };
+
             _window = new Window
             {
                 Title = "Yol Enkesit Okuma",

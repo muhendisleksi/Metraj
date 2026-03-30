@@ -27,11 +27,13 @@ namespace Metraj.Views.EnkesitOkuma
         private Point _sonMousePoz;
         private bool _panAktif;
         private CizgiTanimi _secilenCizgi;
+        private HashSet<CizgiTanimi> _secilenCizgiler = new HashSet<CizgiTanimi>();
         private DateTime _sonOrtaTiklama = DateTime.MinValue;
         private double _icerikW, _icerikH; // Son cizimde icerik boyutu (canvas px)
         private OnizlemeRenkModu _renkModu = OnizlemeRenkModu.RolRenk;
 
         public event EventHandler<CizgiTanimi> CizgiSecildi;
+        public event EventHandler<List<CizgiTanimi>> CokluSecimDegisti;
 
         public OnizlemeRenkModu RenkModu
         {
@@ -114,6 +116,12 @@ namespace Metraj.Views.EnkesitOkuma
             Ciz();
         }
 
+        /// <summary>Bilgi text alanini disaridan ayarla.</summary>
+        public void BilgiMetniAyarla(string metin)
+        {
+            BilgiText.Text = metin ?? "";
+        }
+
         public void VurgulaCizgi(CizgiTanimi cizgi)
         {
             _secilenCizgi = cizgi;
@@ -123,6 +131,7 @@ namespace Metraj.Views.EnkesitOkuma
 
         private string _highlightLayer;
         private short _highlightRenk;
+        private HashSet<CizgiRolu> _highlightRoller;
 
         /// <summary>
         /// Belirtilen layer+renk grubunun cizgilerini highlight'la ve bounding box'a zoom yap.
@@ -162,10 +171,51 @@ namespace Metraj.Views.EnkesitOkuma
             }
         }
 
+        /// <summary>
+        /// Belirtilen rollerdeki cizgileri highlight'la ve bounding box'a zoom yap.
+        /// Ayni rollerle tekrar cagrilirsa (toggle) → sifirla.
+        /// </summary>
+        public void HighlightRol(CizgiRolu ustRol, CizgiRolu altRol)
+        {
+            var yeniRoller = new HashSet<CizgiRolu> { ustRol, altRol };
+
+            // Toggle: ayni roller tekrar tiklandiysa sifirla
+            if (_highlightRoller != null && _highlightRoller.SetEquals(yeniRoller))
+            {
+                _highlightRoller = null;
+                _highlightLayer = null;
+                _zoom = 1.0;
+                _pan = new Point(0, 0);
+                Ciz();
+                return;
+            }
+
+            _highlightRoller = yeniRoller;
+            _highlightLayer = null; // layer highlight'i temizle
+
+            if (_cizgiler != null)
+            {
+                var hedefNoktalar = _cizgiler
+                    .Where(c => _highlightRoller.Contains(c.Rol))
+                    .SelectMany(c => c.Noktalar)
+                    .ToList();
+
+                if (hedefNoktalar.Count > 0)
+                    ZoomToBounds(hedefNoktalar);
+                else
+                    Ciz();
+            }
+            else
+            {
+                Ciz();
+            }
+        }
+
         /// <summary>Highlight ve zoom'u sifirla, tum kesiti goster.</summary>
         public void HighlightTemizle()
         {
             _highlightLayer = null;
+            _highlightRoller = null;
             _zoom = 1.0;
             _pan = new Point(0, 0);
             Ciz();
@@ -385,10 +435,11 @@ namespace Metraj.Views.EnkesitOkuma
         {
             if (cizgi.Noktalar.Count < 2) return;
 
-            bool secili = cizgi == _secilenCizgi;
+            bool secili = _secilenCizgiler.Contains(cizgi);
             bool cerceve = cizgi.Rol == CizgiRolu.CerceveCizgisi || cizgi.Rol == CizgiRolu.GridCizgisi;
-            bool highlighted = _highlightLayer != null && cizgi.LayerAdi == _highlightLayer && cizgi.RenkIndex == _highlightRenk;
-            bool highlightAktif = _highlightLayer != null;
+            bool highlighted = (_highlightLayer != null && cizgi.LayerAdi == _highlightLayer && cizgi.RenkIndex == _highlightRenk)
+                || (_highlightRoller != null && _highlightRoller.Contains(cizgi.Rol));
+            bool highlightAktif = _highlightLayer != null || _highlightRoller != null;
             bool soluk = highlightAktif && !highlighted && !secili;
 
             // Kalinlik belirleme
@@ -432,14 +483,15 @@ namespace Metraj.Views.EnkesitOkuma
                 polyline.MouseLeftButtonDown += Polyline_Click;
                 polyline.MouseEnter += (s, ev) =>
                 {
-                    if ((s as WpfPolyline)?.Tag != _secilenCizgi)
+                    var tag = (s as WpfPolyline)?.Tag as CizgiTanimi;
+                    if (tag != null && !_secilenCizgiler.Contains(tag))
                         (s as WpfPolyline).StrokeThickness = 3;
                 };
                 polyline.MouseLeave += (s, ev) =>
                 {
                     var tag = (s as WpfPolyline)?.Tag as CizgiTanimi;
-                    if (tag != _secilenCizgi)
-                        (s as WpfPolyline).StrokeThickness = tag?.Rol == CizgiRolu.ProjeCizgisi ? 2.5 : 1.2;
+                    if (tag != null && !_secilenCizgiler.Contains(tag))
+                        (s as WpfPolyline).StrokeThickness = tag.Rol == CizgiRolu.ProjeCizgisi ? 2.5 : 1.2;
                 };
             }
 
@@ -513,12 +565,55 @@ namespace Metraj.Views.EnkesitOkuma
         {
             if (sender is WpfPolyline pl && pl.Tag is CizgiTanimi cizgi)
             {
-                _secilenCizgi = cizgi;
-                BilgiText.Text = CizgiBilgiMetniOlustur(cizgi);
-                CizgiSecildi?.Invoke(this, cizgi);
+                bool ctrlBasili = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+
+                if (ctrlBasili)
+                {
+                    // Ctrl+tiklama: toggle (ekle/cikar)
+                    if (_secilenCizgiler.Contains(cizgi))
+                        _secilenCizgiler.Remove(cizgi);
+                    else
+                        _secilenCizgiler.Add(cizgi);
+
+                    // Son tiklanan her zaman _secilenCizgi olsun (CizgiDuzelt paneli icin)
+                    _secilenCizgi = _secilenCizgiler.Count > 0 ? cizgi : null;
+                }
+                else
+                {
+                    // Normal tiklama: onceki secimi temizle, sadece tiklanani sec
+                    _secilenCizgiler.Clear();
+                    _secilenCizgiler.Add(cizgi);
+                    _secilenCizgi = cizgi;
+                }
+
+                BilgiText.Text = SecimBilgiMetniOlustur();
+                CizgiSecildi?.Invoke(this, _secilenCizgi);
+                CokluSecimDegisti?.Invoke(this, _secilenCizgiler.ToList());
                 Ciz();
                 e.Handled = true;
             }
+        }
+
+        /// <summary>Secili cizgi(ler) icin bilgi metni olusturur.</summary>
+        private string SecimBilgiMetniOlustur()
+        {
+            if (_secilenCizgiler.Count == 0) return "";
+            if (_secilenCizgiler.Count == 1) return CizgiBilgiMetniOlustur(_secilenCizgiler.First());
+
+            // Coklu secim
+            double toplamAlan = 0;
+            int alanliSayisi = 0;
+            foreach (var c in _secilenCizgiler)
+            {
+                if (c.EntityAlani > 0.0001)
+                {
+                    toplamAlan += c.EntityAlani;
+                    alanliSayisi++;
+                }
+            }
+
+            string alanBilgi = alanliSayisi > 0 ? $" \u2014 Toplam: {toplamAlan:F2} m\u00B2" : "";
+            return $"{_secilenCizgiler.Count} \u00E7izgi se\u00E7ili{alanBilgi}";
         }
 
         /// <summary>
@@ -527,9 +622,11 @@ namespace Metraj.Views.EnkesitOkuma
         /// </summary>
         private string CizgiBilgiMetniOlustur(CizgiTanimi cizgi)
         {
-            string temel = $"{cizgi.Rol} -- {cizgi.LayerAdi}";
+            string rolAdi = RolKisaAd(cizgi.Rol);
+            string alanStr = cizgi.EntityAlani > 0.0001 ? $" \u2014 Alan: {cizgi.EntityAlani:F2} m\u00B2" : " \u2014 Alan: \u2014";
+            string temel = $"{rolAdi} \u2014 Layer: {cizgi.LayerAdi}{alanStr}";
 
-            // Alan bilgisi: bu rol hangi malzemelerde kullaniliyor?
+            // Malzeme hesap bilgisi: bu rol hangi malzemelerde kullaniliyor?
             if (_kesit?.HesaplananAlanlar != null && cizgi.Rol != CizgiRolu.Tanimsiz
                 && cizgi.Rol != CizgiRolu.CerceveCizgisi && cizgi.Rol != CizgiRolu.GridCizgisi)
             {
@@ -539,12 +636,12 @@ namespace Metraj.Views.EnkesitOkuma
 
                 if (ilgiliAlanlar.Count > 0)
                 {
-                    var alanBilgi = string.Join(", ", ilgiliAlanlar.Select(a => $"{a.MalzemeAdi}: {a.Alan:F2} m\u00B2"));
-                    return $"{temel} -- {alanBilgi}";
+                    var malzemeBilgi = string.Join(", ", ilgiliAlanlar.Select(a => $"{a.MalzemeAdi}: {a.Alan:F2} m\u00B2"));
+                    return $"{temel} \u2014 {malzemeBilgi}";
                 }
             }
 
-            return $"{temel} -- Renk: {cizgi.RenkIndex}";
+            return temel;
         }
 
         private void Canvas_MouseWheel(object sender, MouseWheelEventArgs e)
@@ -566,12 +663,35 @@ namespace Metraj.Views.EnkesitOkuma
 
         private void Canvas_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            // Sol cift tiklama: highlight temizle + fit-to-view
+            // Sol cift tiklama: highlight + secim sifirla + fit-to-view
             if (e.LeftButton == MouseButtonState.Pressed && e.ClickCount == 2)
             {
+                _secilenCizgi = null;
+                _secilenCizgiler.Clear();
+                BilgiText.Text = "";
+                CizgiSecildi?.Invoke(this, null);
+                CokluSecimDegisti?.Invoke(this, new List<CizgiTanimi>());
                 HighlightTemizle();
                 e.Handled = true;
                 return;
+            }
+
+            // Sol tek tiklama bos alana: secimi temizle (Polyline_Click handle etmediyse buraya duser)
+            if (e.LeftButton == MouseButtonState.Pressed && e.ClickCount == 1)
+            {
+                // Dispatcher ile bir frame bekle — eger Polyline_Click handle ettiyse e.Handled=true olur
+                Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+                {
+                    if (!e.Handled && _secilenCizgiler.Count > 0)
+                    {
+                        _secilenCizgi = null;
+                        _secilenCizgiler.Clear();
+                        BilgiText.Text = "";
+                        CizgiSecildi?.Invoke(this, null);
+                        CokluSecimDegisti?.Invoke(this, new List<CizgiTanimi>());
+                        Ciz();
+                    }
+                }));
             }
 
             if (e.MiddleButton == MouseButtonState.Pressed)
