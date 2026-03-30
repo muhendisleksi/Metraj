@@ -25,6 +25,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
         private readonly IKesitAlanHesapService _alanHesapService;
         private readonly ITabloOkumaService _tabloService;
         private readonly IEditorService _editorService;
+        private readonly EntityCacheService _cacheService;
 
         private string _durumMesaji = "Hazır";
         private List<ObjectId> _secilenEntityler;
@@ -44,7 +45,8 @@ namespace Metraj.ViewModels.EnkesitOkuma
             ICizgiRolAtamaService rolAtamaService,
             IKesitAlanHesapService alanHesapService,
             ITabloOkumaService tabloService,
-            IEditorService editorService)
+            IEditorService editorService,
+            EntityCacheService cacheService)
         {
             _anchorService = anchorService;
             _gruplamaService = gruplamaService;
@@ -52,6 +54,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
             _alanHesapService = alanHesapService;
             _tabloService = tabloService;
             _editorService = editorService;
+            _cacheService = cacheService;
 
             EntitySecCommand = new RelayCommand(EntitySec, () => !_taramaDevamEdiyor);
             PencereBelirleCommand = new RelayCommand(PencereBelirle, () => _anchorlar != null && !_taramaDevamEdiyor);
@@ -326,65 +329,82 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 TaramaDevamEdiyor = true;
                 _iptalIstendi = false;
                 IlerlemeYuzde = 0;
-                IlerlemeDetay = "Entity gruplama...";
-                DurumMesaji = "Tarama başlıyor...";
+                IlerlemeDetay = "Entity'ler okunuyor...";
+                DurumMesaji = "Tarama basliyor...";
                 ButonDurumGuncelle();
                 UIGuncelle();
 
-                // Faz 1: Entity gruplama (tek Transaction — AutoCAD API)
-                Kesitler = _gruplamaService.KesitGrupla(_anchorlar, _pencere, _secilenEntityler);
-                int toplam = Kesitler.Count;
+                // Faz 0: Entity cache olusturma (%0 → %40)
+                _cacheService.CacheOlustur(_secilenEntityler, (okunan, toplam) =>
+                {
+                    if (_iptalIstendi) return false;
+                    int yuzde = (int)((double)okunan / toplam * 40);
+                    IlerlemeYuzde = yuzde;
+                    IlerlemeDetay = $"Entity okuma: {okunan:N0} / {toplam:N0}";
+                    UIGuncelle();
+                    return true;
+                });
 
                 if (_iptalIstendi) { TaramaBitir("Iptal edildi"); return; }
 
-                IlerlemeYuzde = 10;
-                IlerlemeDetay = $"{toplam} kesit bulundu, roller atanıyor...";
+                // Faz 1: Kesit gruplama (%40 → %55)
+                IlerlemeYuzde = 40;
+                IlerlemeDetay = "Kesit gruplama...";
                 UIGuncelle();
 
-                // Faz 2: Rol atama — kesit kesit, her 10 kesitte UI guncelle
-                for (int i = 0; i < toplam; i++)
+                Kesitler = _gruplamaService.KesitGrupla(_anchorlar, _pencere, _secilenEntityler);
+                int toplam2 = Kesitler.Count;
+
+                if (_iptalIstendi) { TaramaBitir("Iptal edildi"); return; }
+
+                IlerlemeYuzde = 55;
+                IlerlemeDetay = $"{toplam2} kesit bulundu";
+                UIGuncelle();
+
+                // Faz 2: Rol atama (%55 → %70)
+                for (int i = 0; i < toplam2; i++)
                 {
-                    if (_iptalIstendi) { TaramaBitir($"Iptal edildi ({i}/{toplam} kesit islendi)"); return; }
+                    if (_iptalIstendi) { TaramaBitir($"Iptal edildi ({i}/{toplam2} kesit islendi)"); return; }
 
                     _rolAtamaService.OtomatikRolAta(Kesitler[i], _sablon);
 
-                    if ((i + 1) % 10 == 0 || i == toplam - 1)
+                    if ((i + 1) % 10 == 0 || i == toplam2 - 1)
                     {
-                        int yuzde = 10 + (int)((double)(i + 1) / toplam * 30);
+                        int yuzde = 55 + (int)((double)(i + 1) / toplam2 * 15);
                         IlerlemeYuzde = yuzde;
-                        IlerlemeDetay = $"Rol atama: {i + 1} / {toplam}";
+                        IlerlemeDetay = $"Rol atama: {i + 1} / {toplam2}";
                         UIGuncelle();
                     }
                 }
 
-                // Faz 3: Alan hesabi — kesit kesit
-                for (int i = 0; i < toplam; i++)
+                // Faz 3: Alan hesabi (%70 → %85)
+                for (int i = 0; i < toplam2; i++)
                 {
-                    if (_iptalIstendi) { TaramaBitir($"Iptal edildi ({i}/{toplam} alan hesabi)"); return; }
+                    if (_iptalIstendi) { TaramaBitir($"Iptal edildi ({i}/{toplam2} alan hesabi)"); return; }
 
                     _alanHesapService.AlanHesapla(Kesitler[i]);
 
-                    if ((i + 1) % 10 == 0 || i == toplam - 1)
+                    if ((i + 1) % 10 == 0 || i == toplam2 - 1)
                     {
-                        int yuzde = 40 + (int)((double)(i + 1) / toplam * 30);
+                        int yuzde = 70 + (int)((double)(i + 1) / toplam2 * 15);
                         IlerlemeYuzde = yuzde;
-                        IlerlemeDetay = $"Alan hesabi: {i + 1} / {toplam}";
+                        IlerlemeDetay = $"Alan hesabi: {i + 1} / {toplam2}";
                         UIGuncelle();
                     }
                 }
 
-                // Faz 4: Tablo kiyaslama — kesit kesit
-                for (int i = 0; i < toplam; i++)
+                // Faz 4: Tablo kiyaslama (%85 → %100)
+                for (int i = 0; i < toplam2; i++)
                 {
-                    if (_iptalIstendi) { TaramaBitir($"Iptal edildi ({i}/{toplam} kiyas)"); return; }
+                    if (_iptalIstendi) { TaramaBitir($"Iptal edildi ({i}/{toplam2} kiyas)"); return; }
 
                     _tabloService.Kiyasla(Kesitler[i]);
 
-                    if ((i + 1) % 20 == 0 || i == toplam - 1)
+                    if ((i + 1) % 20 == 0 || i == toplam2 - 1)
                     {
-                        int yuzde = 70 + (int)((double)(i + 1) / toplam * 30);
+                        int yuzde = 85 + (int)((double)(i + 1) / toplam2 * 15);
                         IlerlemeYuzde = yuzde;
-                        IlerlemeDetay = $"Tablo kiyasi: {i + 1} / {toplam}";
+                        IlerlemeDetay = $"Tablo kiyasi: {i + 1} / {toplam2}";
                         UIGuncelle();
                     }
                 }
@@ -400,7 +420,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                     Kesitler = Kesitler,
                     Sablon = Sablon,
                     TaramaTarihi = DateTime.Now,
-                    ToplamKesit = toplam,
+                    ToplamKesit = toplam2,
                     OnayliKesit = uyumlu,
                     UyariKesit = uyari,
                     SorunluKesit = sorunlu
@@ -418,7 +438,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                     LoggingService.Warning($"Tanilama raporu yazilamadi: {ex.Message}");
                 }
 
-                TaramaBitir($"{toplam} kesit tarandı -- {uyumlu} uyumlu, {uyari} uyari, {sorunlu} sorunlu");
+                TaramaBitir($"{toplam2} kesit tarandi -- {uyumlu} uyumlu, {uyari} uyari, {sorunlu} sorunlu");
                 OnPropertiesChanged(nameof(KesitSayisi), nameof(SonucBilgisi), nameof(KesitOzeti));
             }
             catch (System.Exception ex)
