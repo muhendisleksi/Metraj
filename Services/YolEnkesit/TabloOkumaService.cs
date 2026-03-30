@@ -13,6 +13,7 @@ namespace Metraj.Services.YolEnkesit
     public class TabloOkumaService : ITabloOkumaService
     {
         private readonly IDocumentContext _documentContext;
+        private readonly EntityCacheService _cacheService;
         private const double UyumToleransYuzde = 2.0;
         private const double UyariToleransYuzde = 5.0;
 
@@ -31,9 +32,10 @@ namespace Metraj.Services.YolEnkesit
             { "B.T. Yerine Konmayan", new[] { "YERİNE KONMAYAN", "YERINE KONMAYAN", "BT KONMAYAN" } },
         };
 
-        public TabloOkumaService(IDocumentContext documentContext)
+        public TabloOkumaService(IDocumentContext documentContext, EntityCacheService cacheService)
         {
             _documentContext = documentContext;
+            _cacheService = cacheService;
         }
 
         private int _logSayaci;
@@ -257,7 +259,20 @@ namespace Metraj.Services.YolEnkesit
         private List<(string metin, double x, double y)> TextleriOku(List<ObjectId> textIds)
         {
             var sonuc = new List<(string, double, double)>();
+            var cache = _cacheService.Cache;
 
+            // Cache varsa cache'den oku (Transaction yok)
+            if (cache != null)
+            {
+                foreach (var id in textIds)
+                {
+                    if (cache.TryGetValue(id.Handle.Value, out var cached) && cached.Textler != null)
+                        sonuc.AddRange(cached.Textler);
+                }
+                return sonuc;
+            }
+
+            // Fallback: cache yoksa eski yontem (kalibrasyon ekranindan cagrildiginda)
             using (var tr = _documentContext.BeginTransaction())
             {
                 foreach (var id in textIds)
@@ -284,7 +299,6 @@ namespace Metraj.Services.YolEnkesit
                     }
                     else if (obj is BlockReference blkRef)
                     {
-                        // Blok ici entity'leri oku (MVS, MVS_1 gibi malzeme tablosu bloklari)
                         BlokIciTextleriOku(blkRef, tr, sonuc);
                     }
                 }
@@ -528,56 +542,64 @@ namespace Metraj.Services.YolEnkesit
                 sb.AppendLine($"      Parse sonucu: HICBIR MALZEME ESLESTIRILEMEDI");
             }
 
-            // Entity tipi dagilimi — Table, MText, BlockReference var mi?
+            // Entity tipi dagilimi — cache'den veya Transaction'dan
             sb.AppendLine($"      --- ENTITY TIP DAGILIMI ---");
             try
             {
                 var tipSayilari = new Dictionary<string, int>();
                 int malzemeIcerenSayisi = 0;
+                var cache = _cacheService.Cache;
 
-                using (var tr = _documentContext.BeginTransaction())
+                foreach (var id in kesit.TextObjeler)
                 {
-                    foreach (var id in kesit.TextObjeler)
+                    string tipAdi;
+                    string icerik = null;
+
+                    if (cache != null && cache.TryGetValue(id.Handle.Value, out var cached))
                     {
-                        var obj = tr.GetObject(id, OpenMode.ForRead);
-                        string tipAdi = obj.GetType().Name;
-                        if (!tipSayilari.ContainsKey(tipAdi)) tipSayilari[tipAdi] = 0;
-                        tipSayilari[tipAdi]++;
-
-                        // Icerik kontrolu — malzeme kelimesi var mi?
-                        string icerik = null;
-                        if (obj is DBText dt) icerik = dt.TextString;
-                        else if (obj is MText mt) icerik = MTextIcerikTemizle(mt.Contents);
-                        else if (obj is Table tbl)
+                        // Cache'den tip bilgisi
+                        switch (cached.Kategori)
                         {
-                            icerik = "[TABLE]";
-                            sb.AppendLine($"        TABLE: {tbl.Rows.Count} satir x {tbl.Columns.Count} sutun, Pos=({tbl.Position.X:F1},{tbl.Position.Y:F1})");
-                        }
-                        else if (obj is BlockReference blk)
-                        {
-                            icerik = "[BLOCK:" + blk.Name + "]";
-                            sb.AppendLine($"        BLOCK: {blk.Name}, Pos=({blk.Position.X:F1},{blk.Position.Y:F1})");
+                            case EntityKategori.Text: tipAdi = "Text"; break;
+                            case EntityKategori.Tablo:
+                                tipAdi = "Table";
+                                sb.AppendLine($"        TABLE: Pos=({cached.MinX:F1},{cached.MinY:F1})");
+                                break;
+                            case EntityKategori.Blok:
+                                tipAdi = "BlockReference";
+                                sb.AppendLine($"        BLOCK: Pos=({cached.MinX:F1},{cached.MinY:F1})");
+                                break;
+                            default: tipAdi = "Diger"; break;
                         }
 
-                        if (icerik != null)
-                        {
-                            string upper = icerik.ToUpperInvariant();
-                            bool malzemeVar = upper.Contains("YARMA") || upper.Contains("DOLGU")
-                                || upper.Contains("ASINMA") || upper.Contains("BINDER")
-                                || upper.Contains("BITUM") || upper.Contains("PLENT")
-                                || upper.Contains("ALTTEMEL") || upper.Contains("GRANU")
-                                || upper.Contains("KIRMA") || upper.Contains("SIYIR")
-                                || upper.Contains("MALZEME") || upper.Contains("ALAN");
-                            if (malzemeVar)
-                            {
-                                malzemeIcerenSayisi++;
-                                string kisa = icerik.Length > 50 ? icerik.Substring(0, 50) + "..." : icerik;
-                                sb.AppendLine($"        ** {tipAdi}: \"{kisa}\"");
-                            }
-                        }
+                        // Icerik kontrolu — text'lerin birlesimi
+                        if (cached.Textler != null && cached.Textler.Count > 0)
+                            icerik = string.Join(" ", cached.Textler.ConvertAll(t => t.metin));
+                    }
+                    else
+                    {
+                        tipAdi = "Bilinmiyor";
                     }
 
-                    tr.Commit();
+                    if (!tipSayilari.ContainsKey(tipAdi)) tipSayilari[tipAdi] = 0;
+                    tipSayilari[tipAdi]++;
+
+                    if (icerik != null)
+                    {
+                        string upper = icerik.ToUpperInvariant();
+                        bool malzemeVar = upper.Contains("YARMA") || upper.Contains("DOLGU")
+                            || upper.Contains("ASINMA") || upper.Contains("BINDER")
+                            || upper.Contains("BITUM") || upper.Contains("PLENT")
+                            || upper.Contains("ALTTEMEL") || upper.Contains("GRANU")
+                            || upper.Contains("KIRMA") || upper.Contains("SIYIR")
+                            || upper.Contains("MALZEME") || upper.Contains("ALAN");
+                        if (malzemeVar)
+                        {
+                            malzemeIcerenSayisi++;
+                            string kisa = icerik.Length > 50 ? icerik.Substring(0, 50) + "..." : icerik;
+                            sb.AppendLine($"        ** {tipAdi}: \"{kisa}\"");
+                        }
+                    }
                 }
 
                 foreach (var (tip, sayi) in tipSayilari)
