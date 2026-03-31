@@ -19,6 +19,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
         private List<CizgiTanimi> _secilenCizgiler = new List<CizgiTanimi>();
         private CizgiRolu _yeniRol;
         private TabloKiyasSonucu _secilenKiyas;
+        private List<TabloKiyasSonucu> _aktifKesitKiyaslar;
 
         public KesitDogrulamaViewModel()
         {
@@ -28,6 +29,10 @@ namespace Metraj.ViewModels.EnkesitOkuma
             SorunluIsaretle = new RelayCommand(SorunluOlarakIsaretle, () => AktifKesit != null);
             CizgiDuzeltCommand = new RelayCommand(CizgiDuzelt, () => SecilenCizgi != null || (_secilenCizgiler != null && _secilenCizgiler.Count > 0));
             TumunuOnaylaCommand = new RelayCommand(TumunuOnayla);
+            TabloKabulCommand = new RelayCommand<TabloKiyasSonucu>(TabloKabulEt);
+            HesapKabulCommand = new RelayCommand<TabloKiyasSonucu>(HesapKabulEt);
+            TopluTabloKabulCommand = new RelayCommand(TopluTabloKabul, () => AktifKesit != null);
+            TopluHesapKabulCommand = new RelayCommand(TopluHesapKabul, () => AktifKesit != null);
 
             MevcutRoller = new ObservableCollection<CizgiRolu>(
                 Enum.GetValues(typeof(CizgiRolu)).Cast<CizgiRolu>());
@@ -39,7 +44,11 @@ namespace Metraj.ViewModels.EnkesitOkuma
             set
             {
                 if (SetProperty(ref _aktifKesit, value))
-                    OnPropertiesChanged(nameof(AktifKesitBilgi), nameof(AktifKesitAlanlar), nameof(AktifKesitCizgiler), nameof(AktifKesitKiyaslar));
+                {
+                    KiyaslarGuncelle();
+                    SecilenKiyas = null;
+                    OnPropertiesChanged(nameof(AktifKesitBilgi), nameof(AktifKesitAlanlar), nameof(AktifKesitCizgiler));
+                }
             }
         }
 
@@ -80,37 +89,49 @@ namespace Metraj.ViewModels.EnkesitOkuma
         public List<CizgiTanimi> AktifKesitCizgiler => AktifKesit?.Cizgiler;
 
         /// <summary>
-        /// Kiyas sonuclari varsa onlari, yoksa hesaplanan alanlari TabloKiyasSonucu formatinda dondurur.
-        /// Boylece DataGrid her zaman dolu gorulur.
+        /// Cache'li kiyas listesi. AktifKesit degistiginde bir kez hesaplanir.
+        /// DataGrid ItemsSource buna baglanir — her getter'da yeni liste olusturmaz.
         /// </summary>
         public List<TabloKiyasSonucu> AktifKesitKiyaslar
         {
-            get
+            get => _aktifKesitKiyaslar;
+            private set => SetProperty(ref _aktifKesitKiyaslar, value);
+        }
+
+        /// <summary>AktifKesit degistiginde kiyas listesini bir kez hesapla ve cache'le.</summary>
+        private void KiyaslarGuncelle()
+        {
+            if (AktifKesit == null)
             {
-                if (AktifKesit == null) return null;
-
-                // Kiyas sonuclari varsa dogrudan dondur
-                if (AktifKesit.TabloKiyaslari != null && AktifKesit.TabloKiyaslari.Count > 0)
-                    return AktifKesit.TabloKiyaslari;
-
-                // Kiyas yoksa hesaplanan alanlari tablo formatina donustur
-                if (AktifKesit.HesaplananAlanlar != null && AktifKesit.HesaplananAlanlar.Count > 0)
-                {
-                    return AktifKesit.HesaplananAlanlar.Select(a => new TabloKiyasSonucu
-                    {
-                        MalzemeAdi = a.MalzemeAdi,
-                        HesaplananAlan = a.Alan,
-                        TabloAlani = 0,
-                        Fark = 0,
-                        FarkYuzde = 0,
-                        Uyumlu = false,
-                        UstCizgiRolu = a.UstCizgiRolu,
-                        AltCizgiRolu = a.AltCizgiRolu
-                    }).ToList();
-                }
-
-                return null;
+                AktifKesitKiyaslar = null;
+                return;
             }
+
+            // Kiyas sonuclari varsa dogrudan kullan
+            if (AktifKesit.TabloKiyaslari != null && AktifKesit.TabloKiyaslari.Count > 0)
+            {
+                AktifKesitKiyaslar = AktifKesit.TabloKiyaslari;
+                return;
+            }
+
+            // Kiyas yoksa hesaplanan alanlari tablo formatina donustur
+            if (AktifKesit.HesaplananAlanlar != null && AktifKesit.HesaplananAlanlar.Count > 0)
+            {
+                AktifKesitKiyaslar = AktifKesit.HesaplananAlanlar.Select(a => new TabloKiyasSonucu
+                {
+                    MalzemeAdi = a.MalzemeAdi,
+                    HesaplananAlan = a.Alan,
+                    TabloAlani = 0,
+                    Fark = 0,
+                    FarkYuzde = 0,
+                    Uyumlu = false,
+                    UstCizgiRolu = a.UstCizgiRolu,
+                    AltCizgiRolu = a.AltCizgiRolu
+                }).ToList();
+                return;
+            }
+
+            AktifKesitKiyaslar = null;
         }
 
         public string ToplamGosterilen => _filtrelenmisKesitler != null
@@ -127,6 +148,10 @@ namespace Metraj.ViewModels.EnkesitOkuma
         public ICommand SorunluIsaretle { get; }
         public ICommand CizgiDuzeltCommand { get; }
         public ICommand TumunuOnaylaCommand { get; }
+        public ICommand TabloKabulCommand { get; }
+        public ICommand HesapKabulCommand { get; }
+        public ICommand TopluTabloKabulCommand { get; }
+        public ICommand TopluHesapKabulCommand { get; }
 
         public void Yukle(List<KesitGrubu> kesitler)
         {
@@ -193,6 +218,50 @@ namespace Metraj.ViewModels.EnkesitOkuma
                     kesit.Durum = DogrulamaDurumu.Onaylandi;
             }
             DurumGuncelle();
+        }
+
+        private void TabloKabulEt(TabloKiyasSonucu kiyas)
+        {
+            if (kiyas == null) return;
+            kiyas.Karar = KararDurumu.TabloKabul;
+            KararSonrasiKontrol();
+        }
+
+        private void HesapKabulEt(TabloKiyasSonucu kiyas)
+        {
+            if (kiyas == null) return;
+            kiyas.Karar = KararDurumu.HesapKabul;
+            KararSonrasiKontrol();
+        }
+
+        private void TopluTabloKabul()
+        {
+            if (_aktifKesitKiyaslar == null) return;
+            foreach (var k in _aktifKesitKiyaslar)
+                if (k.Karar == KararDurumu.Bekliyor) k.Karar = KararDurumu.TabloKabul;
+            KararSonrasiKontrol();
+        }
+
+        private void TopluHesapKabul()
+        {
+            if (_aktifKesitKiyaslar == null) return;
+            foreach (var k in _aktifKesitKiyaslar)
+                if (k.Karar == KararDurumu.Bekliyor) k.Karar = KararDurumu.HesapKabul;
+            KararSonrasiKontrol();
+        }
+
+        /// <summary>Tum malzemelerin karari verilmisse kesiti otomatik onayla.</summary>
+        private void KararSonrasiKontrol()
+        {
+            if (_aktifKesitKiyaslar == null || AktifKesit == null) return;
+
+            bool hepsiKararli = _aktifKesitKiyaslar.All(k => k.Karar != KararDurumu.Bekliyor);
+            if (hepsiKararli && AktifKesit.Durum != DogrulamaDurumu.Onaylandi && AktifKesit.Durum != DogrulamaDurumu.Duzeltildi)
+            {
+                AktifKesit.Durum = DogrulamaDurumu.Onaylandi;
+                DurumGuncelle();
+                Sonraki();
+            }
         }
 
         private void DurumGuncelle()

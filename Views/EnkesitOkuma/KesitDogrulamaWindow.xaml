@@ -101,7 +101,11 @@
                     </Border>
                     <CheckBox Content="Sadece sorunlu" IsChecked="{Binding SadeceSorunluGoster}"
                               Foreground="#FFCCCCDD" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <Button Content="Tümünü Onayla" Command="{Binding TumunuOnaylaCommand}"
+                    <Button Content="T Kabul" Command="{Binding TopluTabloKabulCommand}" ToolTip="Aktif kesitteki tum bekleyen satirlari Tablo Kabul yap"
+                            Style="{StaticResource DarkButton}" Height="26" Padding="6,2" FontSize="11" Margin="0,0,2,0"/>
+                    <Button Content="H Kabul" Command="{Binding TopluHesapKabulCommand}" ToolTip="Aktif kesitteki tum bekleyen satirlari Hesap Kabul yap"
+                            Style="{StaticResource DarkButton}" Height="26" Padding="6,2" FontSize="11" Margin="0,0,4,0"/>
+                    <Button Content="Tumunu Onayla" Command="{Binding TumunuOnaylaCommand}"
                             Style="{StaticResource SuccessButton}" Height="26" Padding="8,2"/>
                 </StackPanel>
             </DockPanel>
@@ -152,16 +156,122 @@
                                 <Setter Property="BorderThickness" Value="0,0,1,1"/>
                             </Style>
                         </DataGrid.ColumnHeaderStyle>
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Setter Property="Background" Value="{Binding SatirArkaPlan}"/>
+                            </Style>
+                        </DataGrid.RowStyle>
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Malzeme" Binding="{Binding MalzemeAdi}" Width="*"/>
-                            <DataGridTextColumn Header="Hesap" Binding="{Binding HesaplananAlan, StringFormat=F2}" Width="55"/>
-                            <DataGridTextColumn Header="Tablo" Binding="{Binding TabloAlani, StringFormat=F2}" Width="55"/>
-                            <DataGridTextColumn Header="Fark" Binding="{Binding Fark, StringFormat=F2}" Width="45"/>
-                            <DataGridTemplateColumn Header="%" Width="45">
+                            <DataGridTextColumn Header="Hesap" Binding="{Binding HesaplananAlan, StringFormat=F2}" Width="50"/>
+                            <DataGridTextColumn Header="Tablo" Binding="{Binding TabloAlani, StringFormat=F2}" Width="50"/>
+                            <DataGridTemplateColumn Header="%" Width="40">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding FarkYuzde, StringFormat={}{0:F1}}"
                                                    Foreground="{Binding DurumRengi}" FontWeight="SemiBold"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Karar" Width="70">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <!-- OtomatikOnay badge -->
+                                            <TextBlock Text="&#x2713; Oto" FontSize="10" Foreground="#FF4EC9B0"
+                                                       VerticalAlignment="Center" Margin="0,0,2,0">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Karar}" Value="OtomatikOnay">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <!-- T butonu -->
+                                            <Button Content="T" Width="24" Height="20" FontSize="10" FontWeight="Bold"
+                                                    Padding="0" Margin="0,0,2,0" Cursor="Hand"
+                                                    Command="{Binding DataContext.TabloKabulCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                    CommandParameter="{Binding}">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="Background" Value="#FF2D2D44"/>
+                                                        <Setter Property="Foreground" Value="#FFCCCCDD"/>
+                                                        <Setter Property="BorderBrush" Value="#FF3D3D5C"/>
+                                                        <Setter Property="BorderThickness" Value="1"/>
+                                                        <Setter Property="Template">
+                                                            <Setter.Value>
+                                                                <ControlTemplate TargetType="Button">
+                                                                    <Border Background="{TemplateBinding Background}"
+                                                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                                                            CornerRadius="3">
+                                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                    </Border>
+                                                                    <ControlTemplate.Triggers>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter Property="Background" Value="#FF1D5C46"/>
+                                                                        </Trigger>
+                                                                    </ControlTemplate.Triggers>
+                                                                </ControlTemplate>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Karar}" Value="TabloKabul">
+                                                                <Setter Property="Background" Value="#FF1D5C46"/>
+                                                                <Setter Property="Foreground" Value="#FF4EC9B0"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Karar}" Value="OtomatikOnay">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                            <!-- H butonu -->
+                                            <Button Content="H" Width="24" Height="20" FontSize="10" FontWeight="Bold"
+                                                    Padding="0" Cursor="Hand"
+                                                    Command="{Binding DataContext.HesapKabulCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                    CommandParameter="{Binding}">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="Background" Value="#FF2D2D44"/>
+                                                        <Setter Property="Foreground" Value="#FFCCCCDD"/>
+                                                        <Setter Property="BorderBrush" Value="#FF3D3D5C"/>
+                                                        <Setter Property="BorderThickness" Value="1"/>
+                                                        <Setter Property="Template">
+                                                            <Setter.Value>
+                                                                <ControlTemplate TargetType="Button">
+                                                                    <Border Background="{TemplateBinding Background}"
+                                                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                                                            CornerRadius="3">
+                                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                    </Border>
+                                                                    <ControlTemplate.Triggers>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter Property="Background" Value="#FF1D3D5C"/>
+                                                                        </Trigger>
+                                                                    </ControlTemplate.Triggers>
+                                                                </ControlTemplate>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Karar}" Value="HesapKabul">
+                                                                <Setter Property="Background" Value="#FF1D3D5C"/>
+                                                                <Setter Property="Foreground" Value="#FF378ADD"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Karar}" Value="OtomatikOnay">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>

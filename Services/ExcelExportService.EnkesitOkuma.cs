@@ -59,8 +59,14 @@ namespace Metraj.Services
                     for (int i = 0; i < malzemeler.Count; i++)
                     {
                         var alan = kesit.HesaplananAlanlar.FirstOrDefault(a => a.MalzemeAdi == malzemeler[i]);
-                        if (alan != null)
-                            ws.Cell(satir, 3 + i).Value = alan.Alan;
+                        if (alan == null) continue;
+
+                        // Karar verilmisse kabul edilen degeri kullan
+                        var kiyas = kesit.TabloKiyaslari?.FirstOrDefault(k => k.MalzemeAdi == malzemeler[i]);
+                        double deger = (kiyas != null && kiyas.KabulEdilenAlan > 0)
+                            ? kiyas.KabulEdilenAlan
+                            : alan.Alan;
+                        ws.Cell(satir, 3 + i).Value = deger;
                     }
                 }
                 satir++;
@@ -71,13 +77,15 @@ namespace Metraj.Services
 
         private void KiyasSayfasiOlustur(IXLWorksheet ws, List<KesitGrubu> kesitler)
         {
-            ws.Cell(1, 1).Value = "İstasyon";
+            ws.Cell(1, 1).Value = "Istasyon";
             ws.Cell(1, 2).Value = "Malzeme";
             ws.Cell(1, 3).Value = "Hesaplanan";
             ws.Cell(1, 4).Value = "Tablo";
             ws.Cell(1, 5).Value = "Fark";
             ws.Cell(1, 6).Value = "Fark %";
             ws.Cell(1, 7).Value = "Uyumlu";
+            ws.Cell(1, 8).Value = "Karar";
+            ws.Cell(1, 9).Value = "Kabul Edilen";
             ws.Row(1).Style.Font.Bold = true;
 
             int satir = 2;
@@ -93,9 +101,11 @@ namespace Metraj.Services
                     ws.Cell(satir, 4).Value = kiyas.TabloAlani;
                     ws.Cell(satir, 5).Value = kiyas.Fark;
                     ws.Cell(satir, 6).Value = kiyas.FarkYuzde;
-                    ws.Cell(satir, 7).Value = kiyas.Uyumlu ? "Evet" : "Hayır";
+                    ws.Cell(satir, 7).Value = kiyas.Uyumlu ? "Evet" : "Hayir";
+                    ws.Cell(satir, 8).Value = KararMetni(kiyas.Karar);
+                    ws.Cell(satir, 9).Value = kiyas.KabulEdilenAlan;
 
-                    if (!kiyas.Uyumlu)
+                    if (!kiyas.Uyumlu && kiyas.Karar == KararDurumu.Bekliyor)
                         ws.Row(satir).Style.Font.FontColor = XLColor.Red;
 
                     satir++;
@@ -103,6 +113,17 @@ namespace Metraj.Services
             }
 
             ws.Columns().AdjustToContents();
+        }
+
+        private static string KararMetni(KararDurumu karar)
+        {
+            switch (karar)
+            {
+                case KararDurumu.TabloKabul: return "Tablo Kabul";
+                case KararDurumu.HesapKabul: return "Hesap Kabul";
+                case KararDurumu.OtomatikOnay: return "Otomatik Onay";
+                default: return "Bekliyor";
+            }
         }
     }
 }

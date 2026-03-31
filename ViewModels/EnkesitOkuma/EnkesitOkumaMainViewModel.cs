@@ -154,6 +154,8 @@ namespace Metraj.ViewModels.EnkesitOkuma
 
                 var doc = AcadApp.DocumentManager.MdiActiveDocument;
                 var ed = doc.Editor;
+
+                // Interaktif secim — kullanici pencere/crossing ile secer
                 var result = ed.GetSelection();
 
                 PanelGoster?.Invoke();
@@ -584,5 +586,6 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 return window.SecilenIndex;
             return null;
         }
+
     }
 }

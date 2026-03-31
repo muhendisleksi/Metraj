@@ -229,7 +229,8 @@ namespace Metraj.Services.YolEnkesit
                         FarkYuzde = farkYuzde,
                         Uyumlu = farkYuzde <= UyumToleransYuzde,
                         UstCizgiRolu = hesap.UstCizgiRolu,
-                        AltCizgiRolu = hesap.AltCizgiRolu
+                        AltCizgiRolu = hesap.AltCizgiRolu,
+                        Karar = farkYuzde <= UyumToleransYuzde ? KararDurumu.OtomatikOnay : KararDurumu.Bekliyor
                     });
                 }
             }
