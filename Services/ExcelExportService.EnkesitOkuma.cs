@@ -490,6 +490,14 @@ namespace Metraj.Services
                             : alan.Alan;
                         ws.Cell(satir, 3 + i).Value = deger;
                         ws.Cell(satir, 3 + i).Style.NumberFormat.Format = "#,##0.00";
+
+                        // Sorunlu malzeme hucresini vurgula
+                        if (kiyas != null && !kiyas.Uyumlu && kiyas.Karar == KararDurumu.Bekliyor)
+                        {
+                            ws.Cell(satir, 3 + i).Style.Fill.BackgroundColor = ErrorBgColor;
+                            ws.Cell(satir, 3 + i).Style.Font.FontColor = ErrorColor;
+                            ws.Cell(satir, 3 + i).Style.Font.Bold = true;
+                        }
                     }
                 }
                 satir++;
@@ -523,134 +531,173 @@ namespace Metraj.Services
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        //  TABLO KIYASI SAYFASI (mevcut)
+        //  TABLO KIYASI SAYFASI (pivot — malzemeler yan yana)
         // ═══════════════════════════════════════════════════════════════════
 
         private void KiyasSayfasiOlustur(IXLWorksheet ws, List<KesitGrubu> kesitler)
         {
-            int sonSutun = 9;
+            // Benzersiz malzeme listesi (sütun grupları için)
+            var malzemeler = kesitler
+                .Where(k => k.TabloKiyaslari != null)
+                .SelectMany(k => k.TabloKiyaslari.Select(t => t.MalzemeAdi))
+                .Distinct().ToList();
+
+            if (malzemeler.Count == 0) { ws.Cell(1, 1).Value = "Veri yok"; return; }
+
+            // Her malzeme icin 3 sutun: Hesap | Tablo | Fark%
+            // Toplam sutun: Istasyon(1) + Durum(2) + malzeme*3 + Sonuc(1)
+            int malzBasCol = 3;
+            int sonSutun = 2 + malzemeler.Count * 3 + 1;
 
             ApplySheetTitle(ws, 1, 1, sonSutun, "TABLO KIYASI RAPORU");
 
+            // 2 satirlik header
+            // Satir 2: malzeme grup basliklari (merged)
             ws.Cell(2, 1).Value = "\u0130stasyon";
-            ws.Cell(2, 2).Value = "Malzeme";
-            ws.Cell(2, 3).Value = "Hesaplanan";
-            ws.Cell(2, 4).Value = "Tablo";
-            ws.Cell(2, 5).Value = "Fark";
-            ws.Cell(2, 6).Value = "Fark %";
-            ws.Cell(2, 7).Value = "Uyumlu";
-            ws.Cell(2, 8).Value = "Karar";
-            ws.Cell(2, 9).Value = "Kabul Edilen";
-            ApplyHeaderStyle(ws.Range(2, 1, 2, sonSutun));
-            ws.SheetView.FreezeRows(2);
+            ws.Range(2, 1, 3, 1).Merge();
+            ws.Cell(2, 2).Value = "Durum";
+            ws.Range(2, 2, 3, 2).Merge();
 
-            int dataStartRow = 3;
+            for (int m = 0; m < malzemeler.Count; m++)
+            {
+                int baseCol = malzBasCol + m * 3;
+                ws.Cell(2, baseCol).Value = malzemeler[m];
+                ws.Range(2, baseCol, 2, baseCol + 2).Merge();
+                ws.Range(2, baseCol, 2, baseCol + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+                // Satir 3: alt basliklar
+                ws.Cell(3, baseCol).Value = "Hesap";
+                ws.Cell(3, baseCol + 1).Value = "Tablo";
+                ws.Cell(3, baseCol + 2).Value = "Fark%";
+            }
+
+            ws.Cell(2, sonSutun).Value = "Sonu\u00E7";
+            ws.Range(2, sonSutun, 3, sonSutun).Merge();
+
+            ApplyHeaderStyle(ws.Range(2, 1, 3, sonSutun));
+            // Malzeme grup basliklarini section rengiyle vurgula
+            for (int m = 0; m < malzemeler.Count; m++)
+            {
+                int baseCol = malzBasCol + m * 3;
+                if (m % 2 == 1)
+                    ws.Range(2, baseCol, 2, baseCol + 2).Style.Fill.BackgroundColor = SubHeaderBgColor;
+            }
+            ws.SheetView.FreezeRows(3);
+
+            // Veri satirlari
+            int dataStartRow = 4;
             int satir = dataStartRow;
-            string sonIstasyon = "";
 
             int uyumluSayisi = 0;
             int uyumsuzKararli = 0;
             int uyumsuzBekliyor = 0;
-            int toplamKayit = 0;
 
             foreach (var kesit in kesitler.OrderBy(k => k.Anchor?.Istasyon ?? 0))
             {
-                if (kesit.TabloKiyaslari == null) continue;
+                if (kesit.TabloKiyaslari == null || kesit.TabloKiyaslari.Count == 0) continue;
 
                 string istasyon = kesit.Anchor != null
                     ? YolKesitService.IstasyonFormatla(kesit.Anchor.Istasyon) : "";
 
-                if (!string.IsNullOrEmpty(sonIstasyon) && istasyon != sonIstasyon && satir > dataStartRow)
+                ws.Cell(satir, 1).Value = istasyon;
+                ws.Cell(satir, 2).Value = kesit.Durum.ToString();
+
+                // Durum renk
+                var durumCell = ws.Cell(satir, 2);
+                switch (kesit.Durum)
                 {
-                    ws.Range(satir, 1, satir, sonSutun).Style.Border.TopBorder = XLBorderStyleValues.Medium;
-                    ws.Range(satir, 1, satir, sonSutun).Style.Border.TopBorderColor = XLColor.FromArgb(156, 163, 175);
+                    case DogrulamaDurumu.Onaylandi:
+                        durumCell.Style.Font.FontColor = SuccessColor;
+                        break;
+                    case DogrulamaDurumu.Sorunlu:
+                        durumCell.Style.Font.FontColor = ErrorColor;
+                        durumCell.Style.Font.Bold = true;
+                        break;
+                    case DogrulamaDurumu.Bekliyor:
+                        durumCell.Style.Font.FontColor = WarningColor;
+                        break;
                 }
-                sonIstasyon = istasyon;
 
-                foreach (var kiyas in kesit.TabloKiyaslari)
+                bool satirSorunlu = false;
+
+                for (int m = 0; m < malzemeler.Count; m++)
                 {
-                    ws.Cell(satir, 1).Value = istasyon;
-                    ws.Cell(satir, 2).Value = kiyas.MalzemeAdi;
-                    ws.Cell(satir, 3).Value = kiyas.HesaplananAlan;
-                    ws.Cell(satir, 3).Style.NumberFormat.Format = "#,##0.00";
-                    ws.Cell(satir, 4).Value = kiyas.TabloAlani;
-                    ws.Cell(satir, 4).Style.NumberFormat.Format = "#,##0.00";
-                    ws.Cell(satir, 5).Value = kiyas.Fark;
-                    ws.Cell(satir, 5).Style.NumberFormat.Format = "#,##0.00";
-                    ws.Cell(satir, 6).Value = kiyas.FarkYuzde;
-                    ws.Cell(satir, 6).Style.NumberFormat.Format = "#,##0.00";
-                    ws.Cell(satir, 9).Value = kiyas.KabulEdilenAlan;
-                    ws.Cell(satir, 9).Style.NumberFormat.Format = "#,##0.00";
+                    int baseCol = malzBasCol + m * 3;
+                    var kiyas = kesit.TabloKiyaslari.FirstOrDefault(k => k.MalzemeAdi == malzemeler[m]);
+                    if (kiyas == null) continue;
 
-                    ws.Cell(satir, 7).Value = kiyas.Uyumlu ? "Evet" : "Hay\u0131r";
-                    if (kiyas.Uyumlu)
-                        ws.Cell(satir, 7).Style.Font.FontColor = SuccessColor;
-                    else
-                    {
-                        ws.Cell(satir, 7).Style.Font.FontColor = ErrorColor;
-                        ws.Cell(satir, 7).Style.Font.Bold = true;
-                    }
+                    ws.Cell(satir, baseCol).Value = kiyas.HesaplananAlan;
+                    ws.Cell(satir, baseCol).Style.NumberFormat.Format = "#,##0.00";
+                    ws.Cell(satir, baseCol + 1).Value = kiyas.TabloAlani;
+                    ws.Cell(satir, baseCol + 1).Style.NumberFormat.Format = "#,##0.00";
+                    ws.Cell(satir, baseCol + 2).Value = kiyas.FarkYuzde;
+                    ws.Cell(satir, baseCol + 2).Style.NumberFormat.Format = "#,##0.0";
 
-                    string kararText = KararMetni(kiyas.Karar);
-                    ws.Cell(satir, 8).Value = kararText;
-                    switch (kiyas.Karar)
-                    {
-                        case KararDurumu.OtomatikOnay:
-                            ws.Cell(satir, 8).Style.Font.FontColor = SuccessColor;
-                            break;
-                        case KararDurumu.TabloKabul:
-                        case KararDurumu.HesapKabul:
-                            ws.Cell(satir, 8).Style.Font.FontColor = WarningColor;
-                            break;
-                        case KararDurumu.Bekliyor:
-                            ws.Cell(satir, 8).Style.Font.FontColor = ErrorColor;
-                            ws.Cell(satir, 8).Style.Font.Italic = true;
-                            break;
-                    }
-
+                    // Fark% renk kodlamasi
                     double farkAbs = Math.Abs(kiyas.FarkYuzde);
                     if (farkAbs <= 2)
-                        ws.Cell(satir, 6).Style.Font.FontColor = SuccessColor;
+                        ws.Cell(satir, baseCol + 2).Style.Font.FontColor = SuccessColor;
                     else if (farkAbs <= 5)
-                        ws.Cell(satir, 6).Style.Font.FontColor = WarningColor;
+                        ws.Cell(satir, baseCol + 2).Style.Font.FontColor = WarningColor;
                     else
                     {
-                        ws.Cell(satir, 6).Style.Font.FontColor = ErrorColor;
-                        ws.Cell(satir, 6).Style.Font.Bold = true;
+                        ws.Cell(satir, baseCol + 2).Style.Font.FontColor = ErrorColor;
+                        ws.Cell(satir, baseCol + 2).Style.Font.Bold = true;
                     }
 
-                    if (kiyas.Uyumlu)
+                    // Sorunlu hucre vurgulama
+                    if (!kiyas.Uyumlu && kiyas.Karar == KararDurumu.Bekliyor)
                     {
-                        ws.Range(satir, 1, satir, sonSutun).Style.Fill.BackgroundColor = SuccessBgColor;
-                        uyumluSayisi++;
+                        ws.Range(satir, baseCol, satir, baseCol + 2).Style.Fill.BackgroundColor = ErrorBgColor;
+                        satirSorunlu = true;
+                        uyumsuzBekliyor++;
                     }
-                    else if (kiyas.Karar == KararDurumu.TabloKabul || kiyas.Karar == KararDurumu.HesapKabul)
+                    else if (!kiyas.Uyumlu)
                     {
-                        ws.Range(satir, 1, satir, sonSutun).Style.Fill.BackgroundColor = WarningBgColor;
+                        ws.Range(satir, baseCol, satir, baseCol + 2).Style.Fill.BackgroundColor = WarningBgColor;
                         uyumsuzKararli++;
                     }
                     else
                     {
-                        ws.Range(satir, 1, satir, sonSutun).Style.Fill.BackgroundColor = ErrorBgColor;
-                        uyumsuzBekliyor++;
+                        uyumluSayisi++;
                     }
-
-                    toplamKayit++;
-                    satir++;
                 }
+
+                // Sonuc sutunu
+                ws.Cell(satir, sonSutun).Value = satirSorunlu ? "\u2717" : "\u2713";
+                ws.Cell(satir, sonSutun).Style.Font.FontColor = satirSorunlu ? ErrorColor : SuccessColor;
+                ws.Cell(satir, sonSutun).Style.Font.Bold = true;
+                ws.Cell(satir, sonSutun).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+                satir++;
             }
 
             int dataEndRow = satir - 1;
 
             if (dataEndRow >= dataStartRow)
+            {
+                ApplyAltRowShading(ws, dataStartRow, dataEndRow, 1, sonSutun);
                 ApplyDataBorders(ws.Range(2, 1, dataEndRow, sonSutun));
 
+                // Malzeme gruplari arasina dikey ayirici
+                for (int m = 1; m < malzemeler.Count; m++)
+                {
+                    int baseCol = malzBasCol + m * 3;
+                    ws.Range(dataStartRow, baseCol, dataEndRow, baseCol).Style.Border.LeftBorder = XLBorderStyleValues.Medium;
+                    ws.Range(dataStartRow, baseCol, dataEndRow, baseCol).Style.Border.LeftBorderColor = XLColor.FromArgb(156, 163, 175);
+                }
+            }
+
+            // Ozet blogu
             satir += 1;
+            int toplamKayit = uyumluSayisi + uyumsuzKararli + uyumsuzBekliyor;
+
             ws.Cell(satir, 1).Value = "\u00D6ZET";
             ws.Cell(satir, 1).Style.Font.Bold = true;
             ws.Cell(satir, 1).Style.Font.FontSize = 11;
             satir++;
 
+            int ozetBaslangic = satir;
             ws.Cell(satir, 1).Value = "Toplam Kay\u0131t:";
             ws.Cell(satir, 1).Style.Font.Bold = true;
             ws.Cell(satir, 2).Value = toplamKayit;
@@ -685,7 +732,7 @@ namespace Metraj.Services
             ws.Cell(satir, 2).Style.Font.FontColor = ErrorColor;
             ws.Cell(satir, 2).Style.Font.Bold = true;
 
-            ApplyDataBorders(ws.Range(satir - 4, 1, satir, 3));
+            ApplyDataBorders(ws.Range(ozetBaslangic, 1, satir, 3));
 
             FinalizeSheet(ws);
         }
