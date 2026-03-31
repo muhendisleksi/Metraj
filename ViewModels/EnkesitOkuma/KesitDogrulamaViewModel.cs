@@ -192,9 +192,15 @@ namespace Metraj.ViewModels.EnkesitOkuma
         private void Onayla()
         {
             if (AktifKesit == null) return;
+            KararsizKiyaslariCoz(_aktifKesitKiyaslar);
             AktifKesit.Durum = DogrulamaDurumu.Onaylandi;
             DurumGuncelle();
-            Sonraki();
+
+            // Son kesitteyse sadece UI guncelle, degilse sonrakine gec
+            if (_filtrelenmisKesitler != null && AktifIndex < _filtrelenmisKesitler.Count - 1)
+                Sonraki();
+            else
+                OnPropertiesChanged(nameof(AktifKesitBilgi), nameof(ToplamGosterilen));
         }
 
         private void SorunluOlarakIsaretle()
@@ -228,10 +234,22 @@ namespace Metraj.ViewModels.EnkesitOkuma
         {
             foreach (var kesit in _tumKesitler)
             {
-                if (kesit.Durum == DogrulamaDurumu.Bekliyor)
+                if (kesit.Durum == DogrulamaDurumu.Bekliyor || kesit.Durum == DogrulamaDurumu.Sorunlu)
+                {
+                    KararsizKiyaslariCoz(kesit.TabloKiyaslari);
                     kesit.Durum = DogrulamaDurumu.Onaylandi;
+                }
             }
+
+            // Aktif kesitin kiyaslarini da guncelle (ekrandakiler)
+            KararsizKiyaslariCoz(_aktifKesitKiyaslar);
+            if (AktifKesit != null && AktifKesit.Durum != DogrulamaDurumu.Onaylandi)
+                AktifKesit.Durum = DogrulamaDurumu.Onaylandi;
+
+            // Filtre ve UI guncelle
             DurumGuncelle();
+            KiyaslarGuncelle();
+            OnPropertiesChanged(nameof(AktifKesitKiyaslar), nameof(AktifKesitBilgi));
         }
 
         private void TabloKabulEt(TabloKiyasSonucu kiyas)
@@ -274,7 +292,23 @@ namespace Metraj.ViewModels.EnkesitOkuma
             {
                 AktifKesit.Durum = DogrulamaDurumu.Onaylandi;
                 DurumGuncelle();
-                Sonraki();
+
+                // Son kesitteyse sadece UI guncelle, degilse sonrakine gec
+                if (_filtrelenmisKesitler != null && AktifIndex < _filtrelenmisKesitler.Count - 1)
+                    Sonraki();
+                else
+                    OnPropertiesChanged(nameof(AktifKesitBilgi), nameof(ToplamGosterilen));
+            }
+        }
+
+        /// <summary>Bekleyen kiyaslari otomatik karara baglar. TabloAlani > 0 ise TabloKabul, degilse HesapKabul.</summary>
+        private static void KararsizKiyaslariCoz(List<TabloKiyasSonucu> kiyaslar)
+        {
+            if (kiyaslar == null) return;
+            foreach (var k in kiyaslar)
+            {
+                if (k.Karar == KararDurumu.Bekliyor)
+                    k.Karar = k.TabloAlani > 0 ? KararDurumu.TabloKabul : KararDurumu.HesapKabul;
             }
         }
 

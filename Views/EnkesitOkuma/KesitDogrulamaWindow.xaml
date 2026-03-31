@@ -179,7 +179,7 @@
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                             <!-- OtomatikOnay badge -->
                                             <TextBlock Text="&#x2713; Oto" FontSize="10" Foreground="#FF4EC9B0"
-                                                       VerticalAlignment="Center" Margin="0,0,2,0">
+                                                       VerticalAlignment="Center">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
                                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -191,7 +191,35 @@
                                                     </Style>
                                                 </TextBlock.Style>
                                             </TextBlock>
-                                            <!-- T butonu -->
+                                            <!-- TabloKabul badge -->
+                                            <TextBlock Text="&#x2713; T" FontSize="10" Foreground="#FF4EC9B0" FontWeight="Bold"
+                                                       VerticalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Karar}" Value="TabloKabul">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <!-- HesapKabul badge -->
+                                            <TextBlock Text="&#x2713; H" FontSize="10" Foreground="#FF378ADD" FontWeight="Bold"
+                                                       VerticalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Karar}" Value="HesapKabul">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <!-- T butonu (sadece Bekliyor'da gorunur) -->
                                             <Button Content="T" Width="24" Height="20" FontSize="10" FontWeight="Bold"
                                                     Padding="0" Margin="0,0,2,0" Cursor="Hand"
                                                     Command="{Binding DataContext.TabloKabulCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
@@ -221,8 +249,10 @@
                                                         </Setter>
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding Karar}" Value="TabloKabul">
-                                                                <Setter Property="Background" Value="#FF1D5C46"/>
-                                                                <Setter Property="Foreground" Value="#FF4EC9B0"/>
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Karar}" Value="HesapKabul">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding Karar}" Value="OtomatikOnay">
                                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -231,7 +261,7 @@
                                                     </Style>
                                                 </Button.Style>
                                             </Button>
-                                            <!-- H butonu -->
+                                            <!-- H butonu (sadece Bekliyor'da gorunur) -->
                                             <Button Content="H" Width="24" Height="20" FontSize="10" FontWeight="Bold"
                                                     Padding="0" Cursor="Hand"
                                                     Command="{Binding DataContext.HesapKabulCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
@@ -260,9 +290,11 @@
                                                             </Setter.Value>
                                                         </Setter>
                                                         <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Karar}" Value="TabloKabul">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
                                                             <DataTrigger Binding="{Binding Karar}" Value="HesapKabul">
-                                                                <Setter Property="Background" Value="#FF1D3D5C"/>
-                                                                <Setter Property="Foreground" Value="#FF378ADD"/>
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding Karar}" Value="OtomatikOnay">
                                                                 <Setter Property="Visibility" Value="Collapsed"/>
