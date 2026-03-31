@@ -622,8 +622,8 @@ namespace Metraj.ViewModels.EnkesitOkuma
                     XAraligi = $"{minX:F2}..{maxX:F2}",
                     KapaliVar = kapaliSayisi > 0,
                     OrnekBilgi = kapaliSayisi > 0 && acikSayisi > 0
-                        ? $"{kapaliSayisi} kapali, {acikSayisi} acik"
-                        : kapaliSayisi > 0 ? $"{kapaliSayisi} kapali" : $"{acikSayisi} acik",
+                        ? $"{kapaliSayisi} kapal\u0131, {acikSayisi} a\u00E7\u0131k"
+                        : kapaliSayisi > 0 ? $"{kapaliSayisi} kapal\u0131" : $"{acikSayisi} a\u00E7\u0131k",
                     AtananRol = onerilen,
                     OnayDegisti = OnayDurumuGuncelle,
                     RolDegisti = GrupRolDegisti
@@ -682,7 +682,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
 
             var dialog = new Microsoft.Win32.SaveFileDialog
             {
-                Filter = "JSON Dosyasi|*.json",
+                Filter = "JSON Dosyas\u0131|*.json",
                 FileName = "EnkesitSablon.json"
             };
 

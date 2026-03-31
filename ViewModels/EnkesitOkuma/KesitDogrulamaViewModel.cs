@@ -117,16 +117,21 @@ namespace Metraj.ViewModels.EnkesitOkuma
             // Kiyas yoksa hesaplanan alanlari tablo formatina donustur
             if (AktifKesit.HesaplananAlanlar != null && AktifKesit.HesaplananAlanlar.Count > 0)
             {
-                AktifKesitKiyaslar = AktifKesit.HesaplananAlanlar.Select(a => new TabloKiyasSonucu
+                AktifKesitKiyaslar = AktifKesit.HesaplananAlanlar.Select(a =>
                 {
-                    MalzemeAdi = a.MalzemeAdi,
-                    HesaplananAlan = a.Alan,
-                    TabloAlani = 0,
-                    Fark = 0,
-                    FarkYuzde = 0,
-                    Uyumlu = false,
-                    UstCizgiRolu = a.UstCizgiRolu,
-                    AltCizgiRolu = a.AltCizgiRolu
+                    var s = new TabloKiyasSonucu
+                    {
+                        MalzemeAdi = a.MalzemeAdi,
+                        HesaplananAlan = a.Alan,
+                        TabloAlani = 0,
+                        Fark = 0,
+                        FarkYuzde = 0,
+                        Uyumlu = false,
+                        UstCizgiRolu = a.UstCizgiRolu,
+                        AltCizgiRolu = a.AltCizgiRolu
+                    };
+                    s.FokusBilgisiAyarla(AktifKesit.Cizgiler);
+                    return s;
                 }).ToList();
                 return;
             }
@@ -155,6 +160,15 @@ namespace Metraj.ViewModels.EnkesitOkuma
 
         public void Yukle(List<KesitGrubu> kesitler)
         {
+            // Ayni veri zaten yuklu ise state'i koru (AktifIndex, SadeceSorunluGoster, Karar)
+            if (_tumKesitler == kesitler && _filtrelenmisKesitler != null && _filtrelenmisKesitler.Count > 0)
+            {
+                // Kiyas listesini guncelle (Hesapla sonrasi yeni degerler olabilir)
+                KiyaslarGuncelle();
+                DurumGuncelle();
+                return;
+            }
+
             _tumKesitler = kesitler;
             FiltreUygula();
             if (_filtrelenmisKesitler.Count > 0)

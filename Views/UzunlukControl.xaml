@@ -15,7 +15,7 @@
         </Grid.RowDefinitions>
 
         <!-- Top: Selection button -->
-        <Button Grid.Row="0" Content="Sec ve Hesapla" Command="{Binding NesneSecVeHesaplaCommand}"
+        <Button Grid.Row="0" Content="Seç ve Hesapla" Command="{Binding NesneSecVeHesaplaCommand}"
                 Margin="0,0,0,5" Padding="10,6" Background="#FF0078D4" Foreground="White"
                 FontFamily="Segoe UI" FontSize="12" BorderThickness="0" Cursor="Hand"/>
 

@@ -213,6 +213,11 @@ namespace Metraj.Services.YolEnkesit
 
             if (kesit.HesaplananAlanlar == null) return sonuclar;
 
+            // Mevcut kararlari koru (Hesapla tekrar cagrildiginda kaybolmasin)
+            var mevcutKararlar = kesit.TabloKiyaslari?
+                .Where(k => k.Karar != KararDurumu.Bekliyor)
+                .ToDictionary(k => k.MalzemeAdi, k => (k.Karar, k.KararAciklamasi));
+
             foreach (var hesap in kesit.HesaplananAlanlar)
             {
                 if (tabloDegerleri.TryGetValue(hesap.MalzemeAdi, out double tabloAlani))
@@ -220,7 +225,17 @@ namespace Metraj.Services.YolEnkesit
                     double fark = Math.Abs(hesap.Alan - tabloAlani);
                     double farkYuzde = tabloAlani > 0 ? (fark / tabloAlani) * 100 : 0;
 
-                    sonuclar.Add(new TabloKiyasSonucu
+                    var karar = farkYuzde <= UyumToleransYuzde ? KararDurumu.OtomatikOnay : KararDurumu.Bekliyor;
+                    string kararAciklama = null;
+
+                    // Onceki karar varsa koru
+                    if (mevcutKararlar != null && mevcutKararlar.TryGetValue(hesap.MalzemeAdi, out var mevcut))
+                    {
+                        karar = mevcut.Karar;
+                        kararAciklama = mevcut.KararAciklamasi;
+                    }
+
+                    var sonuc = new TabloKiyasSonucu
                     {
                         MalzemeAdi = hesap.MalzemeAdi,
                         TabloAlani = tabloAlani,
@@ -230,8 +245,11 @@ namespace Metraj.Services.YolEnkesit
                         Uyumlu = farkYuzde <= UyumToleransYuzde,
                         UstCizgiRolu = hesap.UstCizgiRolu,
                         AltCizgiRolu = hesap.AltCizgiRolu,
-                        Karar = farkYuzde <= UyumToleransYuzde ? KararDurumu.OtomatikOnay : KararDurumu.Bekliyor
-                    });
+                        Karar = karar,
+                        KararAciklamasi = kararAciklama
+                    };
+                    sonuc.FokusBilgisiAyarla(kesit.Cizgiler);
+                    sonuclar.Add(sonuc);
                 }
             }
 

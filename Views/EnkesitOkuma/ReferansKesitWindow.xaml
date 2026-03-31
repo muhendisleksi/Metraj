@@ -192,7 +192,7 @@
 
                 <!-- Row 2: Tumunu Onayla + Durum -->
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,6">
-                    <Button Content="Tumunu Onayla" Command="{Binding TumunuOnaylaCommand}"
+                    <Button Content="Tümünü Onayla" Command="{Binding TumunuOnaylaCommand}"
                             Style="{StaticResource DarkBtn}" Height="24" Padding="8,2" FontSize="10"
                             Margin="0,0,6,0"/>
                     <TextBlock Text="{Binding TopluOnayDurumu}" Foreground="#FF8888AA" FontSize="11"

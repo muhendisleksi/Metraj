@@ -216,10 +216,10 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 var doc = AcadApp.DocumentManager.MdiActiveDocument;
                 var ed = doc.Editor;
 
-                var pt1Result = ed.GetPoint("\nPencere sol-alt kosesini tiklayin: ");
+                var pt1Result = ed.GetPoint("\nPencere sol-alt k\u00F6\u015Fesini t\u0131klay\u0131n: ");
                 if (pt1Result.Status != PromptStatus.OK) return;
 
-                var pt2Result = ed.GetCorner("\nPencere sag-ust kosesini tiklayin: ", pt1Result.Value);
+                var pt2Result = ed.GetCorner("\nPencere sa\u011F-\u00FCst k\u00F6\u015Fesini t\u0131klay\u0131n: ", pt1Result.Value);
                 if (pt2Result.Status != PromptStatus.OK) return;
 
                 var pt1 = pt1Result.Value;
@@ -346,7 +346,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 _iptalIstendi = false;
                 IlerlemeYuzde = 0;
                 IlerlemeDetay = "Entity'ler okunuyor...";
-                DurumMesaji = "Tarama basliyor...";
+                DurumMesaji = "Tarama ba\u015Fl\u0131yor...";
                 ButonDurumGuncelle();
                 UIGuncelle();
 
@@ -361,7 +361,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                     return true;
                 });
 
-                if (_iptalIstendi) { TaramaBitir("Iptal edildi"); return; }
+                if (_iptalIstendi) { TaramaBitir("\u0130ptal edildi"); return; }
 
                 // Faz 1: Kesit gruplama (%40 → %55)
                 IlerlemeYuzde = 40;
@@ -371,7 +371,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 Kesitler = _gruplamaService.KesitGrupla(_anchorlar, _pencere, _secilenEntityler);
                 int toplam2 = Kesitler.Count;
 
-                if (_iptalIstendi) { TaramaBitir("Iptal edildi"); return; }
+                if (_iptalIstendi) { TaramaBitir("\u0130ptal edildi"); return; }
 
                 IlerlemeYuzde = 55;
                 IlerlemeDetay = $"{toplam2} kesit bulundu";
@@ -380,7 +380,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 // Faz 2: Rol atama (%55 → %70)
                 for (int i = 0; i < toplam2; i++)
                 {
-                    if (_iptalIstendi) { TaramaBitir($"Iptal edildi ({i}/{toplam2} kesit islendi)"); return; }
+                    if (_iptalIstendi) { TaramaBitir($"\u0130ptal edildi ({i}/{toplam2} kesit i\u015Flendi)"); return; }
 
                     _rolAtamaService.OtomatikRolAta(Kesitler[i], _sablon);
 
@@ -396,7 +396,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 // Faz 3: Alan hesabi (%70 → %85)
                 for (int i = 0; i < toplam2; i++)
                 {
-                    if (_iptalIstendi) { TaramaBitir($"Iptal edildi ({i}/{toplam2} alan hesabi)"); return; }
+                    if (_iptalIstendi) { TaramaBitir($"\u0130ptal edildi ({i}/{toplam2} alan hesab\u0131)"); return; }
 
                     _alanHesapService.AlanHesapla(Kesitler[i]);
 
@@ -404,7 +404,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                     {
                         int yuzde = 70 + (int)((double)(i + 1) / toplam2 * 15);
                         IlerlemeYuzde = yuzde;
-                        IlerlemeDetay = $"Alan hesabi: {i + 1} / {toplam2}";
+                        IlerlemeDetay = $"Alan hesab\u0131: {i + 1} / {toplam2}";
                         UIGuncelle();
                     }
                 }
@@ -412,7 +412,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 // Faz 4: Tablo kiyaslama (%85 → %100)
                 for (int i = 0; i < toplam2; i++)
                 {
-                    if (_iptalIstendi) { TaramaBitir($"Iptal edildi ({i}/{toplam2} kiyas)"); return; }
+                    if (_iptalIstendi) { TaramaBitir($"\u0130ptal edildi ({i}/{toplam2} k\u0131yas)"); return; }
 
                     _tabloService.Kiyasla(Kesitler[i]);
 
@@ -420,7 +420,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                     {
                         int yuzde = 85 + (int)((double)(i + 1) / toplam2 * 15);
                         IlerlemeYuzde = yuzde;
-                        IlerlemeDetay = $"Tablo kiyasi: {i + 1} / {toplam2}";
+                        IlerlemeDetay = $"Tablo k\u0131yas\u0131: {i + 1} / {toplam2}";
                         UIGuncelle();
                     }
                 }
@@ -445,7 +445,7 @@ namespace Metraj.ViewModels.EnkesitOkuma
                 // NOT: TanilamaRaporuYaz buradan kaldirildi — TraceBoundary cagrisi
                 // UI'i dakikalarca kilitliyordu. Rapor gerektiginde ayri tetiklenir.
 
-                TaramaBitir($"{toplam2} kesit tarandi -- {uyumlu} uyumlu, {uyari} uyari, {sorunlu} sorunlu");
+                TaramaBitir($"{toplam2} kesit tarand\u0131 -- {uyumlu} uyumlu, {uyari} uyari, {sorunlu} sorunlu");
                 OnPropertiesChanged(nameof(KesitSayisi), nameof(SonucBilgisi), nameof(KesitOzeti));
             }
             catch (System.Exception ex)

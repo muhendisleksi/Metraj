@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
 
@@ -28,6 +31,51 @@ namespace Metraj.Models.YolEnkesit
         public CizgiRolu UstCizgiRolu { get; set; }
         /// <summary>Bu malzemenin alt sinir cizgi rolu (AlanHesapSonucu'ndan).</summary>
         public CizgiRolu AltCizgiRolu { get; set; }
+
+        /// <summary>Bu malzemenin fokus cizgileri (highlight/zoom icin).</summary>
+        public List<CizgiTanimi> IlgiliCizgiler { get; set; }
+
+        /// <summary>HighlightLayer icin: fokus cizgisinin AutoCAD layer adi.</summary>
+        public string FokusLayerAdi { get; set; }
+        /// <summary>HighlightLayer icin: fokus cizgisinin AutoCAD renk index'i.</summary>
+        public short FokusRenkIndex { get; set; }
+
+        /// <summary>Kesit genisliginde uzanan, birden fazla malzemenin siniri olan roller.</summary>
+        private static readonly HashSet<CizgiRolu> GenisRoller = new HashSet<CizgiRolu>
+        {
+            CizgiRolu.Zemin,
+            CizgiRolu.ProjeCizgisi
+        };
+
+        /// <summary>
+        /// Ust/alt rollerden malzeme-spesifik olani dondurur.
+        /// Genis roller (Zemin, ProjeCizgisi) varsa diger tercih edilir.
+        /// Ikisi de spesifikse alt rol dondurulur (malzemenin kendi siniri).
+        /// </summary>
+        public static CizgiRolu FokusRoluBelirle(CizgiRolu ustRol, CizgiRolu altRol)
+        {
+            bool ustGenis = GenisRoller.Contains(ustRol);
+            bool altGenis = GenisRoller.Contains(altRol);
+
+            if (ustGenis && !altGenis) return altRol;
+            if (!ustGenis && altGenis) return ustRol;
+            return altRol; // ikisi de spesifik → alt rolu tercih et
+        }
+
+        /// <summary>
+        /// Fokus rolu icin layer+renk bilgisini belirler ve property'lere yazar.
+        /// </summary>
+        public void FokusBilgisiAyarla(List<CizgiTanimi> tumCizgiler)
+        {
+            if (tumCizgiler == null) return;
+            var fokusRol = FokusRoluBelirle(UstCizgiRolu, AltCizgiRolu);
+            var fokusCizgi = tumCizgiler.FirstOrDefault(c => c.Rol == fokusRol);
+            if (fokusCizgi != null)
+            {
+                FokusLayerAdi = fokusCizgi.LayerAdi;
+                FokusRenkIndex = fokusCizgi.RenkIndex;
+            }
+        }
 
         /// <summary>Kullanici veya otomatik karar.</summary>
         public KararDurumu Karar

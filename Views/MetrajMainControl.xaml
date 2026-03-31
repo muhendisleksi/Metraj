@@ -12,7 +12,7 @@
 
         <!-- Header -->
         <Border Grid.Row="0" Background="#FF2D2D44" Padding="10,6">
-            <TextBlock Text="Metraj Asistani" Foreground="#FF4EC9B0"
+            <TextBlock Text="Metraj Asistanı" Foreground="#FF4EC9B0"
                        FontFamily="Segoe UI" FontSize="14" FontWeight="Bold"/>
         </Border>
 

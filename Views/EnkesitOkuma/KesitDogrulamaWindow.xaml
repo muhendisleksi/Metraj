@@ -105,7 +105,7 @@
                             Style="{StaticResource DarkButton}" Height="26" Padding="6,2" FontSize="11" Margin="0,0,2,0"/>
                     <Button Content="H Kabul" Command="{Binding TopluHesapKabulCommand}" ToolTip="Aktif kesitteki tum bekleyen satirlari Hesap Kabul yap"
                             Style="{StaticResource DarkButton}" Height="26" Padding="6,2" FontSize="11" Margin="0,0,4,0"/>
-                    <Button Content="Tumunu Onayla" Command="{Binding TumunuOnaylaCommand}"
+                    <Button Content="Tümünü Onayla" Command="{Binding TumunuOnaylaCommand}"
                             Style="{StaticResource SuccessButton}" Height="26" Padding="8,2"/>
                 </StackPanel>
             </DockPanel>

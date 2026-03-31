@@ -87,6 +87,7 @@ namespace Metraj.Views.EnkesitOkuma
             _zoom = 1.0;
             _pan = new Point(0, 0);
             _highlightLayer = null;
+            _highlightCizgiler = null;
             Ciz();
         }
 
@@ -132,6 +133,7 @@ namespace Metraj.Views.EnkesitOkuma
         private string _highlightLayer;
         private short _highlightRenk;
         private HashSet<CizgiRolu> _highlightRoller;
+        private HashSet<CizgiTanimi> _highlightCizgiler;
 
         /// <summary>
         /// Belirtilen layer+renk grubunun cizgilerini highlight'la ve bounding box'a zoom yap.
@@ -151,6 +153,8 @@ namespace Metraj.Views.EnkesitOkuma
 
             _highlightLayer = layerAdi;
             _highlightRenk = renkIndex;
+            _highlightRoller = null;
+            _highlightCizgiler = null;
 
             // Highlight'li cizgilerin bounding box'ina zoom
             if (_cizgiler != null && layerAdi != null)
@@ -191,7 +195,8 @@ namespace Metraj.Views.EnkesitOkuma
             }
 
             _highlightRoller = yeniRoller;
-            _highlightLayer = null; // layer highlight'i temizle
+            _highlightLayer = null;
+            _highlightCizgiler = null;
 
             if (_cizgiler != null)
             {
@@ -211,11 +216,52 @@ namespace Metraj.Views.EnkesitOkuma
             }
         }
 
+        /// <summary>
+        /// Belirtilen cizgileri highlight'la ve bounding box'a zoom yap.
+        /// Rol bazli degil, spesifik entity bazli fokus saglar.
+        /// </summary>
+        public void HighlightCizgiler(List<CizgiTanimi> cizgiler)
+        {
+            if (cizgiler == null || cizgiler.Count == 0)
+            {
+                HighlightTemizle();
+                return;
+            }
+
+            var yeniSet = new HashSet<CizgiTanimi>(cizgiler);
+
+            // Toggle: ayni cizgiler tekrar tiklandiysa sifirla
+            if (_highlightCizgiler != null && _highlightCizgiler.SetEquals(yeniSet))
+            {
+                _highlightCizgiler = null;
+                _highlightLayer = null;
+                _highlightRoller = null;
+                _zoom = 1.0;
+                _pan = new Point(0, 0);
+                Ciz();
+                return;
+            }
+
+            _highlightCizgiler = yeniSet;
+            _highlightLayer = null;
+            _highlightRoller = null;
+
+            var hedefNoktalar = cizgiler
+                .SelectMany(c => c.Noktalar)
+                .ToList();
+
+            if (hedefNoktalar.Count > 0)
+                ZoomToBounds(hedefNoktalar);
+            else
+                Ciz();
+        }
+
         /// <summary>Highlight ve zoom'u sifirla, tum kesiti goster.</summary>
         public void HighlightTemizle()
         {
             _highlightLayer = null;
             _highlightRoller = null;
+            _highlightCizgiler = null;
             _zoom = 1.0;
             _pan = new Point(0, 0);
             Ciz();
@@ -438,8 +484,9 @@ namespace Metraj.Views.EnkesitOkuma
             bool secili = _secilenCizgiler.Contains(cizgi);
             bool cerceve = cizgi.Rol == CizgiRolu.CerceveCizgisi || cizgi.Rol == CizgiRolu.GridCizgisi;
             bool highlighted = (_highlightLayer != null && cizgi.LayerAdi == _highlightLayer && cizgi.RenkIndex == _highlightRenk)
-                || (_highlightRoller != null && _highlightRoller.Contains(cizgi.Rol));
-            bool highlightAktif = _highlightLayer != null || _highlightRoller != null;
+                || (_highlightRoller != null && _highlightRoller.Contains(cizgi.Rol))
+                || (_highlightCizgiler != null && _highlightCizgiler.Contains(cizgi));
+            bool highlightAktif = _highlightLayer != null || _highlightRoller != null || _highlightCizgiler != null;
             bool soluk = highlightAktif && !highlighted && !secili;
 
             // Kalinlik belirleme
